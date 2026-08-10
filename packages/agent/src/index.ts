@@ -50,8 +50,6 @@ export {
 
 export { getChatModel, resolveChatModel } from './llm.js'
 
-export { agentLog, type AgentLogger } from './logger.js'
-
 /** 工作区工具组装 */
 export {
   buildWorkspaceRunPrompt,

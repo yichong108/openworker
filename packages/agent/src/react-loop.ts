@@ -14,6 +14,8 @@ import {
   type ToolSet
 } from 'ai'
 
+import { agentLog } from './logger.js'
+
 /**
  * 构建仅用于模型声明的 ToolSet（去掉 execute，避免 streamText 自动执行）。
  *
@@ -167,6 +169,12 @@ export async function runReactLoop(
     const stepStartedAt = Date.now()
 
     // messages 里不要塞 role: 'system'，避免和顶层 system 重复
+    agentLog.info(`[react-loop] llm:in step=${steps}`, {
+      system: systemPrompt,
+      messages: working,
+      tools: Object.keys(declarations)
+    })
+
     const result = streamText({
       model,
       system: systemPrompt,
@@ -190,7 +198,14 @@ export async function runReactLoop(
 
     const text = (await result.text) || stepText
     const toolCalls = await result.toolCalls
+    const usage = await result.usage
     const stepDurationMs = Date.now() - stepStartedAt
+
+    agentLog.info(`[react-loop] llm:out step=${steps} durationMs=${stepDurationMs}`, {
+      text,
+      toolCalls,
+      usage
+    })
 
     if (toolCalls.length > 0) {
       if (streamedLen > 0) onTextRevoke?.()
