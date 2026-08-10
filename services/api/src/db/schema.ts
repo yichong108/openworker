@@ -76,6 +76,17 @@ export async function ensureSchema(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
 
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id VARCHAR(36) NOT NULL,
+      facts_json JSON NOT NULL,
+      updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+      PRIMARY KEY (user_id),
+      CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id) REFERENCES users (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
+
   await seedDefaultAdmin()
 }
 

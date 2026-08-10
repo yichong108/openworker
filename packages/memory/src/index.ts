@@ -1,5 +1,5 @@
 /**
- * @openworker/memory — 单会话上下文压缩（纯函数，无 I/O）
+ * @openworker/memory — 单会话压缩 + 用户画像（纯函数，无 I/O）
  *
  * Desktop 粘合层见 apps/desktop/src/main/agent/memory.ts。
  */
@@ -21,10 +21,24 @@ export {
   mergeSummaries
 } from './heuristic-summary.js'
 export { refineSessionSummary } from './summarize.js'
+
+export {
+  DEFAULT_PROFILE_BUDGET,
+  MAX_PROFILE_FACTS,
+  resolveProfileBudget
+} from './profile/budget.js'
+export { extractProfileFacts, parseExtractedFactsJson } from './profile/extract.js'
+export { composeMemorySystemSection, formatProfileSection } from './profile/format.js'
+export { mergeProfileFacts, normalizeUserFact } from './profile/merge.js'
+
 export type {
   CompactSessionInput,
   CompactSessionResult,
+  ProfileBudget,
   SessionBudget,
   SessionWorkingInput,
-  Summarizer
+  Summarizer,
+  UserFact,
+  UserFactSource,
+  UserProfile
 } from './types.js'

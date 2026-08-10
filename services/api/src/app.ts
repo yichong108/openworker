@@ -5,6 +5,7 @@ import { healthRouter } from './routes/health.js'
 import { sessionsRouter } from './routes/sessions.js'
 import { settingsRouter } from './routes/settings.js'
 import { usersRouter } from './routes/users.js'
+import { userProfileRouter } from './routes/user-profile.js'
 import { workspacesRouter } from './routes/workspaces.js'
 
 /**
@@ -27,6 +28,7 @@ export function createApp() {
   app.use(settingsRouter)
   app.use(workspacesRouter)
   app.use(sessionsRouter)
+  app.use(userProfileRouter)
 
   return app
 }

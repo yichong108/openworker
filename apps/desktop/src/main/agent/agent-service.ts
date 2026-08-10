@@ -12,7 +12,8 @@ import { agentLog } from '@/main/agent/agent-log'
 import {
   clearSessionWorking,
   createMemorySummarizer,
-  prepareSessionMemory
+  prepareSessionMemory,
+  refreshUserProfileFromMessages
 } from '@/main/agent/memory'
 import { flushLangfuseTracing } from '@/main/langfuse'
 import {
@@ -426,14 +427,16 @@ export async function runUserMessage(
   const fullMessages: Message[] = [...session.agent.messages, userMessage]
   session.agent.messages = fullMessages
 
-  // OpenWorker：压缩长历史再跑（W=256k，refine 默认开 T=0.7）；Cursor：SDK 自管上下文，跳过
+  // OpenWorker：压缩长历史 + 注入画像（W=256k，refine/画像抽取默认开 T=0.7）；Cursor 跳过
   let memoryDroppedPrefix: Message[] = []
   let memorySystemSection: string | undefined
+  const memorySummarizer =
+    agentType === 'openworker' && provider ? createMemorySummarizer(provider) : null
   if (agentType === 'openworker') {
     const prepared = await prepareSessionMemory({
       sessionId,
       messages: fullMessages,
-      ...(provider ? { summarizer: createMemorySummarizer(provider) } : { refine: false })
+      ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
     })
     memoryDroppedPrefix = prepared.droppedPrefix
     memorySystemSection = prepared.systemSection || undefined
@@ -490,6 +493,14 @@ export async function runUserMessage(
 
     latest.agent.messages = restoreFullMessages(latest.agent.messages)
     await persistSessionMessages(sessionId, latest.agent.messages)
+
+    // 本轮成功后异步刷新用户画像（失败不阻断）
+    if (agentType === 'openworker' && memorySummarizer) {
+      void refreshUserProfileFromMessages({
+        messages: latest.agent.messages,
+        summarizer: memorySummarizer
+      })
+    }
   } catch (e) {
     const latest = sessions.get(sessionId)
     if (ac.signal.aborted) {

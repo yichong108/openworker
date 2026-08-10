@@ -1,29 +1,43 @@
 /**
  * Desktop 侧 agent ↔ @openworker/memory 粘合层。
  *
- * 唯一对接点：取/存会话 prior、调用 compact、默认 LLM refine（T=0.7）、
- * 产出 runAgent 用的 messages 与 systemSection。
- * 包内算法见 @openworker/memory；本文件可感知 sessionId，使用进程内 Map（无 API/DB 持久化）。
+ * 唯一对接点：会话 compact + 用户画像读写/抽取、产出 runAgent 用的 messages 与 systemSection。
+ * 包内算法见 @openworker/memory；会话 prior 用进程内 Map；画像经 API `/me/profile` 持久化。
  */
 
 import type { Message } from '@ag-ui/client'
 import {
   compactSessionHistory,
+  composeMemorySystemSection,
   DEFAULT_REFINE_TEMPERATURE,
+  extractProfileFacts,
+  formatProfileSection,
   formatSessionSystemSection,
+  mergeProfileFacts,
   refineSessionSummary,
   resolveSessionBudget,
   type SessionBudget,
   type SessionWorkingInput,
-  type Summarizer
+  type Summarizer,
+  type UserProfile
 } from '@openworker/memory'
 import { generateText, type LanguageModel } from 'ai'
+
+import { getAccessToken } from '@/main/auth-token'
+import { agentLog } from '@/main/agent/agent-log'
+import { apiGetUserProfile, apiPutUserProfile } from '@/main/user-profile-api'
 
 /** 会话工作记忆（summary / pinned），keyed by sessionId */
 const workingBySession = new Map<string, { summary: string; pinned: string[] }>()
 
+/** 当前登录用户画像缓存（登出清空） */
+let profileCache: UserProfile | null = null
+
+/** 抽取画像时取最近消息条数上限 */
+const PROFILE_EXTRACT_MESSAGE_LIMIT = 12
+
 /**
- * 用当前对话模型构造记忆精炼 Summarizer（temperature 默认 0.7）。
+ * 用当前对话模型构造记忆精炼 / 抽取 Summarizer（temperature 默认 0.7）。
  *
  * @param model - AI SDK LanguageModel
  * @param temperature - 采样温度，默认 DEFAULT_REFINE_TEMPERATURE
@@ -39,7 +53,6 @@ export function createMemorySummarizer(
         model,
         prompt,
         temperature,
-        // 字符预算粗转为 token 上限，避免精炼输出过长
         maxTokens: Math.min(8_192, Math.max(256, Math.ceil(maxChars / 2)))
       })
       return text
@@ -88,24 +101,87 @@ export function clearSessionWorking(sessionId: string): void {
 }
 
 /**
- * 清除全部会话工作记忆（登出时调用）。
+ * 清除全部会话工作记忆与用户画像缓存（登出时调用）。
  */
 export function clearAllSessionWorking(): void {
   workingBySession.clear()
+  profileCache = null
 }
 
 /**
- * 发消息前压缩 AG-UI 历史，供 OpenWorker runAgent 使用。
+ * 从 API 加载用户画像（带进程内缓存）。
  *
- * 默认：W=256k 尾部窗口；有新压缩内容时以 T=0.7 调用 LLM refine（可 `refine: false` 关闭）。
- * 返回的 `messages` 为尾部原文窗口；`droppedPrefix` 为被压进 summary 的前缀，
- * 宿主应在 run 结束后拼回完整轨迹以便 UI/落盘。
+ * 无 token 或失败时返回空 facts，不抛出。
+ *
+ * @param force - 为 true 时跳过缓存强制拉取
+ * @returns UserProfile
+ */
+export async function loadUserProfile(force: boolean = false): Promise<UserProfile> {
+  if (!force && profileCache) {
+    return {
+      facts: [...profileCache.facts],
+      updatedAt: profileCache.updatedAt
+    }
+  }
+  if (!getAccessToken()) {
+    profileCache = { facts: [], updatedAt: 0 }
+    return { facts: [], updatedAt: 0 }
+  }
+  try {
+    const dto = await apiGetUserProfile()
+    profileCache = {
+      facts: Array.isArray(dto.facts) ? dto.facts : [],
+      updatedAt: typeof dto.updatedAt === 'number' ? dto.updatedAt : 0
+    }
+  } catch (error) {
+    agentLog.warn(
+      `[memory] loadUserProfile failed: ${error instanceof Error ? error.message : String(error)}`
+    )
+    if (!profileCache) {
+      profileCache = { facts: [], updatedAt: 0 }
+    }
+  }
+  return {
+    facts: [...(profileCache?.facts ?? [])],
+    updatedAt: profileCache?.updatedAt ?? 0
+  }
+}
+
+/**
+ * 将用户画像整包写入 API 并更新缓存。
+ *
+ * @param profile - 合并后的画像
+ */
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  if (!getAccessToken()) {
+    profileCache = profile
+    return
+  }
+  try {
+    const saved = await apiPutUserProfile({ facts: profile.facts })
+    profileCache = {
+      facts: Array.isArray(saved.facts) ? saved.facts : profile.facts,
+      updatedAt: typeof saved.updatedAt === 'number' ? saved.updatedAt : profile.updatedAt
+    }
+  } catch (error) {
+    agentLog.warn(
+      `[memory] saveUserProfile failed: ${error instanceof Error ? error.message : String(error)}`
+    )
+    // 仍更新本地缓存，避免同进程内读不到刚 merge 的结果
+    profileCache = profile
+  }
+}
+
+/**
+ * 发消息前压缩 AG-UI 历史并注入用户画像，供 OpenWorker runAgent 使用。
+ *
+ * 默认：W=256k 尾部窗口；有新压缩内容时以 T=0.7 refine；画像从 API 读取并拼入 system。
  *
  * @param input.sessionId - 会话 ID（读写 prior）
  * @param input.messages - 完整 AG-UI 消息（含本轮 user）
- * @param input.budget - 可选预算覆盖（默认 recentChars=256k）
- * @param input.refine - 是否 LLM 精炼摘要，默认 true
- * @param input.summarizer - 精炼器；refine 为 true 且有新压缩内容时需要
+ * @param input.budget - 可选预算覆盖
+ * @param input.refine - 是否 LLM 精炼会话摘要，默认 true
+ * @param input.summarizer - 精炼器
  * @returns 压缩后的 messages、systemSection、working 与 droppedPrefix
  */
 export async function prepareSessionMemory(input: {
@@ -130,7 +206,6 @@ export async function prepareSessionMemory(input: {
 
   let summary = compacted.summary
   const refineEnabled = input.refine !== false
-  // 仅在有新内容进入摘要时精炼，避免每轮重复打模型
   const shouldRefine =
     refineEnabled &&
     Boolean(input.summarizer) &&
@@ -146,7 +221,11 @@ export async function prepareSessionMemory(input: {
     })
   }
 
-  const systemSection = formatSessionSystemSection(summary, compacted.pinned, budget.summaryChars)
+  const sessionSection = formatSessionSystemSection(summary, compacted.pinned, budget.summaryChars)
+  const profile = await loadUserProfile()
+  const profileSection = formatProfileSection(profile)
+  const systemSection = composeMemorySystemSection({ profileSection, sessionSection })
+
   const working = { summary, pinned: compacted.pinned }
   saveSessionWorking(input.sessionId, working)
 
@@ -166,5 +245,46 @@ export async function prepareSessionMemory(input: {
     systemSection,
     working,
     droppedPrefix
+  }
+}
+
+/**
+ * OpenWorker 一轮成功后：LLM 抽取用户事实 → merge → PUT /me/profile。
+ *
+ * 默认开启；失败只打日志。Cursor 路径不应调用。
+ *
+ * @param input.messages - 完整或近期 AG-UI 消息
+ * @param input.summarizer - 宿主 Summarizer
+ * @param input.extractProfile - 是否抽取，默认 true
+ */
+export async function refreshUserProfileFromMessages(input: {
+  messages: Message[]
+  summarizer?: Summarizer
+  extractProfile?: boolean
+}): Promise<void> {
+  if (input.extractProfile === false) return
+  if (!input.summarizer) return
+  if (!getAccessToken()) return
+
+  const slice = (input.messages ?? []).slice(-PROFILE_EXTRACT_MESSAGE_LIMIT)
+  if (slice.length === 0) return
+
+  try {
+    const prior = await loadUserProfile()
+    const extracted = await extractProfileFacts({
+      messages: slice,
+      prior,
+      summarizer: input.summarizer
+    })
+    if (extracted.length === 0) return
+
+    const merged = mergeProfileFacts(prior, extracted)
+    await saveUserProfile(merged)
+  } catch (error) {
+    agentLog.warn(
+      `[memory] refreshUserProfileFromMessages failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    )
   }
 }

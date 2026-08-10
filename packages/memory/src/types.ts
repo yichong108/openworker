@@ -61,14 +61,47 @@ export type CompactSessionResult = {
 }
 
 /**
- * 可选 LLM 精炼端口；由宿主注入，包内不调度模型。
+ * 可选 LLM 精炼 / 抽取端口；由宿主注入，包内不调度模型。
  */
 export type Summarizer = {
   /**
-   * 将摘要精炼到 maxChars 以内。
+   * 将文本精炼或抽取到 maxChars 以内。
    *
-   * @param input.prompt - 精炼提示（含原文摘要与约束）
+   * @param input.prompt - 提示（含原文与约束）
    * @param input.maxChars - 目标最大字符数
    */
   summarize(input: { prompt: string; maxChars: number }): Promise<string>
+}
+
+/** 用户事实来源 */
+export type UserFactSource = 'llm' | 'explicit'
+
+/**
+ * 单条跨会话用户事实。
+ *
+ * key 约定命名空间：`preference.*` | `identity.*` | `project.*` | `workflow.*`
+ */
+export type UserFact = {
+  key: string
+  value: string
+  /** 0..1 */
+  confidence: number
+  updatedAt: number
+  source?: UserFactSource
+}
+
+/**
+ * 用户画像（纯数据；不含 userId）。
+ */
+export type UserProfile = {
+  facts: UserFact[]
+  updatedAt: number
+}
+
+/**
+ * 用户画像注入预算。
+ */
+export type ProfileBudget = {
+  /** 注入 system 的最大字符数 */
+  profileChars: number
 }

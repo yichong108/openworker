@@ -152,11 +152,29 @@ curl -X PUT http://127.0.0.1:3100/settings \
   -d '{"tavilyApiKey":"tvly-xxx"}'
 ```
 
+## User Profile API
+
+按登录用户隔离的跨会话用户画像（`user_profiles.facts_json`）。**需要** `Authorization: Bearer <accessToken>`。
+
+| 方法 | 路径          | 说明                                          |
+| ---- | ------------- | --------------------------------------------- |
+| GET  | `/me/profile` | 返回 `{ facts, updatedAt }`；无记录则空 facts |
+| PUT  | `/me/profile` | 整包覆盖；body: `{ facts: UserFactDto[] }`    |
+
+```bash
+TOKEN=... # 来自 /auth/login
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3100/me/profile
+curl -X PUT http://127.0.0.1:3100/me/profile \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"facts":[{"key":"preference.packageManager","value":"pnpm","confidence":0.9,"updatedAt":1710000000000,"source":"llm"}]}'
+```
+
 ## Workspaces / Sessions API
 
 按登录用户隔离；**全部需要** `Authorization: Bearer <accessToken>`。响应统一为 `{ code, message, data }`（与 Auth 一致）。删除为**逻辑删除**（`deleted_at`），列表默认不可见。
 
-表：`workspaces`、`sessions`（`messages_json` 存完整 AG-UI `Message[]` 整包；无独立 messages 表）。
+表：`workspaces`、`sessions`（`messages_json` 存完整 AG-UI `Message[]` 整包；无独立 messages 表）、`user_profiles`。
 
 | 方法   | 路径                                | 说明                                                       |
 | ------ | ----------------------------------- | ---------------------------------------------------------- |
