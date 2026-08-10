@@ -68,7 +68,6 @@
     "electron-vite": "^5.0.0",
     "sass": "^1.99.0",
     "sharp": "^0.34.5",
-    "typescript": "^5.8.3",
     "vite": "^6.2.6"
   },
   "build": {

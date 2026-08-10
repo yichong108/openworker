@@ -16,7 +16,6 @@
     "@ag-ui/client": "0.0.57"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
     "vitest": "^4.1.10"
   }
 }
