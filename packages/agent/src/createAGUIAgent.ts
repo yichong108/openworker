@@ -109,6 +109,9 @@ function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
   if (typeof src.invokeTimeoutMs === 'number') {
     out.invokeTimeoutMs = src.invokeTimeoutMs
   }
+  if (typeof src.memorySystemSection === 'string') {
+    out.memorySystemSection = src.memorySystemSection
+  }
 
   return out
 }

@@ -223,8 +223,10 @@ export function createAgent(options: CreateAgentOptions): Agent {
     })
     const tools = mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
 
-    // 在 create-agent 内合并系统 prompt（工作区 + skills 名称摘要 + MCP 上下文）
-    const runPrompt = buildWorkspaceRunPrompt(composerMode, root, tavilyApiKey, promptExtras)
+    // 在 create-agent 内合并系统 prompt（工作区 + skills 名称摘要 + MCP 上下文 + 可选记忆段）
+    const basePrompt = buildWorkspaceRunPrompt(composerMode, root, tavilyApiKey, promptExtras)
+    const memorySection = input.memorySystemSection?.trim()
+    const runPrompt = memorySection ? `${basePrompt}\n\n${memorySection}` : basePrompt
 
     const runMessages = await runReactLoop(
       provider,

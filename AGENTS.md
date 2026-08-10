@@ -104,6 +104,7 @@ class SessionManager {
 - [@openworker/uni-agent](packages/uni-agent/README.md) 统一 AG-UI 门面（Desktop 宿主入口）
 - [@openworker/agent](packages/agent/README.md) OpenWorker ReAct 智能体（含 AG-UI OpenWorkerAgent）
 - [@openworker/cursor-agent](packages/cursor-agent/README.md) Cursor SDK AG-UI 适配（CursorAgent）
+- [@openworker/memory](packages/memory/README.md) 单会话上下文压缩（纯函数；Desktop 粘合见 `apps/desktop/src/main/agent/memory.ts`）
 - [@openworker/shared](packages/shared/README.md) 公用工具
 - [@openworker/skills](packages/skills/README.md) 内置 Agent Skills
 - [@openworker/api](services/api/README.md) 后端API服务

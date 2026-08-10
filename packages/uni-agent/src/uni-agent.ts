@@ -55,6 +55,8 @@ export type UniAgentRunInput = {
   tavilyApiKey?: string
   maxSteps?: number
   invokeTimeoutMs?: number
+  /** OpenWorker：会话记忆压缩段落（Cursor 路径忽略） */
+  memorySystemSection?: string
 }
 
 /** 创建时占位模型 */
@@ -211,7 +213,10 @@ export class UniAgent extends AbstractAgent {
       terminalKey: input.terminalKey,
       tavily: input.tavilyApiKey != null ? { apiKey: input.tavilyApiKey } : undefined,
       maxSteps: input.maxSteps,
-      invokeTimeoutMs: input.invokeTimeoutMs
+      invokeTimeoutMs: input.invokeTimeoutMs,
+      ...(input.memorySystemSection != null
+        ? { memorySystemSection: input.memorySystemSection }
+        : {})
     }
   }
 

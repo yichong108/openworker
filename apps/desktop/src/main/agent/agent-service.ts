@@ -9,6 +9,11 @@ import {
   type SessionAguiAgent
 } from '@/main/agent/agent-instance'
 import { agentLog } from '@/main/agent/agent-log'
+import {
+  clearSessionWorking,
+  createMemorySummarizer,
+  prepareSessionMemory
+} from '@/main/agent/memory'
 import { flushLangfuseTracing } from '@/main/langfuse'
 import {
   ensureSessionMessagesLoaded,
@@ -250,6 +255,7 @@ export function clearSessionState(sessionId: string): void {
   }
   void killCommand(s?.terminalKey ?? `term:${sessionId}`)
   sessions.delete(sessionId)
+  clearSessionWorking(sessionId)
 }
 
 /**
@@ -398,6 +404,8 @@ export async function runUserMessage(
       session.agent.messages,
       Math.floor(editUserOrdinal)
     )
+    // 历史被截断：旧 prior 不再可靠
+    clearSessionWorking(sessionId)
     // 先落盘截断后的前缀，避免取消/失败后 UI 与远端仍保留旧尾部
     await persistSessionMessages(sessionId, session.agent.messages)
   }
@@ -409,6 +417,29 @@ export async function runUserMessage(
   const runId = makeRunId()
   const runStartedAt = Date.now()
 
+  // 追加本轮用户消息到 AG-UI agent.messages；runAgent 以之为 RunAgentInput.messages
+  const userMessage: Message = {
+    id: `u-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    role: 'user',
+    content: agentUserText
+  }
+  const fullMessages: Message[] = [...session.agent.messages, userMessage]
+  session.agent.messages = fullMessages
+
+  // OpenWorker：压缩长历史再跑（W=256k，refine 默认开 T=0.7）；Cursor：SDK 自管上下文，跳过
+  let memoryDroppedPrefix: Message[] = []
+  let memorySystemSection: string | undefined
+  if (agentType === 'openworker') {
+    const prepared = await prepareSessionMemory({
+      sessionId,
+      messages: fullMessages,
+      ...(provider ? { summarizer: createMemorySummarizer(provider) } : { refine: false })
+    })
+    memoryDroppedPrefix = prepared.droppedPrefix
+    memorySystemSection = prepared.systemSection || undefined
+    session.agent.messages = prepared.messages
+  }
+
   // 统一组装参数；按 agentType 裁剪由 UniAgent 内部完成
   const forwardedProps = session.agent.buildRunForwardedProps({
     composerMode,
@@ -418,16 +449,20 @@ export async function runUserMessage(
     provider,
     tavilyApiKey: settings.tavilyApiKey,
     maxSteps: MAX_AGENT_LOOP_STEPS,
-    invokeTimeoutMs: settings.agentRunTimeoutMs
+    invokeTimeoutMs: settings.agentRunTimeoutMs,
+    ...(memorySystemSection ? { memorySystemSection } : {})
   })
 
-  // 追加本轮用户消息到 AG-UI agent.messages；runAgent 以之为 RunAgentInput.messages
-  const userMessage: Message = {
-    id: `u-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role: 'user',
-    content: agentUserText
+  /**
+   * 将 compact 丢弃的前缀拼回 run 后的 messages，保证 UI/落盘仍是完整轨迹。
+   *
+   * @param runMessages - runAgent 之后的 agent.messages
+   * @returns 完整 AG-UI 消息列表
+   */
+  const restoreFullMessages = (runMessages: Message[]): Message[] => {
+    if (memoryDroppedPrefix.length === 0) return runMessages
+    return [...memoryDroppedPrefix, ...runMessages]
   }
-  session.agent.messages = [...session.agent.messages, userMessage]
 
   try {
     agentLog.info(
@@ -453,12 +488,14 @@ export async function runUserMessage(
     // 取消后若已启动新一轮（重新编辑），勿用本轮结果覆盖截断后的历史
     if (ac.signal.aborted && latest.controller !== null && latest.controller !== ac) return
 
+    latest.agent.messages = restoreFullMessages(latest.agent.messages)
     await persistSessionMessages(sessionId, latest.agent.messages)
   } catch (e) {
     const latest = sessions.get(sessionId)
     if (ac.signal.aborted) {
       // CANCELLED 已由 agent 事件流发出；若已有新一轮则跳过落盘
       if (!latest || (latest.controller !== null && latest.controller !== ac)) return
+      latest.agent.messages = restoreFullMessages(latest.agent.messages)
       await persistSessionMessages(sessionId, latest.agent.messages)
       return
     }
@@ -472,6 +509,7 @@ export async function runUserMessage(
     emit({ sessionId, event: err })
 
     if (latest) {
+      latest.agent.messages = restoreFullMessages(latest.agent.messages)
       await persistSessionMessages(sessionId, latest.agent.messages)
     }
   } finally {

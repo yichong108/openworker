@@ -23,6 +23,7 @@ const aliasUniAgent = resolve(rootDir, '../../packages/uni-agent/src/index.ts')
 const aliasAgent = resolve(rootDir, '../../packages/agent/src/index.ts')
 const aliasCursorAgent = resolve(rootDir, '../../packages/cursor-agent/src/index.ts')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
+const aliasMemory = resolve(rootDir, '../../packages/memory/src/index.ts')
 /** 内置 skills 内容根目录（开发/未打包时由 define 注入，避免打包后 import.meta.url 漂移） */
 const bundledSkillsDir = resolve(rootDir, '../../packages/skills/content')
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
@@ -45,7 +46,8 @@ export default defineConfig({
         // uni-agent 源码打包时解析其后端依赖
         '@openworker/agent': aliasAgent,
         '@openworker/cursor-agent': aliasCursorAgent,
-        '@openworker/shared': aliasShared
+        '@openworker/shared': aliasShared,
+        '@openworker/memory': aliasMemory
       }
     },
     plugins: [
@@ -54,7 +56,8 @@ export default defineConfig({
           '@openworker/uni-agent',
           '@openworker/agent',
           '@openworker/cursor-agent',
-          '@openworker/shared'
+          '@openworker/shared',
+          '@openworker/memory'
         ]
       })
     ],
@@ -75,7 +78,8 @@ export default defineConfig({
         '@openworker/uni-agent': aliasUniAgent,
         '@openworker/agent': aliasAgent,
         '@openworker/cursor-agent': aliasCursorAgent,
-        '@openworker/shared': aliasShared
+        '@openworker/shared': aliasShared,
+        '@openworker/memory': aliasMemory
       }
     },
     plugins: [
@@ -84,7 +88,8 @@ export default defineConfig({
           '@openworker/uni-agent',
           '@openworker/agent',
           '@openworker/cursor-agent',
-          '@openworker/shared'
+          '@openworker/shared',
+          '@openworker/memory'
         ]
       })
     ],

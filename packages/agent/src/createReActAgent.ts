@@ -160,6 +160,11 @@ export type AgentRunInput = {
   maxSteps?: number
   /** 循环超时（毫秒）；缺省时使用 defaultSettings.agentRunTimeoutMs */
   invokeTimeoutMs?: number
+  /**
+   * 会话记忆压缩段落（由宿主 / @openworker/memory 生成）。
+   * 拼在工作区 system prompt 之后；空串或未传则忽略。
+   */
+  memorySystemSection?: string
 }
 
 /**

@@ -24,6 +24,7 @@
     "@langfuse/otel": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
     "@opentelemetry/sdk-node": "^0.217.0",
+    "@openworker/memory": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
     "@openworker/uni-agent": "workspace:*",

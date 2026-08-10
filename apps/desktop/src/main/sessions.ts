@@ -1,4 +1,5 @@
 ﻿import { clearSessionState, initSessionState } from '@/main/agent/agent-service'
+import { clearAllSessionWorking } from '@/main/agent/memory'
 import { hasAccessToken } from '@/main/auth-token'
 import { getActiveWorkspaceId, listWorkspaces } from '@/main/store'
 import {
@@ -53,6 +54,7 @@ export function clearSessionsMemory(): void {
   sessionWorkspaceMap.clear()
   messagesBySession.clear()
   messagesHydrated.clear()
+  clearAllSessionWorking()
 }
 
 /**
