@@ -33,5 +33,19 @@ export const env = {
     port: Number(process.env.REDIS_PORT ?? 6379),
     password: process.env.REDIS_PASSWORD || undefined,
     db: Number(process.env.REDIS_DB ?? 0)
+  },
+
+  /**
+   * 知识库原文与关键词索引根目录（每库子目录 `{kbId}/`）
+   */
+  ragDataDir: process.env.RAG_DATA_DIR ?? './data/rag',
+
+  /**
+   * 可选：RAG `withAnswer` 时调用的 OpenAI 兼容 Chat（如 DeepSeek）
+   */
+  ragLlm: {
+    apiKey: process.env.RAG_LLM_API_KEY || undefined,
+    baseURL: process.env.RAG_LLM_BASE_URL || undefined,
+    model: process.env.RAG_LLM_MODEL || undefined
   }
 } as const

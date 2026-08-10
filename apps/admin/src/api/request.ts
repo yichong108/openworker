@@ -79,8 +79,19 @@ export function getRequestErrorMessage(result: RequestFailure): string {
  * @returns 解包后的请求结果
  */
 export function request<T>(config: AxiosRequestConfig): Promise<RequestResult<T>> {
+  const headers: Record<string, unknown> = {
+    ...((config.headers ?? {}) as Record<string, unknown>)
+  }
+  // FormData 必须由运行时自动带 boundary；覆盖 create 时的 application/json
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    headers['Content-Type'] = false
+  }
+
   return client
-    .request(config)
+    .request({
+      ...config,
+      headers: headers as AxiosRequestConfig['headers']
+    })
     .then((response): RequestResult<T> => {
       if (!isApiEnvelope(response.data)) {
         console.error('请求出错了，接口返回数据不符合结构', response.data)

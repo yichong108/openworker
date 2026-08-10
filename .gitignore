@@ -30,3 +30,6 @@ workspace_demo
 
 # Testing
 coverage
+
+# API local RAG data
+services/api/data/

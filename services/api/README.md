@@ -201,6 +201,20 @@ curl -X PUT http://127.0.0.1:3100/sessions/<id>/messages \
   -d '{"messages":[{"id":"u1","role":"user","content":"hi"}]}'
 ```
 
+## Knowledge / RAG API（关键词 MVP，暂无鉴权）
+
+环境变量：`RAG_DATA_DIR`（默认 `./data/rag`）；可选回答：`RAG_LLM_API_KEY` / `RAG_LLM_BASE_URL` / `RAG_LLM_MODEL`。
+
+| Method           | Path                                      | 说明                                                                |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------------- |
+| GET/POST         | `/knowledge-bases`                        | 列表 / 创建知识库                                                   |
+| GET/PATCH/DELETE | `/knowledge-bases/:id`                    | 详情 / 更新 / 软删                                                  |
+| GET/POST         | `/knowledge-bases/:id/documents`          | 文档列表 / multipart 上传（字段 `file`，`.txt`/`.md`）              |
+| DELETE           | `/knowledge-bases/:kbId/documents/:docId` | 删除文档                                                            |
+| POST             | `/rag/query`                              | 关键词检索；body: `{ query, knowledgeBaseId?, topK?, withAnswer? }` |
+
+`knowledgeBaseId` 省略时在全部知识库中检索并按 score 合并 top-k。
+
 ## 脚本
 
 | 命令                                         | 说明                  |

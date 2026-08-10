@@ -1,15 +1,25 @@
-import { UserOutlined } from '@ant-design/icons'
+import { BookOutlined, ExperimentOutlined, UserOutlined } from '@ant-design/icons'
 import { Layout, Menu, theme, Typography } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 const { Header, Sider, Content } = Layout
 
-/** 侧栏菜单项：当前仅用户列表，后续可按需扩展 */
+/** 侧栏菜单项 */
 const MENU_ITEMS = [
   {
     key: '/users',
     icon: <UserOutlined />,
     label: '用户列表'
+  },
+  {
+    key: '/knowledge',
+    icon: <BookOutlined />,
+    label: '知识库文档'
+  },
+  {
+    key: '/rag-test',
+    icon: <ExperimentOutlined />,
+    label: 'RAG 测试'
   }
 ]
 
@@ -25,7 +35,11 @@ export function AdminLayout() {
     token: { colorBgContainer, borderRadiusLG }
   } = theme.useToken()
 
-  const selectedKey = location.pathname.startsWith('/users') ? '/users' : location.pathname
+  const selectedKey = MENU_ITEMS.some((item) => item.key === location.pathname)
+    ? location.pathname
+    : location.pathname.startsWith('/users')
+      ? '/users'
+      : location.pathname
 
   return (
     <Layout style={{ minHeight: '100%' }}>

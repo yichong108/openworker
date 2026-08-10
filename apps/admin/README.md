@@ -4,8 +4,9 @@ OpenWorker 后台管理前端（Vite + React + Ant Design）。
 
 ## 功能
 
-- 侧栏菜单：用户列表
-- 用户列表页：调用 `GET /users` 展示用户公开信息
+- 用户列表：`GET /users`
+- 知识库文档：多知识库 CRUD、`.txt`/`.md` 上传与删除
+- RAG 测试：关键词检索（可指定库或全库）；可选生成回答（需 API 配置 `RAG_LLM_*`）
 
 ## 快速开始
 

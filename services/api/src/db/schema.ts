@@ -87,6 +87,38 @@ export async function ensureSchema(): Promise<void> {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
 
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS knowledge_bases (
+      id VARCHAR(64) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      description TEXT NULL,
+      created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      deleted_at TIMESTAMP(3) NULL DEFAULT NULL,
+      PRIMARY KEY (id),
+      KEY idx_knowledge_bases_deleted (deleted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
+
+  await mysqlPool.query(`
+    CREATE TABLE IF NOT EXISTS knowledge_documents (
+      id VARCHAR(64) NOT NULL,
+      knowledge_base_id VARCHAR(64) NOT NULL,
+      filename VARCHAR(512) NOT NULL,
+      mime_type VARCHAR(128) NOT NULL,
+      byte_size INT NOT NULL DEFAULT 0,
+      status VARCHAR(32) NOT NULL DEFAULT 'pending',
+      error_message TEXT NULL,
+      created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+      updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+      deleted_at TIMESTAMP(3) NULL DEFAULT NULL,
+      PRIMARY KEY (id),
+      KEY idx_knowledge_documents_kb_deleted (knowledge_base_id, deleted_at),
+      CONSTRAINT fk_knowledge_documents_kb FOREIGN KEY (knowledge_base_id)
+        REFERENCES knowledge_bases (id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
+
   await seedDefaultAdmin()
 }
 

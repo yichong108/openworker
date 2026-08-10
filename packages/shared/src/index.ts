@@ -1,5 +1,6 @@
 export * from './auth.js'
 export * from './composer.js'
+export * from './knowledge.js'
 export * from './settings.js'
 export * from './stream.js'
 export * from './user-profile.js'
