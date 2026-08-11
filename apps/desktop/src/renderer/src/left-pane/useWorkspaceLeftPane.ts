@@ -3,6 +3,14 @@ import type { DragEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 
+import {
+  apiListSessions,
+  apiListWorkspaces,
+  apiRemoveWorkspace,
+  apiRenameSession,
+  apiReorderWorkspaces,
+  apiUpsertWorkspaceByPath
+} from '@/renderer/src/api/native-api'
 import { useUiStore } from '@/renderer/src/store/ui-store'
 import { useWorkspaceStore } from '@/renderer/src/store/workspace-store'
 import {
@@ -26,32 +34,18 @@ type WorkspaceDropMarker = {
   placement: 'before' | 'after'
 }
 
-const legacyWorkspaceId = 'legacy-single-workspace'
-
 export function useWorkspaceLeftPane() {
   const { message: msgApi, modal: modalApi } = AntdApp.useApp()
   const preloadOk = typeof window !== 'undefined' && typeof window.bridge !== 'undefined'
   const bridge = window.bridge
-  const bridgeCompat = bridge as typeof bridge & {
-    listWorkspaces?: () => Promise<{ list: WorkspaceInfo[]; activeWorkspaceId: string | null }>
-    listSessionsByWorkspace?: (workspaceId: string) => Promise<SessionInfo[]>
-    reorderWorkspaces?: (
-      orderIds: string[]
-    ) => Promise<{ list: WorkspaceInfo[]; activeWorkspaceId: string | null }>
-    onWorkspacesSync?: (
-      cb: (payload: { list: WorkspaceInfo[]; activeWorkspaceId: string | null }) => void
-    ) => () => void
-    activateWorkspace?: (workspaceId: string) => Promise<WorkspaceInfo | null>
-  }
-  const supportsMultiWorkspaceApi =
-    typeof bridgeCompat.listWorkspaces === 'function' &&
-    typeof bridgeCompat.onWorkspacesSync === 'function' &&
-    typeof bridgeCompat.activateWorkspace === 'function'
+  /** Native HTTP 始终支持多工作区 */
+  const supportsMultiWorkspaceApi = true
 
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces)
   const sessionsByWorkspace = useWorkspaceStore((s) => s.sessionsByWorkspace)
   const mergeSessionsPatch = useWorkspaceStore((s) => s.mergeSessionsPatch)
+  const updateSessionsForWorkspace = useWorkspaceStore((s) => s.updateSessionsForWorkspace)
   const expandedWorkspaceIds = useWorkspaceStore((s) => s.expandedWorkspaceIds)
   const setExpandedWorkspaceIds = useWorkspaceStore((s) => s.setExpandedWorkspaceIds)
   const toggleExpandedWorkspaceId = useWorkspaceStore((s) => s.toggleExpandedWorkspaceId)
@@ -133,59 +127,72 @@ export function useWorkspaceLeftPane() {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  useEffect(() => {
-    if (!preloadOk) return
-    const unSub = [
-      supportsMultiWorkspaceApi
-        ? bridgeCompat.onWorkspacesSync!((payload) => {
-            flushSync(() => {
-              setWorkspaces(payload.list)
-              setExpandedWorkspaceIds(new Set(payload.list.map((workspace) => workspace.id)))
-            })
-            setActiveWorkspaceId(payload.activeWorkspaceId)
-            const listByWorkspace = bridgeCompat.listSessionsByWorkspace
-            if (!listByWorkspace) return
-            void Promise.all(
-              payload.list.map(async (workspace) => {
-                const list = await listByWorkspace(workspace.id)
-                return [workspace.id, list] as const
-              })
-            ).then((entries) => {
-              mergeSessionsPatch(Object.fromEntries(entries))
-            })
-          })
-        : bridge.onWorkspaceChange((p) => {
-            const legacyWorkspace: WorkspaceInfo = {
-              id: legacyWorkspaceId,
-              name: p.path ? '当前工作区' : '默认工作区',
-              path: p.path || null,
-              createdAt: Date.now(),
-              updatedAt: Date.now()
+  /**
+   * 刷新全部工作区列表，并并行拉取各工作区会话。
+   */
+  const refreshWorkspacesAndSessions = useCallback(async () => {
+    const list = await apiListWorkspaces()
+    flushSync(() => {
+      setWorkspaces(list)
+      setExpandedWorkspaceIds(new Set(list.map((workspace) => workspace.id)))
+    })
+    const entries = await Promise.all(
+      list.map(async (workspace) => {
+        const sessions = await apiListSessions(workspace.id)
+        return [workspace.id, sessions] as const
+      })
+    )
+    mergeSessionsPatch(Object.fromEntries(entries))
+    return list
+  }, [mergeSessionsPatch, setExpandedWorkspaceIds, setWorkspaces])
+
+  /**
+   * 本地激活工作区并同步文件树根路径到主进程（若可用）。
+   *
+   * @param workspaceId - 工作区 id
+   */
+  const activateWorkspaceLocal = useCallback(
+    (workspaceId: string): WorkspaceInfo | null => {
+      const fromStore = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId)
+      const workspace =
+        fromStore ??
+        (workspaceId === HOME_WORKSPACE_ID
+          ? {
+              id: HOME_WORKSPACE_ID,
+              name: '主目录',
+              path: null as string | null,
+              createdAt: 0,
+              updatedAt: 0
             }
-            setWorkspaces([legacyWorkspace])
-            setActiveWorkspaceId(legacyWorkspace.id)
-            setExpandedWorkspaceIds(new Set([legacyWorkspace.id]))
-          })
-    ]
-    return () => unSub.forEach((f) => f())
-  }, [
-    bridge,
-    bridgeCompat,
-    mergeSessionsPatch,
-    preloadOk,
-    setActiveWorkspaceId,
-    setExpandedWorkspaceIds,
-    setWorkspaces,
-    supportsMultiWorkspaceApi
-  ])
+          : null)
+      if (!workspace) return null
+      setActiveWorkspaceId(workspace.id)
+      if (workspace.path) {
+        void bridge.setWorkspaceFsRoot?.(workspace.path)
+      }
+      return workspace
+    },
+    [bridge, setActiveWorkspaceId]
+  )
 
   useEffect(() => {
     addExpandedWorkspaceId(composerSelectedWorkspaceId)
   }, [addExpandedWorkspaceId, composerSelectedWorkspaceId])
 
   const pickWorkspace = useCallback(async () => {
-    await bridge.selectWorkspace()
-  }, [bridge])
+    const result = await bridge.selectWorkspace()
+    const path = typeof result?.path === 'string' ? result.path.trim() : ''
+    if (!path) return
+    try {
+      const ws = await apiUpsertWorkspaceByPath(path)
+      await refreshWorkspacesAndSessions()
+      setActiveWorkspaceId(ws.id)
+      void bridge.setWorkspaceFsRoot?.(path)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      msgApi.error(`添加工作区失败：${msg}`)
+    }
+  }, [bridge, msgApi, refreshWorkspacesAndSessions, setActiveWorkspaceId])
 
   const openSettings = useCallback(() => {
     setSettingsOpen(true)
@@ -262,8 +269,8 @@ export function useWorkspaceLeftPane() {
 
   const handleSessionClick = useCallback(
     async (workspaceId: string, sessionId: string) => {
-      if (workspaceId !== activeWorkspaceId && supportsMultiWorkspaceApi) {
-        const workspace = await bridgeCompat.activateWorkspace!(workspaceId)
+      if (workspaceId !== activeWorkspaceId) {
+        const workspace = activateWorkspaceLocal(workspaceId)
         if (!workspace) {
           msgApi.error('切换工作区失败')
           return
@@ -271,7 +278,7 @@ export function useWorkspaceLeftPane() {
       }
       setActiveSessionId(sessionId)
     },
-    [activeWorkspaceId, bridgeCompat, msgApi, setActiveSessionId, supportsMultiWorkspaceApi]
+    [activateWorkspaceLocal, activeWorkspaceId, msgApi, setActiveSessionId]
   )
 
   const openBlankConversationInWorkspace = useCallback(
@@ -287,8 +294,8 @@ export function useWorkspaceLeftPane() {
         }
         resolvedId = HOME_WORKSPACE_ID
       }
-      if (resolvedId !== activeWorkspaceId && supportsMultiWorkspaceApi) {
-        const workspace = await bridgeCompat.activateWorkspace!(resolvedId)
+      if (resolvedId !== activeWorkspaceId) {
+        const workspace = activateWorkspaceLocal(resolvedId)
         if (!workspace) {
           msgApi.error('切换工作区失败')
           return
@@ -300,13 +307,12 @@ export function useWorkspaceLeftPane() {
       useUiStore.getState().requestComposerFocus()
     },
     [
+      activateWorkspaceLocal,
       activeWorkspaceId,
       addExpandedWorkspaceId,
-      bridgeCompat,
       msgApi,
       setActiveSessionId,
       setInputDraft,
-      supportsMultiWorkspaceApi,
       workspacesWithComposerHomeStub
     ]
   )
@@ -370,14 +376,32 @@ export function useWorkspaceLeftPane() {
         okButtonProps: { danger: true },
         cancelText: '取消',
         onOk: async () => {
-          const { ok } = await bridge.removeWorkspace(workspace.id)
-          if (!ok) {
-            msgApi.error('移除失败')
+          try {
+            await apiRemoveWorkspace(workspace.id)
+            const list = await refreshWorkspacesAndSessions()
+            if (activeWorkspaceId === workspace.id) {
+              const next = list.find((w) => w.id !== workspace.id) ?? null
+              if (next) {
+                activateWorkspaceLocal(next.id)
+              } else {
+                setActiveWorkspaceId(HOME_WORKSPACE_ID)
+              }
+            }
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error)
+            msgApi.error(`移除失败：${msg}`)
           }
         }
       })
     },
-    [bridge, modalApi, msgApi]
+    [
+      activateWorkspaceLocal,
+      activeWorkspaceId,
+      modalApi,
+      msgApi,
+      refreshWorkspacesAndSessions,
+      setActiveWorkspaceId
+    ]
   )
 
   const handleRemoveSessionFromSidebar = useCallback(
@@ -461,12 +485,23 @@ export function useWorkspaceLeftPane() {
       const nextIds = next.map((x) => x.id)
 
       setWorkspaces(next)
-      if (typeof bridgeCompat.reorderWorkspaces === 'function') {
-        const payload = await bridgeCompat.reorderWorkspaces(nextIds)
-        setWorkspaces(payload.list)
+      try {
+        const list = await apiReorderWorkspaces(nextIds)
+        setWorkspaces(list)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        msgApi.error(`重排失败：${msg}`)
+        void refreshWorkspacesAndSessions()
       }
     },
-    [bridgeCompat, draggingWorkspaceId, setWorkspaces, workspaceDropMarker, workspaces]
+    [
+      draggingWorkspaceId,
+      msgApi,
+      refreshWorkspacesAndSessions,
+      setWorkspaces,
+      workspaceDropMarker,
+      workspaces
+    ]
   )
 
   const renameModal = {
@@ -477,9 +512,20 @@ export function useWorkspaceLeftPane() {
     confirmRename: () => {
       const v = renameName.trim()
       if (renameId && v) {
-        void bridge.renameSession(renameId, v).then(() => {
-          setRenameId(null)
-        })
+        void (async () => {
+          try {
+            await apiRenameSession(renameId, v)
+            setRenameId(null)
+            const workspaceId = activeWorkspaceId
+            if (workspaceId) {
+              const list = await apiListSessions(workspaceId)
+              updateSessionsForWorkspace(workspaceId, list)
+            }
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error)
+            msgApi.error(`重命名失败：${msg}`)
+          }
+        })()
       }
     }
   }

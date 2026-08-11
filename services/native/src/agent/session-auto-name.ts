@@ -4,21 +4,21 @@
 
 import { ask } from '@openworker/uni-agent'
 
-import { resolveChatModel } from '@/main/agent/chat-model'
-import { mainLog } from '@/main/logger'
-import { getSessionById, getSessionWorkspaceId, renameSession } from '@/main/sessions'
-import { getSettings } from '@/main/store'
+import { resolveChatModel } from './chat-model.js'
+import { agentLog } from './agent-log.js'
+import { getAppSettings } from '../services/settings-service.js'
+import { getSession, patchSession } from '../services/session-service.js'
 
-/** 侧栏展示用临时名最大长度（与输入框全文可不同，避免落库过长） */
+/** 侧栏展示用临时名最大长度 */
 const PROVISIONAL_NAME_MAX = 50
 
 /** 模型生成标题的最大长度 */
 const GENERATED_NAME_MAX = 40
 
-/** 空白会话默认展示名（输入为空时） */
+/** 空白会话默认展示名 */
 export const DEFAULT_SESSION_NAME = '新会话'
 
-/** 已调度或已完成自动命名的会话，防止同会话重复调用 ask */
+/** 已调度或已完成自动命名的会话 */
 const autoNameScheduled = new Set<string>()
 
 /**
@@ -72,14 +72,13 @@ function sanitizeGeneratedSessionName(raw: string): string {
 /**
  * 根据首条用户消息异步生成会话名并重命名。
  *
- * 同一 sessionId 只会调度一次（成功或进行中均不再重复调用 ask）。
- * 失败时解除占用，允许后续重试。用户已手动改名时静默跳过。
- *
+ * @param userId - 用户 id
  * @param sessionId - 会话 id
  * @param firstMessage - 用户首条消息全文
  * @returns 是否已成功重命名
  */
 export async function autoNameSessionFromFirstMessage(
+  userId: string,
   sessionId: string,
   firstMessage: string
 ): Promise<boolean> {
@@ -91,21 +90,21 @@ export async function autoNameSessionFromFirstMessage(
   }
   autoNameScheduled.add(sessionId)
 
-  const workspaceId = getSessionWorkspaceId(sessionId)
-  if (!workspaceId) {
+  let sessionAtStart
+  try {
+    sessionAtStart = await getSession(userId, sessionId)
+  } catch {
     autoNameScheduled.delete(sessionId)
     return false
   }
 
-  const sessionAtStart = getSessionById(sessionId)
-  if (!sessionAtStart || !isAutoNameEligible(sessionAtStart.name, text)) {
-    // 已不可覆盖（例如用户改名）：视为处理完毕，保持占用避免再调 ask
+  if (!isAutoNameEligible(sessionAtStart.name, text)) {
     return false
   }
 
-  const provider = resolveChatModel(getSettings())
+  const provider = resolveChatModel(await getAppSettings())
   if (!provider) {
-    mainLog.warn('[session-auto-name] skip: no provider')
+    agentLog.warn('[session-auto-name] skip: no provider')
     autoNameScheduled.delete(sessionId)
     return false
   }
@@ -119,7 +118,6 @@ export async function autoNameSessionFromFirstMessage(
   ].join('\n')
 
   try {
-    // ask 模式 + 单步，避免工具多轮
     const raw = await ask(prompt, { provider, maxSteps: 1 })
     const nextName = sanitizeGeneratedSessionName(raw)
     if (!nextName) {
@@ -127,17 +125,17 @@ export async function autoNameSessionFromFirstMessage(
       return false
     }
 
-    const sessionNow = getSessionById(sessionId)
-    if (!sessionNow || sessionNow.name !== sessionAtStart.name) {
+    const sessionNow = await getSession(userId, sessionId)
+    if (sessionNow.name !== sessionAtStart.name) {
       return false
     }
     if (sessionNow.name === nextName) return false
 
-    const updated = await renameSession(workspaceId, sessionId, nextName)
-    return Boolean(updated)
+    await patchSession(userId, sessionId, { name: nextName })
+    return true
   } catch (error) {
     autoNameScheduled.delete(sessionId)
-    mainLog.warn(
+    agentLog.warn(
       `[session-auto-name] failed: ${error instanceof Error ? error.message : String(error)}`
     )
     return false

@@ -33,6 +33,16 @@ import type { InputRef } from 'antd/es/input'
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 
+import {
+  apiCancelAgent,
+  apiCreateSession,
+  apiGetSessionChatMessages,
+  apiListSessions,
+  apiListSkills,
+  apiListWorkspaces,
+  apiSendAgentMessage,
+  apiUpsertWorkspaceByPath
+} from '@/renderer/src/api/native-api'
 import { ComposerSkillMenu } from '@/renderer/src/center-pane/ComposerSkillMenu'
 import {
   applySkillSlashSelection,
@@ -56,8 +66,6 @@ import {
 
 const { TextArea } = Input
 
-const legacyWorkspaceId = 'legacy-single-workspace'
-
 export type UseWorkspaceCenterPaneOptions = {
   isWinCustomChrome: boolean
   isRightPaneCollapsed: boolean
@@ -74,21 +82,6 @@ export function useWorkspaceCenterPane({
   const { message: msgApi } = AntdApp.useApp()
   const preloadOk = typeof window !== 'undefined' && typeof window.bridge !== 'undefined'
   const bridge = window.bridge
-  const bridgeCompat = bridge as typeof bridge & {
-    listWorkspaces?: () => Promise<{ list: WorkspaceInfo[]; activeWorkspaceId: string | null }>
-    listSessionsByWorkspace?: (workspaceId: string) => Promise<SessionInfo[]>
-    reorderWorkspaces?: (
-      orderIds: string[]
-    ) => Promise<{ list: WorkspaceInfo[]; activeWorkspaceId: string | null }>
-    onWorkspacesSync?: (
-      cb: (payload: { list: WorkspaceInfo[]; activeWorkspaceId: string | null }) => void
-    ) => () => void
-    activateWorkspace?: (workspaceId: string) => Promise<WorkspaceInfo | null>
-  }
-  const supportsMultiWorkspaceApi =
-    typeof bridgeCompat.listWorkspaces === 'function' &&
-    typeof bridgeCompat.onWorkspacesSync === 'function' &&
-    typeof bridgeCompat.activateWorkspace === 'function'
 
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces)
@@ -133,11 +126,11 @@ export function useWorkspaceCenterPane({
    * 拉取可用技能列表（惰性：首次打开 `/` 菜单时加载，之后复用缓存）。
    */
   const ensureSkillsLoaded = useCallback(async () => {
-    if (!preloadOk || skillsLoadedRef.current) return
+    if (skillsLoadedRef.current) return
     skillsLoadedRef.current = true
     setSkillsLoading(true)
     try {
-      const list = await bridge.listSkills()
+      const list = await apiListSkills()
       setSkills(Array.isArray(list) ? list : [])
     } catch {
       skillsLoadedRef.current = false
@@ -145,7 +138,7 @@ export function useWorkspaceCenterPane({
     } finally {
       setSkillsLoading(false)
     }
-  }, [bridge, preloadOk])
+  }, [])
 
   const filteredSkills = useMemo(
     () => (slashToken ? filterSkillsByQuery(skills, slashToken.query) : []),
@@ -248,84 +241,101 @@ export function useWorkspaceCenterPane({
     return next
   }, [liveAguiEvents, runStats])
 
-  const ensureSessionMessages = useCallback(
-    async (sessionId: string, force = false) => {
-      if (!sessionId) return
-      if (!force && hydratedMessageSessions.current.has(sessionId)) return
-      const list = await bridge.getSessionMessages(sessionId)
-      setMessages((m) => ({ ...m, [sessionId]: list }))
-      hydratedMessageSessions.current.add(sessionId)
+  const ensureSessionMessages = useCallback(async (sessionId: string, force = false) => {
+    if (!sessionId) return
+    if (!force && hydratedMessageSessions.current.has(sessionId)) return
+    const list = await apiGetSessionChatMessages(sessionId)
+    setMessages((m) => ({ ...m, [sessionId]: list }))
+    hydratedMessageSessions.current.add(sessionId)
+  }, [])
+
+  /**
+   * 刷新指定工作区的会话列表（创建 / 重命名 / 自动命名后调用）。
+   *
+   * @param workspaceId - 工作区 id
+   */
+  const refreshSessionsForWorkspace = useCallback(
+    async (workspaceId: string) => {
+      if (!workspaceId) return
+      const list = await apiListSessions(workspaceId)
+      updateSessionsForWorkspace(workspaceId, list)
+      const validIds = new Set(list.map((x) => x.id))
+      for (const id of hydratedMessageSessions.current) {
+        if (!validIds.has(id)) hydratedMessageSessions.current.delete(id)
+      }
     },
-    [bridge]
+    [updateSessionsForWorkspace]
+  )
+
+  /**
+   * 本地激活工作区：更新 UI 状态，并可选通知主进程文件树根路径。
+   *
+   * @param workspaceId - 工作区 id
+   * @returns 激活后的工作区，找不到时返回 null
+   */
+  const activateWorkspaceLocal = useCallback(
+    (workspaceId: string): WorkspaceInfo | null => {
+      const fromStore = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId)
+      const workspace =
+        fromStore ??
+        (workspaceId === HOME_WORKSPACE_ID
+          ? {
+              id: HOME_WORKSPACE_ID,
+              name: '主目录',
+              path: null as string | null,
+              createdAt: 0,
+              updatedAt: 0
+            }
+          : null)
+      if (!workspace) return null
+      setActiveWorkspaceId(workspace.id)
+      if (workspace.path) {
+        void bridge.setWorkspaceFsRoot?.(workspace.path)
+      }
+      return workspace
+    },
+    [bridge, setActiveWorkspaceId]
   )
 
   const load = useCallback(async () => {
-    if (supportsMultiWorkspaceApi) {
-      const workspacePayload = await bridgeCompat.listWorkspaces!()
-      const workspaceList = workspacePayload.list
-      flushSync(() => {
-        setWorkspaces(workspaceList)
-        setExpandedWorkspaceIds(new Set(workspaceList.map((workspace) => workspace.id)))
+    const workspaceList = await apiListWorkspaces()
+    flushSync(() => {
+      setWorkspaces(workspaceList)
+      setExpandedWorkspaceIds(new Set(workspaceList.map((workspace) => workspace.id)))
+    })
+
+    const persistedActiveId = useUiStore.getState().activeWorkspaceId
+    const validIds = new Set(workspaceList.map((w) => w.id))
+    let activeWsId = persistedActiveId
+    if (activeWsId && !validIds.has(activeWsId) && activeWsId !== HOME_WORKSPACE_ID) {
+      activeWsId = workspaceList[0]?.id ?? HOME_WORKSPACE_ID
+      setActiveWorkspaceId(activeWsId)
+    } else if (activeWsId && validIds.has(activeWsId)) {
+      const ws = workspaceList.find((w) => w.id === activeWsId)
+      if (ws?.path) void bridge.setWorkspaceFsRoot?.(ws.path)
+    }
+
+    const sessionsMap: Record<string, SessionInfo[]> = {}
+    const entries = await Promise.all(
+      workspaceList.map(async (workspace) => {
+        const list = await apiListSessions(workspace.id)
+        return [workspace.id, list] as const
       })
-      setActiveWorkspaceId(workspacePayload.activeWorkspaceId)
-
-      const sessionsMap: Record<string, SessionInfo[]> = {}
-      const listByWorkspace = bridgeCompat.listSessionsByWorkspace
-      if (listByWorkspace) {
-        const entries = await Promise.all(
-          workspaceList.map(async (workspace) => {
-            const list = await listByWorkspace(workspace.id)
-            return [workspace.id, list] as const
-          })
-        )
-        for (const [workspaceId, list] of entries) {
-          sessionsMap[workspaceId] = list
-        }
-      } else {
-        const activeId = workspacePayload.activeWorkspaceId
-        sessionsMap[activeId ?? ''] = await bridge.listSessions()
-      }
-      setSessionsByWorkspace(sessionsMap)
-      const activeWsId = workspacePayload.activeWorkspaceId ?? ''
-      const hidden = useUiStore.getState().byWorkspace[activeWsId]?.sidebarHiddenSessionIds ?? []
-      const activeListRaw = sessionsMap[activeWsId] ?? []
-      const activeList = filterSessionsForSidebar(activeListRaw, hidden)
-      const currentActiveId = useUiStore.getState().activeSessionId
-      const nextActiveId =
-        currentActiveId && activeList.some((x) => x.id === currentActiveId)
-          ? currentActiveId
-          : (activeList[0]?.id ?? null)
-      setActiveId(nextActiveId)
-      if (nextActiveId) {
-        await ensureSessionMessages(nextActiveId, true)
-      }
-      didInitialWorkspaceLoadRef.current = true
-      return
+    )
+    for (const [workspaceId, list] of entries) {
+      sessionsMap[workspaceId] = list
     }
+    setSessionsByWorkspace(sessionsMap)
 
-    const [legacyPath, legacySessions] = await Promise.all([
-      bridge.getWorkspace(),
-      bridge.listSessions()
-    ])
-    const legacyWorkspace: WorkspaceInfo = {
-      id: legacyWorkspaceId,
-      name: legacyPath ? '当前工作区' : '默认工作区',
-      path: legacyPath || null,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    }
-    setWorkspaces([legacyWorkspace])
-    setActiveWorkspaceId(legacyWorkspace.id)
-    setExpandedWorkspaceIds(new Set([legacyWorkspace.id]))
-    setSessionsByWorkspace({ [legacyWorkspace.id]: legacySessions })
-    const legacyHidden =
-      useUiStore.getState().byWorkspace[legacyWorkspace.id]?.sidebarHiddenSessionIds ?? []
-    const legacyVisible = filterSessionsForSidebar(legacySessions, legacyHidden)
+    const resolvedWsId = activeWsId ?? ''
+    const hidden = useUiStore.getState().byWorkspace[resolvedWsId]?.sidebarHiddenSessionIds ?? []
+    const activeListRaw = sessionsMap[resolvedWsId] ?? []
+    const activeList = filterSessionsForSidebar(activeListRaw, hidden)
     const currentActiveId = useUiStore.getState().activeSessionId
     const nextActiveId =
-      currentActiveId && legacyVisible.some((x) => x.id === currentActiveId)
+      currentActiveId && activeList.some((x) => x.id === currentActiveId)
         ? currentActiveId
-        : (legacyVisible[0]?.id ?? null)
+        : (activeList[0]?.id ?? null)
     setActiveId(nextActiveId)
     if (nextActiveId) {
       await ensureSessionMessages(nextActiveId, true)
@@ -333,14 +343,12 @@ export function useWorkspaceCenterPane({
     didInitialWorkspaceLoadRef.current = true
   }, [
     bridge,
-    bridgeCompat,
     ensureSessionMessages,
     setActiveId,
     setActiveWorkspaceId,
     setExpandedWorkspaceIds,
     setSessionsByWorkspace,
-    setWorkspaces,
-    supportsMultiWorkspaceApi
+    setWorkspaces
   ])
 
   const handleStream = useCallback(
@@ -501,59 +509,50 @@ export function useWorkspaceCenterPane({
       await hydrateUiStore()
       await load()
     })()
-    const unSub = [
-      bridge.onSessionsSync((list) => {
-        const workspaceId = useUiStore.getState().activeWorkspaceId
-        const hidden = workspaceId
-          ? (useUiStore.getState().byWorkspace[workspaceId]?.sidebarHiddenSessionIds ?? [])
-          : []
-        const visible = filterSessionsForSidebar(list, hidden)
-        if (workspaceId) {
-          updateSessionsForWorkspace(workspaceId, list)
-        }
-        const validIds = new Set(list.map((x) => x.id))
-        for (const id of hydratedMessageSessions.current) {
-          if (!validIds.has(id)) hydratedMessageSessions.current.delete(id)
-        }
-        const currentActiveId = useUiStore.getState().activeSessionId
-        if (currentActiveId && visible.some((x) => x.id === currentActiveId)) return
-        // 空白新对话（未落库的会话）下保持 null，避免把列表首条强行选为当前会话
-        if (currentActiveId === null) return
-        setActiveId(visible[0]?.id ?? null)
-      }),
-      bridge.onStream(handleStream)
-    ]
-    return () => unSub.forEach((f) => f())
-  }, [
-    bridge,
-    handleStream,
-    hydrateUiStore,
-    load,
-    msgApi,
-    preloadOk,
-    setActiveId,
-    updateSessionsForWorkspace
-  ])
+  }, [hydrateUiStore, load, msgApi, preloadOk])
 
   useEffect(() => {
-    if (!preloadOk || !activeId) return
+    if (!activeId) return
     void ensureSessionMessages(activeId)
-  }, [activeId, ensureSessionMessages, preloadOk])
+  }, [activeId, ensureSessionMessages])
 
   const pickWorkspace = useCallback(async () => {
-    await bridge.selectWorkspace()
-  }, [bridge])
+    const result = await bridge.selectWorkspace()
+    const path = typeof result?.path === 'string' ? result.path.trim() : ''
+    if (!path) return
+    try {
+      const ws = await apiUpsertWorkspaceByPath(path)
+      const list = await apiListWorkspaces()
+      flushSync(() => {
+        setWorkspaces(list)
+        setExpandedWorkspaceIds(new Set(list.map((w) => w.id)))
+      })
+      setActiveWorkspaceId(ws.id)
+      void bridge.setWorkspaceFsRoot?.(path)
+      const sessions = await apiListSessions(ws.id)
+      updateSessionsForWorkspace(ws.id, sessions)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      msgApi.error(`添加工作区失败：${msg}`)
+    }
+  }, [
+    bridge,
+    msgApi,
+    setActiveWorkspaceId,
+    setExpandedWorkspaceIds,
+    setWorkspaces,
+    updateSessionsForWorkspace
+  ])
 
   const switchComposerWorkspace = useCallback(
     async (workspaceId: string) => {
       if (!workspaceId || workspaceId === composerSelectedWorkspaceId) return
-      if (!supportsMultiWorkspaceApi && workspaceId !== HOME_WORKSPACE_ID) return
-      const workspace = await bridge.activateWorkspace(workspaceId)
+      const workspace = activateWorkspaceLocal(workspaceId)
       if (!workspace) {
         msgApi.error('切换工作区失败')
       }
     },
-    [bridge, composerSelectedWorkspaceId, msgApi, supportsMultiWorkspaceApi]
+    [activateWorkspaceLocal, composerSelectedWorkspaceId, msgApi]
   )
 
   const handleComposerWorkspaceMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
@@ -605,11 +604,11 @@ export function useWorkspaceCenterPane({
       { type: 'divider' },
       {
         key: '__pick__',
-        label: supportsMultiWorkspaceApi ? '添加工作区…' : '选择工作区目录…',
+        label: '添加工作区…',
         icon: <FolderOpenOutlined />
       }
     ]
-  }, [composerSelectedWorkspaceId, supportsMultiWorkspaceApi, workspacesWithComposerHomeStub])
+  }, [composerSelectedWorkspaceId, workspacesWithComposerHomeStub])
 
   const sendAgentText = useCallback(
     async (text: string, mode: AgentComposerMode) => {
@@ -629,15 +628,16 @@ export function useWorkspaceCenterPane({
         if (blankCreateInFlightRef.current) return
         blankCreateInFlightRef.current = true
         try {
-          // 空白对话首发：临时名与首条消息一致（截断），随后由主进程 ask 异步正式命名
+          // 空白对话首发：临时名与首条消息一致（截断），随后由 Native 异步正式命名
           const provisional = t.replace(/\s+/g, ' ').trim().slice(0, 50) || '新会话'
-          const created = await bridge.createSession(provisional)
-          if (!created) {
-            msgApi.warning('请先创建或选择工作区')
-            return
-          }
+          const created = await apiCreateSession(composerSelectedWorkspaceId, provisional)
           sessionId = created.id
           setActiveId(sessionId)
+          await refreshSessionsForWorkspace(composerSelectedWorkspaceId)
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          msgApi.error(`创建会话失败：${msg}`)
+          return
         } finally {
           blankCreateInFlightRef.current = false
         }
@@ -656,10 +656,15 @@ export function useWorkspaceCenterPane({
         }
       })
       try {
-        const r = await bridge.sendAgentMessage(sessionId, t, {
-          mode,
-          workspacePath: activeWorkspace.path
-        })
+        const r = await apiSendAgentMessage(
+          sessionId,
+          t,
+          {
+            mode,
+            workspacePath: activeWorkspace.path
+          },
+          handleStream
+        )
         if (!r.ok) {
           msgApi.error('发送失败: ' + r.error)
           setMessages((m) => {
@@ -669,6 +674,9 @@ export function useWorkspaceCenterPane({
               [sessionId]: appendAssistantText(cur, `发送失败：${r.error}`, true)
             }
           })
+        } else {
+          // 自动命名等副作用落库后刷新侧栏
+          await refreshSessionsForWorkspace(composerSelectedWorkspaceId)
         }
       } finally {
         sendInFlightRef.current.delete(sessionId)
@@ -676,10 +684,10 @@ export function useWorkspaceCenterPane({
     },
     [
       activeId,
-      appendAssistantText,
-      bridge,
       composerSelectedWorkspaceId,
+      handleStream,
       msgApi,
+      refreshSessionsForWorkspace,
       running,
       setActiveId,
       workspacesWithComposerHomeStub
@@ -705,8 +713,8 @@ export function useWorkspaceCenterPane({
    */
   const stopRun = useCallback(() => {
     if (!activeId) return
-    void bridge.cancelAgent(activeId)
-  }, [activeId, bridge])
+    void apiCancelAgent(activeId)
+  }, [activeId])
 
   /**
    * 重新编辑用户消息：截断该消息之后的回合，替换正文并重跑。
@@ -729,7 +737,7 @@ export function useWorkspaceCenterPane({
 
       const sessionId = activeId
       if (running[sessionId]) {
-        await bridge.cancelAgent(sessionId)
+        await apiCancelAgent(sessionId)
       }
       if (sendInFlightRef.current.has(sessionId)) {
         msgApi.warning('当前会话正在发送中，请稍后再试')
@@ -762,11 +770,16 @@ export function useWorkspaceCenterPane({
       assistantMsgId.current[sessionId] = null
 
       try {
-        const r = await bridge.sendAgentMessage(sessionId, t, {
-          mode: composerMode,
-          workspacePath: activeWorkspace.path,
-          editUserOrdinal: userOrdinal
-        })
+        const r = await apiSendAgentMessage(
+          sessionId,
+          t,
+          {
+            mode: composerMode,
+            workspacePath: activeWorkspace.path,
+            editUserOrdinal: userOrdinal
+          },
+          handleStream
+        )
         if (!r.ok) {
           msgApi.error('发送失败: ' + r.error)
           setMessages((m) => {
@@ -776,6 +789,8 @@ export function useWorkspaceCenterPane({
               [sessionId]: appendAssistantText(list, `发送失败：${r.error}`, true)
             }
           })
+        } else {
+          await refreshSessionsForWorkspace(composerSelectedWorkspaceId)
         }
       } finally {
         sendInFlightRef.current.delete(sessionId)
@@ -783,12 +798,12 @@ export function useWorkspaceCenterPane({
     },
     [
       activeId,
-      appendAssistantText,
-      bridge,
       composerMode,
       composerSelectedWorkspaceId,
+      handleStream,
       messages,
       msgApi,
+      refreshSessionsForWorkspace,
       running,
       workspacesWithComposerHomeStub
     ]
@@ -814,10 +829,10 @@ export function useWorkspaceCenterPane({
   )
 
   useEffect(() => {
-    if (!preloadOk || !supportsMultiWorkspaceApi || !didInitialWorkspaceLoadRef.current) return
+    if (!preloadOk || !didInitialWorkspaceLoadRef.current) return
     if (activeWorkspaceId != null) return
-    void bridge.activateWorkspace(HOME_WORKSPACE_ID)
-  }, [activeWorkspaceId, bridge, preloadOk, supportsMultiWorkspaceApi])
+    activateWorkspaceLocal(HOME_WORKSPACE_ID)
+  }, [activateWorkspaceLocal, activeWorkspaceId, preloadOk])
   const isEmptyConversation = currentMessages.length === 0
 
   const composerWorkspaceToolbar = (

@@ -1,7 +1,7 @@
 /**
  * @openworker/memory — 单会话压缩 + 用户画像（纯函数，无 I/O）
  *
- * Desktop 粘合层见 apps/desktop/src/main/agent/memory.ts。
+ * Native 粘合层见 services/native/src/agent/memory.ts。
  */
 
 export { compactSessionHistory } from './compact.js'

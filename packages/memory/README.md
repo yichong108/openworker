@@ -59,12 +59,12 @@ const systemSection = composeMemorySystemSection({
 
 事实 key 命名空间：`preference.*` | `identity.*` | `project.*` | `workflow.*`。
 
-## Desktop 粘合层
+## Native 粘合层
 
-对接点：[`apps/desktop/src/main/agent/memory.ts`](../../apps/desktop/src/main/agent/memory.ts)
+对接点：[`services/native/src/agent/memory.ts`](../../services/native/src/agent/memory.ts)
 
 - 会话：默认 **W=256k**；有新压缩内容时 **refine 默认开（T=0.7）**
-- 画像：发消息前 `GET /me/profile` 注入；OpenWorker 一轮成功后 LLM 抽取并 `PUT /me/profile`
+- 画像：发消息前读本地 `/me/profile` 注入；一轮成功后 LLM 抽取并写回画像
 - Cursor 路径跳过（SDK 自管上下文）
 
 ## 设计边界

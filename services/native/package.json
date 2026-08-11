@@ -1,7 +1,7 @@
 {
   "name": "@openworker/native",
   "version": "0.0.0",
-  "description": "OpenWorker native local service — Express + node:sqlite",
+  "description": "OpenWorker native local service — Express + SQLite + Agent/SSE",
   "type": "module",
   "private": true,
   "scripts": {
@@ -16,7 +16,12 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
+    "@ag-ui/client": "catalog:",
+    "@openworker/memory": "workspace:*",
     "@openworker/shared": "workspace:*",
+    "@openworker/skills": "workspace:*",
+    "@openworker/uni-agent": "workspace:*",
+    "ai": "catalog:",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

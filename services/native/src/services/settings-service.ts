@@ -1,6 +1,25 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
+
 import { defaultSettings, normalizeSettings, type AppSettings } from '@openworker/shared'
 
+import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '../agent/paths.js'
+import { onMcpServersChanged } from '../agent/mcp-warmup.js'
 import { getDb } from '../db/sqlite.js'
+
+/**
+ * 将 settings.mcpServers 同步写入 ~/.openworker/mcp.json
+ *
+ * @param settings - 当前应用设置
+ */
+function syncMcpConfigFile(settings: AppSettings): void {
+  try {
+    mkdirSync(getOpenworkerDir(), { recursive: true })
+    const payload = { mcpServers: settings.mcpServers ?? [] }
+    writeFileSync(getOpenworkerMcpConfigPath(), `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+  } catch (e) {
+    console.warn('[native] Failed to sync mcp.json:', e instanceof Error ? e.message : e)
+  }
+}
 
 /** 全局单例 settings 行主键（多用户 auth 落地前使用） */
 export const DEFAULT_SETTINGS_ID = 'default'
@@ -63,6 +82,7 @@ export async function saveAppSettings(settings: AppSettings): Promise<AppSetting
          updated_at = excluded.updated_at`
     )
     .run(DEFAULT_SETTINGS_ID, JSON.stringify(next), now)
+  syncMcpConfigFile(next)
   return next
 }
 
@@ -74,5 +94,9 @@ export async function saveAppSettings(settings: AppSettings): Promise<AppSetting
  */
 export async function patchAppSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   const current = await getAppSettings()
-  return saveAppSettings({ ...current, ...patch })
+  const next = await saveAppSettings({ ...current, ...patch })
+  if (patch.mcpServers !== undefined) {
+    void onMcpServersChanged(next.mcpServers)
+  }
+  return next
 }

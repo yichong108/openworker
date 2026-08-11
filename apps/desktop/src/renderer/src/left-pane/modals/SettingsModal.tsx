@@ -1,6 +1,7 @@
 import { Form, Input, Modal, Typography } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { apiGetSettings, apiRunMcpWarmup, apiSetSettings } from '@/renderer/src/api/native-api'
 import {
   applySettingsForm,
   type AppSettings,
@@ -28,8 +29,6 @@ export type SettingsModalProps = {
 }
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
-  const bridge = window.bridge
-
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [form] = Form.useForm<SettingsFormValues>()
   const profilesDraftRef =
@@ -46,15 +45,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   useEffect(() => {
     if (!open) return
-    void bridge.getSettings().then(hydrateFromSettings)
-  }, [bridge, hydrateFromSettings, open])
-
-  useEffect(() => {
-    if (!open) return
-    return bridge.onSettingsSync((s) => {
-      hydrateFromSettings(s)
-    })
-  }, [bridge, hydrateFromSettings, open])
+    void apiGetSettings().then(hydrateFromSettings)
+  }, [hydrateFromSettings, open])
 
   const saveSettings = useCallback(async () => {
     const v = await form.validateFields()
@@ -64,11 +56,16 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     }
     const nextProfiles = mergeFormIntoProviderProfiles(profilesDraftRef.current, merged)
     const next = applySettingsForm(settings, merged, nextProfiles)
-    const saved = await bridge.setSettings(next)
+    const mcpChanged =
+      JSON.stringify(settings.mcpServers ?? []) !== JSON.stringify(next.mcpServers ?? [])
+    const saved = await apiSetSettings(next)
     profilesDraftRef.current = cloneProviderProfiles(saved.providerProfiles)
     setSettings(saved)
+    if (mcpChanged) {
+      void apiRunMcpWarmup(true)
+    }
     onClose()
-  }, [bridge, form, onClose, settings])
+  }, [form, onClose, settings])
 
   return (
     <Modal

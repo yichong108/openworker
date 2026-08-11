@@ -1,8 +1,9 @@
 /**
- * Desktop agent 工厂。
+ * Native agent 工厂。
  *
  * 把工作区 / 会话上下文传给 UniAgent。
  */
+
 import { UniAgent } from '@openworker/uni-agent'
 import type { Message } from '@ag-ui/client'
 
@@ -24,23 +25,12 @@ export function createSessionAgent(options?: {
 
   return new UniAgent({
     role: 'session',
-    agentId: 'openworker-desktop',
-    description: 'OpenWorker desktop session agent',
+    agentId: 'openworker-native',
+    description: 'OpenWorker native session agent',
     cwd,
     ...(options?.threadId ? { threadId: options.threadId } : {}),
     ...(options?.messages ? { initialMessages: options.messages } : {})
   })
-}
-
-/**
- * @deprecated 使用 createSessionAgent
- */
-export function createSessionOpenWorkerAgent(options?: {
-  cwd?: string
-  messages?: Message[]
-  threadId?: string
-}): UniAgent {
-  return createSessionAgent(options)
 }
 
 /** 应用级 MCP 宿主（warmup / probe / dispose），不用于会话 run */
@@ -56,7 +46,7 @@ export function getMcpHostAgent(): UniAgent {
     mcpHostAgent = new UniAgent({
       role: 'mcp-host',
       agentId: 'openworker-mcp-host',
-      description: 'OpenWorker desktop MCP host'
+      description: 'OpenWorker native MCP host'
     })
   }
   return mcpHostAgent
@@ -74,7 +64,16 @@ export async function resetMcpHostAgent(): Promise<UniAgent> {
   mcpHostAgent = new UniAgent({
     role: 'mcp-host',
     agentId: 'openworker-mcp-host',
-    description: 'OpenWorker desktop MCP host'
+    description: 'OpenWorker native MCP host'
   })
   return mcpHostAgent
+}
+
+/**
+ * 释放 MCP 宿主（进程退出时调用）。
+ */
+export async function disposeMcpHostAgent(): Promise<void> {
+  if (!mcpHostAgent) return
+  await mcpHostAgent.dispose()
+  mcpHostAgent = undefined
 }

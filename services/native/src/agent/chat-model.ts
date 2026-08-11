@@ -1,6 +1,5 @@
 /**
- * @file Desktop 聊天模型解析
- * @description 从 AppSettings 解析本轮 AI SDK LanguageModel
+ * Native 聊天模型解析 — 从 AppSettings 解析本轮 AI SDK LanguageModel
  */
 
 import { getChatModel } from '@openworker/uni-agent'
@@ -8,7 +7,7 @@ import { type AppSettings, getActiveProviderProfile } from '@openworker/shared'
 import type { LanguageModel } from 'ai'
 
 /**
- * 解析 Desktop 本轮应使用的聊天模型。
+ * 解析本轮应使用的聊天模型。
  *
  * 优先使用显式传入的 provider；未传入时从当前 provider profile 创建。
  *

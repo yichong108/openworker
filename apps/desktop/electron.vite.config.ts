@@ -7,6 +7,11 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
+/**
+ * 读取当前仓库短 SHA（构建「关于」信息）
+ *
+ * @param cwd - 仓库根或 app 目录
+ */
 function readGitShortHash(cwd: string): string {
   try {
     return execSync('git rev-parse --short HEAD', {
@@ -18,13 +23,9 @@ function readGitShortHash(cwd: string): string {
     return ''
   }
 }
+
 const aliasSrc = resolve(rootDir, 'src')
-const aliasUniAgent = resolve(rootDir, '../../packages/uni-agent/src/index.ts')
-const aliasAgent = resolve(rootDir, '../../packages/agent/src/index.ts')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
-const aliasMemory = resolve(rootDir, '../../packages/memory/src/index.ts')
-/** 内置 skills 内容根目录（开发/未打包时由 define 注入，避免打包后 import.meta.url 漂移） */
-const bundledSkillsDir = resolve(rootDir, '../../packages/skills/content')
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
 const monacoGithubLightThemeJson = resolve(
   rootDir,
@@ -35,27 +36,17 @@ export default defineConfig({
   main: {
     define: {
       __OPENWORKERER_GIT_COMMIT__: JSON.stringify(readGitShortHash(rootDir)),
-      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString()),
-      __OPENWORKERER_BUNDLED_SKILLS_DIR__: JSON.stringify(bundledSkillsDir)
+      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString())
     },
     resolve: {
       alias: {
         '@': aliasSrc,
-        '@openworker/uni-agent': aliasUniAgent,
-        // uni-agent 源码打包时解析其后端依赖
-        '@openworker/agent': aliasAgent,
-        '@openworker/shared': aliasShared,
-        '@openworker/memory': aliasMemory
+        '@openworker/shared': aliasShared
       }
     },
     plugins: [
       externalizeDepsPlugin({
-        exclude: [
-          '@openworker/uni-agent',
-          '@openworker/agent',
-          '@openworker/shared',
-          '@openworker/memory'
-        ]
+        exclude: ['@openworker/shared']
       })
     ],
     build: {
@@ -70,20 +61,12 @@ export default defineConfig({
     resolve: {
       alias: {
         '@': aliasSrc,
-        '@openworker/uni-agent': aliasUniAgent,
-        '@openworker/agent': aliasAgent,
-        '@openworker/shared': aliasShared,
-        '@openworker/memory': aliasMemory
+        '@openworker/shared': aliasShared
       }
     },
     plugins: [
       externalizeDepsPlugin({
-        exclude: [
-          '@openworker/uni-agent',
-          '@openworker/agent',
-          '@openworker/shared',
-          '@openworker/memory'
-        ]
+        exclude: ['@openworker/shared']
       })
     ],
     build: {

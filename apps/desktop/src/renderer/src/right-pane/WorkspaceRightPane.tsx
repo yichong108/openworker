@@ -29,6 +29,11 @@ import {
 import { type NodeRendererProps, Tree } from 'react-arborist'
 
 import { WorkspaceFileTreeContainer } from '@/renderer/src/right-pane/WorkspaceFileTreeContainer'
+import {
+  apiCancelTerminal,
+  apiCompleteTerminal,
+  apiRunTerminal
+} from '@/renderer/src/api/native-api'
 import { HOME_WORKSPACE_ID, type WorkspaceFileNode } from '@/shared/ipc'
 
 const { Text } = Typography
@@ -388,7 +393,7 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
     if (!term || terminalRunningRef.current) return
     if (!activeWorkspaceId) return
     const currentInput = terminalInputBufferRef.current
-    const { items } = await bridge.completeTerminalCommand(activeWorkspaceId, currentInput)
+    const items = await apiCompleteTerminal(activeWorkspaceId, currentInput)
     if (!items.length) return
     if (items.length === 1) {
       const only = items[0] ?? ''
@@ -405,7 +410,7 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
     term.write(`${items.join('    ')}\r\n`)
     writeTerminalPrompt(term)
     term.write(currentInput)
-  }, [activeWorkspaceId, bridge, replaceTerminalInputLine, writeTerminalPrompt])
+  }, [activeWorkspaceId, replaceTerminalInputLine, writeTerminalPrompt])
 
   const loadWorkspaceTree = useCallback(async () => {
     const gen = ++fileTreeLoadGenRef.current
@@ -417,7 +422,8 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
     }
     setFileTreeLoading(true)
     try {
-      const payload = await bridge.getWorkspaceFileTree()
+      void bridge.setWorkspaceFsRoot?.(activeWorkspacePath)
+      const payload = await bridge.getWorkspaceFileTree(activeWorkspacePath)
       if (gen !== fileTreeLoadGenRef.current) return
       setFileTree(payload.nodes)
       setFileTreeExpandedKeys(payload.nodes.slice(0, 8).map((node) => node.path))
@@ -434,10 +440,11 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
 
   const previewWorkspaceFile = useCallback(
     async (relPath: string) => {
+      if (!activeWorkspacePath) return
       setFilePreviewLoading(true)
       setFilePreviewError('')
       try {
-        const result = await bridge.readWorkspaceFile(relPath)
+        const result = await bridge.readWorkspaceFile(activeWorkspacePath, relPath)
         if (!result.ok) {
           setFilePreviewPath(relPath)
           setFilePreviewContent('')
@@ -452,7 +459,7 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
         setFilePreviewLoading(false)
       }
     },
-    [bridge]
+    [activeWorkspacePath, bridge]
   )
 
   const onFileSplitterMouseDown = useCallback(
@@ -583,8 +590,8 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
       finishInterrupt()
       return
     }
-    void bridge.cancelTerminalCommand(workspaceId).then(finishInterrupt)
-  }, [bridge, writeTerminalPrompt])
+    void apiCancelTerminal(workspaceId).then(finishInterrupt)
+  }, [writeTerminalPrompt])
 
   const runTerminalCommand = useCallback(
     async (commandText: string) => {
@@ -610,15 +617,14 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
       terminalCancelledRef.current = false
       terminalRunningRef.current = true
       let receivedStream = false
-      const stopTerminalOutput = bridge.onTerminalOutput((payload) => {
-        if (payload.workspaceId !== activeWorkspaceIdRef.current) return
-        if (terminalCancelledRef.current) return
-        receivedStream = true
-        writeTerminalStreamChunk(term, payload.chunk)
-      })
       term.write('\r\n')
       try {
-        const { output } = await bridge.runTerminalCommand(activeWorkspaceId, command)
+        const { output } = await apiRunTerminal(activeWorkspaceId, command, (payload) => {
+          if (payload.workspaceId !== activeWorkspaceIdRef.current) return
+          if (terminalCancelledRef.current) return
+          receivedStream = true
+          writeTerminalStreamChunk(term, payload.chunk)
+        })
         if (terminalCancelledRef.current) return
         const tail = (output || '').replace(/\r?\n/g, '\r\n')
         if (tail) {
@@ -634,7 +640,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
         msgApi.error(`命令执行失败：${msg}`)
         term.write(`\r\n命令执行失败：${msg}\r\n`)
       } finally {
-        stopTerminalOutput()
         if (!terminalCancelledRef.current) {
           terminalRunningRef.current = false
           terminalInputBufferRef.current = ''
@@ -643,7 +648,7 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
         }
       }
     },
-    [activeWorkspaceId, activeWorkspacePath, bridge, msgApi, writeTerminalPrompt]
+    [activeWorkspaceId, activeWorkspacePath, msgApi, writeTerminalPrompt]
   )
 
   const interruptTerminalCommandRef = useRef(interruptTerminalCommand)

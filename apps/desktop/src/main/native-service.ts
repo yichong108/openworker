@@ -283,7 +283,7 @@ export async function startNativeService(): Promise<void> {
       return
     }
     // 子进程已异常退出则不再空等
-    if (!child && spawnedByUs === false) {
+    if (child && (child.exitCode != null || child.signalCode != null)) {
       mainLog.warn(`[native] process exited before becoming healthy at ${baseUrl}`)
       return
     }

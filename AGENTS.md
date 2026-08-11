@@ -4,7 +4,7 @@
 
 ## 项目
 
-**OpenWorker** — 面向智能体的 Electron 桌面应用（React、Ant Design、AI SDK、MCP）。主要代码位于 `src/`（`main`、`renderer`、`preload`）。
+**OpenWorker** — 面向智能体的 Electron 桌面应用（React、Ant Design、AI SDK、MCP）。Desktop 代码位于 `apps/desktop/src/`（`main`、`renderer`、`preload`）；Agent 运行时与业务数据面在 `@openworker/native`，Renderer 经 HTTP + SSE 直连。
 
 ## 包管理器
 
@@ -104,16 +104,16 @@ class SessionManager {
 
 ## 模块文档
 
-- [@openworker/uni-agent](packages/uni-agent/README.md) 统一 AG-UI 门面（Desktop 宿主入口）
+- [@openworker/uni-agent](packages/uni-agent/README.md) 统一 AG-UI 门面（Native / 宿主入口）
 - [@openworker/agent](packages/agent/README.md) OpenWorker ReAct 智能体（含 AG-UI OpenWorkerAgent）
 - [@openworker/llm](packages/llm/README.md) OpenAI 兼容聊天模型工厂 + 流式单步（AI SDK streamText）
-- [@openworker/memory](packages/memory/README.md) 单会话压缩 + 用户画像（纯函数；Desktop 粘合见 `apps/desktop/src/main/agent/memory.ts`；画像 API `/me/profile`）
+- [@openworker/memory](packages/memory/README.md) 单会话压缩 + 用户画像（纯函数；Native 粘合见 `services/native/src/agent/memory.ts`；画像 API `/me/profile`）
 - [@openworker/rag](packages/rag/README.md) 知识库检索（关键词或 LlamaIndex+Ollama 语义；API 粘合见 `services/api`；`pnpm rag:setup-ollama`）
 - [@openworker/shared](packages/shared/README.md) 公用工具
 - [@openworker/skills](packages/skills/README.md) 内置 Agent Skills
 - [@openworker/api](services/api/README.md) 后端API服务
-- [@openworker/native](services/native/README.md) 本地 Native 服务（Express + node:sqlite；默认库 `~/.openworker/native/native.sqlite`）
-- [@openworker/desktop](apps/desktop/README.md) 桌面客户端
+- [@openworker/native](services/native/README.md) 本地 Native 服务（Express + SQLite + Agent/SSE；默认库 `~/.openworker/native/native.sqlite`）
+- [@openworker/desktop](apps/desktop/README.md) 桌面客户端（瘦 Main；Renderer 直连 Native）
 - [@openworker/admin](apps/admin/README.md) 后台管理
 - [@openworker/cli](apps/cli/README.md) 命令行客户端
 - [@openworker/landing](apps/landing/README.md) 文档项目

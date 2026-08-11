@@ -16,7 +16,10 @@ type AuthStoreState = {
   user: AuthUser | null
   /** 是否已完成从 localStorage /me 的恢复尝试 */
   hydrated: boolean
-  /** 主进程工作区/会话是否已 hydrate */
+  /**
+   * 登录或 hydrate 成功后为 true；渲染层据此自行加载工作区/会话（Native HTTP），
+   * 不再依赖主进程 hydrate。
+   */
   dataHydrated: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
@@ -69,31 +72,10 @@ function writePersistedSession(session: PersistedAuthSession | null): void {
 }
 
 /**
- * 同步 JWT 到主进程并拉取工作区/会话
- *
- * @param accessToken - JWT
- */
-async function syncTokenAndHydrateMain(accessToken: string): Promise<void> {
-  const bridge = typeof window !== 'undefined' ? window.bridge : undefined
-  if (!bridge?.setAuthToken || !bridge.hydrateAuthData) return
-  await bridge.setAuthToken(accessToken)
-  await bridge.hydrateAuthData()
-}
-
-/**
- * 清除主进程 JWT 与业务内存
- */
-async function clearMainAuth(): Promise<void> {
-  const bridge = typeof window !== 'undefined' ? window.bridge : undefined
-  if (!bridge?.clearAuthToken) return
-  await bridge.clearAuthToken()
-}
-
-/**
  * 渲染进程认证状态（zustand）
  *
- * token 存 localStorage；登录经 renderer 直连后端 `/auth/login`；
- * 成功后把 JWT 交给 main，由 main 拉取 workspace/session。
+ * token 存 localStorage；登录经 renderer 直连 Native `/auth/login`；
+ * 成功后仅置 `dataHydrated`，由渲染层自行通过 Native HTTP 拉取工作区/会话。
  */
 export const useAuthStore = create<AuthStoreState>((set, get) => ({
   accessToken: null,
@@ -111,18 +93,12 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       accessToken: session.accessToken,
       user: session.user,
       hydrated: true,
-      dataHydrated: false
+      dataHydrated: true
     })
-    try {
-      await syncTokenAndHydrateMain(session.accessToken)
-    } finally {
-      set({ dataHydrated: true })
-    }
   },
   logout: () => {
     writePersistedSession(null)
     set({ accessToken: null, user: null, dataHydrated: false })
-    void clearMainAuth()
   },
   hydrate: async () => {
     if (get().hydrated) return
@@ -144,7 +120,6 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     if (!me) {
       writePersistedSession(null)
       set({ accessToken: null, user: null, dataHydrated: false })
-      void clearMainAuth()
       return
     }
 
@@ -153,11 +128,10 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       user: me
     }
     writePersistedSession(next)
-    set({ accessToken: next.accessToken, user: next.user })
-    try {
-      await syncTokenAndHydrateMain(next.accessToken)
-    } finally {
-      set({ dataHydrated: true })
-    }
+    set({
+      accessToken: next.accessToken,
+      user: next.user,
+      dataHydrated: true
+    })
   }
 }))

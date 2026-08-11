@@ -1,3 +1,8 @@
+/**
+ * Desktop 主进程入口 — 瘦壳：窗口 / 选目录 / 文件树 / UI 状态 / 拉起 Native。
+ * Agent 与业务数据面已迁至 @openworker/native（Renderer 直连 HTTP/SSE）。
+ */
+
 import { existsSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -5,79 +10,27 @@ import { fileURLToPath } from 'node:url'
 
 import '@/main/app-identity'
 import '@/main/env-bootstrap'
-import '@/main/agent/agent-log'
-import { completeCommandInWorkspace, killCommand, runCommand } from '@openworker/uni-agent'
-import { EventType } from '@ag-ui/client'
 import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from 'electron'
 
-import { getMcpHostAgent, resetMcpHostAgent } from '@/main/agent/agent-instance'
-import {
-  aguiMessagesToChatMessages,
-  bindAgentIpc,
-  cancelRun,
-  ensureSessionAgentHydrated,
-  initSessionState,
-  isSessionRunning,
-  runUserMessage
-} from '@/main/agent/agent-service'
-import { ensureUserSkillsLayout, listUserSkills } from '@/main/agent/skills'
 import { mainLog } from '@/main/logger'
 import { startNativeService, stopNativeService } from '@/main/native-service'
-import { clearAccessToken, setAccessToken } from '@/main/auth-token'
-import { migrateLocalWorkspaceSessionToApiIfNeeded } from '@/main/migrate-workspace-session'
-import { autoNameSessionFromFirstMessage } from '@/main/session-auto-name'
-import {
-  clearSessionsMemory,
-  createSession,
-  deleteSession,
-  ensureSessionMessagesLoaded,
-  getSessions,
-  getSessionWorkspaceId,
-  loadSessionList,
-  purgeWorkspaceSessionsLocal,
-  renameSession
-} from '@/main/sessions'
-import {
-  clearWorkspaceCache,
-  getActiveWorkspace,
-  getActiveWorkspaceId,
-  getUiState,
-  getWorkspace,
-  getWorkspaceById,
-  hydrateWorkspacesFromApi,
-  listWorkspaces,
-  loadSettingsFromApi,
-  removeWorkspace,
-  renameWorkspace,
-  reorderWorkspaces,
-  restoreHomeWorkspaceInList,
-  setActiveWorkspace,
-  setSettings,
-  setUiState,
-  upsertWorkspaceByPath
-} from '@/main/store'
+import { getUiState, setUiState } from '@/main/store'
 import { listWorkspaceFileTree, readWorkspaceFileContent } from '@/main/workspace-files'
 import {
   type AboutAppInfo,
-  type AgentSendOptions,
-  type AppSettings,
-  EVENTS,
-  HOME_WORKSPACE_ID,
   IPC,
-  MAX_TERMINAL_OUTPUT_CHARS,
-  type McpServerEntry,
-  type McpWarmupReport,
-  type McpWarmupStatus,
-  normalizeComposerMode,
-  type AgentStreamPayload,
   type RendererUiState,
-  type TerminalOutputEvent,
   type WebEditAction,
   type WindowChromeAction
 } from '@/shared/ipc'
 
 mainLog.info('Electron 主进程启动')
 
+/**
+ * 收集「关于」面板信息
+ *
+ * @returns AboutAppInfo
+ */
 function collectAboutAppInfo(): AboutAppInfo {
   return {
     productName: app.getName(),
@@ -105,10 +58,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
 let mainWindow: BrowserWindow | null = null
 
-/** 与 IPC `WINDOW_CAPTION_CONTROLS` 同步：为 false 时拦截主窗 `close`（WCO 关闭键在 Win 上常忽略 `setClosable`） */
+/** 与 IPC `WINDOW_CAPTION_CONTROLS` 同步 */
 let mainWindowNativeControlsEnabled = true
 let applicationIsQuitting = false
 
+/** 渲染层激活工作区后设置的文件树根路径 */
+let workspaceFsRoot: string | null = null
+
+/**
+ * 解析应用图标路径
+ *
+ * @returns 图标绝对路径；找不到时为 undefined
+ */
 function getAppIconPath(): string | undefined {
   if (app.isPackaged) {
     const packaged = path.join(process.resourcesPath, 'app-icon.png')
@@ -120,38 +81,9 @@ function getAppIconPath(): string | undefined {
   return undefined
 }
 
-let lastMcpWarmupReport: McpWarmupReport | null = null
-/** 递增以作废进行中的预热结果（例如保存 MCP 后） */
-let mcpWarmupGen = 0
-let mcpWarmupPromise: Promise<McpWarmupReport> | null = null
-
-function getMcpWarmupStatus(): McpWarmupStatus {
-  return { report: lastMcpWarmupReport, inFlight: mcpWarmupPromise !== null }
-}
-
-async function executeMcpWarmupCycle(): Promise<McpWarmupReport> {
-  const gen = ++mcpWarmupGen
-  const servers = (await getMcpHostAgent().mcp.warmup()) ?? []
-  if (gen !== mcpWarmupGen) {
-    return lastMcpWarmupReport ?? { atMs: Date.now(), servers: [] }
-  }
-  const report: McpWarmupReport = { atMs: Date.now(), servers }
-  lastMcpWarmupReport = report
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send(EVENTS.MCP_WARMUP, report)
-  }
-  return report
-}
-
-function startMcpWarmup(): Promise<McpWarmupReport> {
-  if (mcpWarmupPromise) return mcpWarmupPromise
-  const tracked = executeMcpWarmupCycle().finally(() => {
-    if (mcpWarmupPromise === tracked) mcpWarmupPromise = null
-  })
-  mcpWarmupPromise = tracked
-  return tracked
-}
-
+/**
+ * Windows 控制台 UTF-8
+ */
 function setupConsoleUtf8(): void {
   if (process.platform !== 'win32') return
   process.env['LANG'] = process.env['LANG'] || 'zh_CN.UTF-8'
@@ -168,7 +100,7 @@ const WIN_TITLE_BAR_OVERLAY = {
   height: 32
 } as const
 
-/** 弹层打开时收起 WCO：`color` 须透明，否则 height 为 0 仍可能残留浅色底（观感为白块） */
+/** 弹层打开时收起 WCO */
 const WIN_TITLE_BAR_OVERLAY_SUPPRESSED = {
   height: 0,
   color: '#00000000',
@@ -176,9 +108,10 @@ const WIN_TITLE_BAR_OVERLAY_SUPPRESSED = {
 } as const
 
 /**
- * 弹窗打开时去掉系统标题栏按钮区（Win：`titleBarOverlay` 高度收为 0；macOS：隐藏交通灯），
- * 并 `setMinimizable` / `setMaximizable` / `setClosable`；关闭后恢复。
- * Windows WCO 关闭键常忽略 `setClosable`，故同时依赖 `mainWindow.on('close')` 在禁用时 `preventDefault`。
+ * 弹窗打开时去掉系统标题栏按钮区。
+ *
+ * @param win - BrowserWindow
+ * @param enabled - 是否启用原生控制
  */
 function applyNativeWindowControlsEnabled(win: BrowserWindow | null, enabled: boolean): void {
   mainWindowNativeControlsEnabled = enabled
@@ -195,7 +128,6 @@ function applyNativeWindowControlsEnabled(win: BrowserWindow | null, enabled: bo
         win.setTitleBarOverlay({ ...WIN_TITLE_BAR_OVERLAY })
       } else {
         win.setTitleBarOverlay({ ...WIN_TITLE_BAR_OVERLAY_SUPPRESSED })
-        // 部分 Chromium/WCO 组合下首帧未收起，下一 tick 再写一次
         setTimeout(() => {
           try {
             if (win.isDestroyed()) return
@@ -213,27 +145,24 @@ function applyNativeWindowControlsEnabled(win: BrowserWindow | null, enabled: bo
   }
 }
 
+/**
+ * 开发模式加载 React DevTools
+ */
 async function loadDevtoolsExtension(): Promise<void> {
   if (!isDev) return
 
   const extensionPath = path.resolve(__dirname, '../../src/extensions/react-devtools')
 
-  const removeExistingReactDevtools = (): void => {
-    try {
-      const all = session.defaultSession.getAllExtensions()
-      for (const ext of all) {
-        if (ext.name.toLowerCase().includes('react developer tools')) {
-          session.defaultSession.removeExtension(ext.id)
-          mainLog.info(`[react-devtools] 已移除旧扩展: ${ext.name} (${ext.id})`)
-        }
+  try {
+    const all = session.defaultSession.getAllExtensions()
+    for (const ext of all) {
+      if (ext.name.toLowerCase().includes('react developer tools')) {
+        session.defaultSession.removeExtension(ext.id)
       }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      mainLog.warn('[react-devtools] 移除旧扩展失败:', msg)
     }
+  } catch {
+    /* ignore */
   }
-
-  removeExistingReactDevtools()
 
   if (existsSync(extensionPath)) {
     try {
@@ -243,21 +172,6 @@ async function loadDevtoolsExtension(): Promise<void> {
       const msg = error instanceof Error ? error.message : String(error)
       mainLog.error('[react-devtools] 本地扩展加载失败:', msg)
     }
-  } else {
-    mainLog.warn(`[react-devtools] 本地扩展目录不存在: ${extensionPath}`)
-  }
-
-  // log the extensions
-  try {
-    const exts = session.defaultSession.getAllExtensions()
-    const extNames = exts.map((ext) => ext.name).join(', ')
-    mainLog.info(`[react-devtools] 当前已加载扩展: ${extNames || '(无)'}`)
-    for (const ext of exts) {
-      mainLog.info(`[react-devtools] 扩展详情: name=${ext.name}, id=${ext.id}, path=${ext.path}`)
-    }
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    mainLog.error('[react-devtools] 读取扩展列表失败:', msg)
   }
 }
 
@@ -273,6 +187,9 @@ if (!gotSingleInstanceLock) {
   })
 }
 
+/**
+ * 创建主窗口
+ */
 function createWindow(): void {
   const webPreferences = {
     preload: path.join(__dirname, '../preload/index.cjs'),
@@ -280,7 +197,6 @@ function createWindow(): void {
     nodeIntegration: false,
     sandbox: true
   }
-  /** Windows：隐藏原生标题栏与菜单栏占位，由渲染进程顶栏 + titleBarOverlay 承载系统按钮 */
   const win32Chrome =
     process.platform === 'win32'
       ? ({
@@ -295,15 +211,11 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     webPreferences,
-    /** 等首屏 did-finish-load 再 show + maximize，避免 ready-to-show 未触发时无法最大化 */
     show: false,
     ...(appIcon ? { icon: appIcon } : {}),
     ...win32Chrome
   })
 
-  // Why use if (rendererUrl) loadURL else loadFile?
-  // Development: Must load from HTTP to enable HMR (Hot Module Replacement) and module hot updates.
-  // Production (packaged): There is no dev server, so can only loadFile from index.html on disk.
   const rendererUrl = process.env['ELECTRON_RENDERER_URL']
   if (rendererUrl) {
     void mainWindow.loadURL(rendererUrl)
@@ -322,15 +234,12 @@ function createWindow(): void {
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     mainLog.error(`[renderer] process gone: reason=${details.reason}, exitCode=${details.exitCode}`)
   })
-  bindAgentIpc(mainWindow.webContents)
   if (isDev) {
     mainWindow.webContents.openDevTools({ mode: 'bottom' })
   }
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow?.maximize()
     mainWindow?.show()
-    broadcastWorkspaces()
-    broadcastSessions()
   })
   mainWindow.on('close', (e) => {
     if (applicationIsQuitting) return
@@ -343,309 +252,64 @@ function createWindow(): void {
   })
 }
 
-function getActiveWorkspacePath(): string {
-  return getActiveWorkspace()?.path || ''
-}
-
-function getSessionsInActiveWorkspace() {
-  const activeWorkspaceId = getActiveWorkspaceId()
-  if (!activeWorkspaceId) return []
-  return getSessions(activeWorkspaceId)
-}
-
-function broadcastWorkspaces(): void {
-  if (!mainWindow || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send(EVENTS.WORKSPACES_SYNC, {
-    list: listWorkspaces(),
-    activeWorkspaceId: getActiveWorkspaceId()
-  })
-  mainWindow.webContents.send(EVENTS.WORKSPACE_CHANGED, { path: getActiveWorkspacePath() })
-}
-
-function broadcastSessions(): void {
-  if (!mainWindow || mainWindow.isDestroyed()) return
-  mainWindow.webContents.send(EVENTS.SESSIONS_SYNC, getSessionsInActiveWorkspace())
-}
-
 /**
- * 登录后：迁移本地数据 → 拉工作区/会话 → 广播
+ * 注册 Electron 壳 IPC
  */
-async function hydrateWorkspaceSessionData(): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await migrateLocalWorkspaceSessionToApiIfNeeded()
-    await hydrateWorkspacesFromApi()
-    await loadSessionList()
-    broadcastWorkspaces()
-    broadcastSessions()
-    return { ok: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    mainLog.error(`[hydrateWorkspaceSessionData] ${message}`)
-    return { ok: false, error: message }
-  }
-}
-
 function registerIpc(): void {
-  ipcMain.handle(IPC.AUTH_SET_TOKEN, async (_e, token: string) => {
-    setAccessToken(typeof token === 'string' ? token : null)
-    return { ok: true as const }
-  })
-  ipcMain.handle(IPC.AUTH_CLEAR_TOKEN, async () => {
-    clearAccessToken()
-    clearWorkspaceCache()
-    clearSessionsMemory()
-    return { ok: true as const }
-  })
-  ipcMain.handle(IPC.AUTH_HYDRATE_DATA, async () => hydrateWorkspaceSessionData())
-
   ipcMain.handle(IPC.WORKSPACE_SELECT, async () => {
     const r = await dialog.showOpenDialog({
       title: '选择工作区',
       properties: ['openDirectory', 'createDirectory']
     })
     if (r.canceled || !r.filePaths[0]) return { path: '' as const }
-    const workspace = await upsertWorkspaceByPath(r.filePaths[0])
-    setActiveWorkspace(workspace.id)
-    broadcastWorkspaces()
-    broadcastSessions()
-    return { path: workspace.path || '' }
+    return { path: r.filePaths[0] }
   })
-  ipcMain.handle(IPC.WORKSPACE_GET, () => getWorkspace())
-  ipcMain.handle(IPC.WORKSPACE_FILE_TREE, async () => {
-    const workspace = getActiveWorkspace()
-    if (!workspace?.path || workspace.id === HOME_WORKSPACE_ID) {
-      return { rootPath: '', nodes: [] }
+
+  ipcMain.handle(IPC.WORKSPACE_FS_ROOT, (_e, rootPath: unknown) => {
+    if (rootPath == null || rootPath === '') {
+      workspaceFsRoot = null
+      return { ok: true as const }
     }
-    return await listWorkspaceFileTree(workspace.path)
+    if (typeof rootPath === 'string' && rootPath.trim()) {
+      workspaceFsRoot = path.resolve(rootPath.trim())
+    }
+    return { ok: true as const }
   })
-  ipcMain.handle(IPC.WORKSPACE_FILE_CONTENT, async (_e, relPath: string) => {
-    const workspace = getActiveWorkspace()
-    if (!workspace?.path) {
+
+  ipcMain.handle(IPC.WORKSPACE_FILE_TREE, async (_e, rootPath?: unknown) => {
+    const root =
+      typeof rootPath === 'string' && rootPath.trim()
+        ? path.resolve(rootPath.trim())
+        : workspaceFsRoot
+    if (!root) return { rootPath: '', nodes: [] }
+    return await listWorkspaceFileTree(root)
+  })
+
+  ipcMain.handle(IPC.WORKSPACE_FILE_CONTENT, async (_e, rootPath: unknown, relPath: unknown) => {
+    const root =
+      typeof rootPath === 'string' && rootPath.trim()
+        ? path.resolve(rootPath.trim())
+        : workspaceFsRoot
+    if (!root) {
       return { ok: false as const, error: '当前工作区未绑定目录' }
     }
-    return await readWorkspaceFileContent(workspace.path, relPath)
+    return await readWorkspaceFileContent(root, String(relPath ?? ''))
   })
-  ipcMain.handle(IPC.TERMINAL_RUN, async (event, workspaceId: string, command: string) => {
-    const trimmed = String(command ?? '').trim()
-    if (!trimmed) return { output: '请输入命令后再执行。' }
-    const targetWorkspace = listWorkspaces().find((x) => x.id === workspaceId)
-    const workspacePath = targetWorkspace?.path
-    if (!workspacePath) {
-      return { output: '当前工作区未绑定目录，无法执行命令。' }
-    }
-    const sessionKey = `right-pane:${workspaceId}`
-    const sender = event.sender
-    const output = await runCommand(sessionKey, workspacePath, trimmed, MAX_TERMINAL_OUTPUT_CHARS, {
-      onChunk: (chunk, stream) => {
-        if (sender.isDestroyed()) return
-        sender.send(EVENTS.TERMINAL_OUTPUT, {
-          workspaceId,
-          chunk,
-          stream
-        } satisfies TerminalOutputEvent)
-      }
-    })
-    return { output }
-  })
-  ipcMain.handle(IPC.TERMINAL_CANCEL, async (_e, workspaceId: string) => {
-    await killCommand(`right-pane:${workspaceId}`)
-    return { ok: true as const }
-  })
-  ipcMain.handle(IPC.TERMINAL_COMPLETE, async (_e, workspaceId: string, commandLine: string) => {
-    const targetWorkspace = listWorkspaces().find((x) => x.id === workspaceId)
-    const workspacePath = targetWorkspace?.path
-    if (!workspacePath) return { items: [] as string[] }
-    try {
-      const items = await completeCommandInWorkspace(workspacePath, String(commandLine ?? ''))
-      return { items }
-    } catch {
-      return { items: [] as string[] }
-    }
-  })
-  ipcMain.handle(IPC.WORKSPACE_LIST, () => ({
-    list: listWorkspaces(),
-    activeWorkspaceId: getActiveWorkspaceId()
-  }))
-  ipcMain.handle(IPC.WORKSPACE_ADD, async (_e, dir: string) => {
-    if (!dir?.trim()) return null
-    const workspace = await upsertWorkspaceByPath(dir)
-    setActiveWorkspace(workspace.id)
-    broadcastWorkspaces()
-    broadcastSessions()
-    return workspace
-  })
-  ipcMain.handle(IPC.WORKSPACE_ACTIVATE, async (_e, workspaceId: string) => {
-    if (workspaceId === HOME_WORKSPACE_ID) {
-      await restoreHomeWorkspaceInList()
-    }
-    const next = setActiveWorkspace(workspaceId)
-    if (!next) return null
-    broadcastWorkspaces()
-    broadcastSessions()
-    return next
-  })
-  ipcMain.handle(IPC.WORKSPACE_REORDER, async (_e, orderIds: string[]) => {
-    await reorderWorkspaces(orderIds)
-    broadcastWorkspaces()
-    return {
-      list: listWorkspaces(),
-      activeWorkspaceId: getActiveWorkspaceId()
-    }
-  })
-  ipcMain.handle(IPC.WORKSPACE_RENAME, async (_e, workspaceId: string, name: string) => {
-    const next = await renameWorkspace(workspaceId, name)
-    if (!next) return null
-    broadcastWorkspaces()
-    return next
-  })
-  ipcMain.handle(IPC.WORKSPACE_REMOVE, async (_e, workspaceId: string) => {
-    const ok = await removeWorkspace(workspaceId)
-    if (ok) {
-      purgeWorkspaceSessionsLocal(workspaceId)
-      broadcastWorkspaces()
-      broadcastSessions()
-    }
-    return { ok }
-  })
-  ipcMain.handle(IPC.SETTINGS_GET, async () => loadSettingsFromApi())
-  ipcMain.handle(IPC.SETTINGS_SET, async (_e, patch: Partial<AppSettings>) => {
-    if (patch.mcpServers !== undefined) {
-      mcpWarmupGen++
-      mcpWarmupPromise = null
-    }
-    const next = await setSettings(patch)
-    mainWindow?.webContents.send(EVENTS.SETTINGS_SYNC, next)
-    if (patch.mcpServers !== undefined) {
-      await resetMcpHostAgent()
-      void startMcpWarmup()
-    }
-    return next
-  })
-  ipcMain.handle(IPC.MCP_WARMUP_GET, () => getMcpWarmupStatus())
-  ipcMain.handle(IPC.MCP_WARMUP_RUN, () => startMcpWarmup())
+
   ipcMain.handle(IPC.UI_STATE_GET, () => getUiState())
   ipcMain.handle(IPC.UI_STATE_SET, (_e, patch: Partial<RendererUiState>) => setUiState(patch))
-  ipcMain.handle(IPC.SESSIONS_LIST, () => getSessionsInActiveWorkspace())
-  ipcMain.handle(IPC.SESSIONS_LIST_BY_WORKSPACE, (_e, workspaceId: string) => {
-    if (!workspaceId) return []
-    return getSessions(workspaceId)
-  })
-  ipcMain.handle(IPC.SESSIONS_GET_MESSAGES, async (_e, sessionId: string) => {
-    if (!sessionId) return []
-    const messages = await ensureSessionMessagesLoaded(sessionId)
-    const workspaceId = getSessionWorkspaceId(sessionId)
-    if (workspaceId) {
-      initSessionState(workspaceId, sessionId)
-      await ensureSessionAgentHydrated(sessionId)
-    }
-    return aguiMessagesToChatMessages(messages)
-  })
-  ipcMain.handle(IPC.SESSIONS_CREATE, async (_e, name?: string) => {
-    let workspaceId = getActiveWorkspaceId()
-    if (!workspaceId) {
-      const home = getWorkspaceById(HOME_WORKSPACE_ID) || (await restoreHomeWorkspaceInList())
-      if (home) {
-        setActiveWorkspace(home.id)
-        workspaceId = home.id
-        broadcastWorkspaces()
-      }
-    }
-    if (!workspaceId) {
-      return null
-    }
-    const s = await createSession(workspaceId, name)
-    broadcastSessions()
-    return s
-  })
-  ipcMain.handle(IPC.SESSIONS_RENAME, async (_e, id: string, name: string) => {
-    const workspaceId = getSessionWorkspaceId(id) || getActiveWorkspaceId()
-    if (!workspaceId) return null
-    const s = await renameSession(workspaceId, id, name)
-    broadcastSessions()
-    return s
-  })
-  ipcMain.handle(IPC.SESSIONS_DELETE, async (_e, id: string) => {
-    const workspaceId = getSessionWorkspaceId(id) || getActiveWorkspaceId()
-    if (!workspaceId) return { ok: false as const }
-    await deleteSession(workspaceId, id)
-    broadcastSessions()
-    return { ok: true as const }
-  })
 
-  /**
-   * 发送消息到 Agent
-   *
-   * 同会话同时只允许一次运行：已有智能体在跑时拒绝再发。
-   * 不同会话相互独立，可并行运行各自的智能体。
-   *
-   * @param sessionId 会话 ID
-   * @param text 消息内容
-   * @returns 发送结果
-   */
-  ipcMain.handle(
-    IPC.AGENT_SEND,
-    async (_e, sessionId: string, text: string, opts?: AgentSendOptions) => {
-      const mode = normalizeComposerMode(opts?.mode)
-      mainLog.info(`[AGENT_SEND] sessionId: ${sessionId}, mode: ${mode}`)
-
-      if (!text.trim()) return { ok: false as const, error: '空消息' }
-      if (isSessionRunning(sessionId)) {
-        return {
-          ok: false as const,
-          error: '当前会话已有智能体在运行，请等待完成或停止后再发送'
-        }
-      }
-      try {
-        const priorMessages = await ensureSessionMessagesLoaded(sessionId)
-        const isFirstUserMessage = !priorMessages.some((m) => m.role === 'user')
-        const userText = text.trim()
-
-        // 首轮用户消息：与本轮 run 并行，经 ask 异步生成会话名
-        if (isFirstUserMessage) {
-          void autoNameSessionFromFirstMessage(sessionId, userText).then((renamed) => {
-            if (renamed) broadcastSessions()
-          })
-        }
-
-        await runUserMessage(sessionId, userText, opts ? { ...opts, mode } : { mode })
-        broadcastSessions()
-        return { ok: true as const }
-      } catch (err) {
-        mainLog.error(`[AGENT_SEND] error: ${err}`)
-
-        const message = err instanceof Error ? err.message : String(err)
-        mainWindow?.webContents.send(EVENTS.AGENT_STREAM, {
-          sessionId,
-          event: {
-            type: EventType.RUN_ERROR,
-            message,
-            code: 'ERROR',
-            timestamp: Date.now()
-          }
-        } satisfies AgentStreamPayload)
-        return { ok: false as const, error: message }
-      }
-    }
-  )
-  ipcMain.handle(IPC.AGENT_CANCEL, (_e, sessionId: string) => {
-    cancelRun(sessionId)
-    return { ok: true as const }
-  })
-  ipcMain.handle(IPC.AGENT_STATUS, () => {
-    // 可选：主进程不暴露细粒度
-    return { ok: true as const }
-  })
   ipcMain.handle(IPC.DEVTOOLS_TOGGLE, () => {
-    if (!isDev || !mainWindow || mainWindow.isDestroyed()) {
+    const win = BrowserWindow.getFocusedWindow() ?? mainWindow
+    if (!win) return { open: false }
+    if (win.webContents.isDevToolsOpened()) {
+      win.webContents.closeDevTools()
       return { open: false }
     }
-    if (mainWindow.webContents.isDevToolsOpened()) {
-      mainWindow.webContents.closeDevTools()
-      return { open: false }
-    }
-    mainWindow.webContents.openDevTools({ mode: 'bottom' })
+    win.webContents.openDevTools({ mode: 'bottom' })
     return { open: true }
   })
+
   ipcMain.handle(IPC.EXTERNAL_OPEN, async (_e, url: string) => {
     if (!url || typeof url !== 'string') return { ok: false as const }
     try {
@@ -659,12 +323,7 @@ function registerIpc(): void {
       return { ok: false as const }
     }
   })
-  ipcMain.handle(IPC.MCP_PROBE, async (_e, entry: McpServerEntry) => {
-    if (!entry || typeof entry !== 'object') {
-      return { ok: false as const, error: '无效配置' }
-    }
-    return (await getMcpHostAgent().mcp.probe(entry)) ?? { ok: false as const, error: 'MCP 未配置' }
-  })
+
   ipcMain.on(IPC.WINDOW_CAPTION_CONTROLS, (event, visible: unknown) => {
     const win =
       mainWindow && !mainWindow.isDestroyed() ? mainWindow : BrowserWindow.getFocusedWindow()
@@ -726,7 +385,6 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC.APP_ABOUT, () => collectAboutAppInfo())
-  ipcMain.handle(IPC.SKILLS_LIST, () => listUserSkills())
 }
 
 app.whenReady().then(() => {
@@ -736,13 +394,9 @@ app.whenReady().then(() => {
   }
   void (async () => {
     await loadDevtoolsExtension()
-    await ensureUserSkillsLayout()
     await startNativeService()
-    await loadSettingsFromApi()
-    // 工作区/会话在登录后经 AUTH_HYDRATE_DATA 拉取，启动时不访问需 JWT 的 API
     registerIpc()
     createWindow()
-    void startMcpWarmup()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
@@ -752,7 +406,6 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   applicationIsQuitting = true
   stopNativeService()
-  void getMcpHostAgent().mcp.dispose()
 })
 
 app.on('window-all-closed', () => {
@@ -761,7 +414,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 外部链接触发
 app.on('web-contents-created', (_e, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)

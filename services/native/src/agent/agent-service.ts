@@ -1,38 +1,40 @@
+/**
+ * Native 会话级 Agent 运行时：run / cancel / hydrate，经 SSE 推送 AG-UI 事件
+ */
+
 import { killCommand } from '@openworker/uni-agent'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
-import type { WebContents } from 'electron'
+import {
+  type AgentSendOptions,
+  MAX_AGENT_LOOP_STEPS,
+  normalizeComposerMode
+} from '@openworker/shared'
 
-import { resolveChatModel } from '@/main/agent/chat-model'
-import { createSessionAgent, type SessionAguiAgent } from '@/main/agent/agent-instance'
-import { agentLog } from '@/main/agent/agent-log'
+import { createSessionAgent, type SessionAguiAgent } from './agent-instance.js'
+import { agentLog } from './agent-log.js'
+import { resolveChatModel } from './chat-model.js'
 import {
   clearSessionWorking,
   createMemorySummarizer,
   prepareSessionMemory,
   refreshUserProfileFromMessages
-} from '@/main/agent/memory'
+} from './memory.js'
+import { emitSessionStream } from './agent-stream.js'
 import {
+  clearSessionMessagesCache,
   ensureSessionMessagesLoaded,
   getCachedSessionMessages,
   persistSessionAguiMessages
-} from '@/main/sessions'
-import { getSettings, getWorkspaceById } from '@/main/store'
-import {
-  type AgentSendOptions,
-  type AgentStreamPayload,
-  type ChatMessage,
-  EVENTS,
-  MAX_AGENT_LOOP_STEPS,
-  normalizeComposerMode
-} from '@/shared/ipc'
-
-/** @deprecated 从 `@/main/agent/agent-log` 导入 */
-export { agentLog } from '@/main/agent/agent-log'
+} from './session-messages.js'
+import { getAppSettings } from '../services/settings-service.js'
+import { getSession } from '../services/session-service.js'
+import { getWorkspace } from '../services/workspace-service.js'
 
 /** agent.subscribe 返回的取消句柄 */
 type AgentUnsubscribe = { unsubscribe: () => void }
 
 type SessionRuntime = {
+  userId: string
   workspaceId: string
   /** 该会话独立的 AG-UI agent（勿跨会话复用）；消息以 agent.messages 为准 */
   agent: SessionAguiAgent
@@ -42,24 +44,22 @@ type SessionRuntime = {
 }
 
 /**
- * 按工作区创建会话级 AG-UI Agent。
+ * 按工作区路径创建会话级 AG-UI Agent。
  *
- * @param workspaceId - 工作区 ID
+ * @param cwd - 工作区绝对路径
  * @param sessionId - 会话 ID（作为 AG-UI threadId）
  * @param messages - AG-UI 初始消息（可选）
  * @returns 新 SessionAguiAgent
  */
 function createAgentForWorkspace(
-  workspaceId: string,
+  cwd: string | undefined,
   sessionId: string,
   messages?: Message[]
 ): SessionAguiAgent {
-  const cwd = getWorkspaceById(workspaceId)?.path?.trim() || undefined
   return createSessionAgent({ cwd, messages, threadId: sessionId })
 }
 
 const sessions = new Map<string, SessionRuntime>()
-let webContents: WebContents | null = null
 
 /**
  * 生成本轮 runId。
@@ -71,112 +71,36 @@ function makeRunId(): string {
 }
 
 /**
- * 将 AG-UI Message content 转为纯文本（展示用）。
- *
- * @param content - AG-UI Message.content
- * @returns 纯文本
- */
-function aguiContentToText(content: Message['content']): string {
-  if (content == null) return ''
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) => {
-      if (
-        part &&
-        typeof part === 'object' &&
-        'type' in part &&
-        part.type === 'text' &&
-        'text' in part
-      ) {
-        return typeof part.text === 'string' ? part.text : ''
-      }
-      return ''
-    })
-    .join('')
-}
-
-/**
- * 将完整 AG-UI Message[] 转为渲染层 ChatMessage（仅 user/assistant/system 文本；无 aguiEvents）
- *
- * @param messages - AG-UI Message 列表
- * @returns ChatMessage 列表
- */
-export function aguiMessagesToChatMessages(messages: Message[]): ChatMessage[] {
-  const out: ChatMessage[] = []
-  for (const msg of messages) {
-    if (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'system') continue
-    const content = aguiContentToText(msg.content)
-    if (!content.trim() && msg.role !== 'user') continue
-    out.push({
-      id: msg.id || `m-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      role: msg.role,
-      content
-    })
-  }
-  return out
-}
-
-/**
- * 向渲染层推送 AG-UI 事件信封。
- *
- * @param payload - sessionId + BaseEvent
- */
-function emit(payload: AgentStreamPayload): void {
-  if (!webContents || webContents.isDestroyed()) return
-  webContents.send(EVENTS.AGENT_STREAM, payload)
-}
-
-/**
- * 将完整 AG-UI Message[] 异步写入 API（不落盘 UI 事件）
- *
- * @param sessionId - 会话 ID
- * @param messages - 完整 AG-UI 轨迹
- */
-async function persistSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
-  try {
-    await persistSessionAguiMessages(sessionId, messages)
-  } catch (error) {
-    agentLog.warn(
-      `[persistSessionMessages] failed: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
-}
-
-/**
- * 绑定主窗口 webContents，用于推送 AGENT_STREAM。
- *
- * @param wc - Electron WebContents
- */
-export function bindAgentIpc(wc: WebContents): void {
-  webContents = wc
-}
-
-/**
  * 初始化或校正会话运行时：每个会话绑定独立 AG-UI Agent。
  *
- * 若会话已存在但工作区变更，则重建该会话的 agent，并保留 AG-UI 消息。
- *
+ * @param userId - 用户 id
  * @param workspaceId - 工作区 ID
  * @param sessionId - 会话 ID
+ * @param cwd - 工作区路径（可选）
  */
-export function initSessionState(workspaceId: string, sessionId: string): void {
+export function initSessionState(
+  userId: string,
+  workspaceId: string,
+  sessionId: string,
+  cwd?: string
+): void {
   const existing = sessions.get(sessionId)
   if (existing) {
-    if (existing.workspaceId !== workspaceId) {
+    if (existing.workspaceId !== workspaceId || existing.userId !== userId) {
       const prev = existing.agent
+      existing.userId = userId
       existing.workspaceId = workspaceId
-      existing.agent = createAgentForWorkspace(workspaceId, sessionId, prev.messages)
+      existing.agent = createAgentForWorkspace(cwd, sessionId, prev.messages)
       void prev.dispose()
     }
     return
   }
 
-  // 优先用已 hydrate 的完整 Message[]；否则先空列表，ensure 后再灌入
   const messages = getCachedSessionMessages(sessionId)
   sessions.set(sessionId, {
+    userId,
     workspaceId,
-    agent: createAgentForWorkspace(workspaceId, sessionId, messages),
+    agent: createAgentForWorkspace(cwd, sessionId, messages),
     controller: null,
     subscription: null,
     terminalKey: `term:${sessionId}`
@@ -184,14 +108,15 @@ export function initSessionState(workspaceId: string, sessionId: string): void {
 }
 
 /**
- * 确保会话 Agent 已加载远端完整 Message[]
+ * 确保会话 Agent 已加载完整 Message[]。
  *
+ * @param userId - 用户 id
  * @param sessionId - 会话 ID
  */
-export async function ensureSessionAgentHydrated(sessionId: string): Promise<void> {
+export async function ensureSessionAgentHydrated(userId: string, sessionId: string): Promise<void> {
   const session = sessions.get(sessionId)
   if (!session) return
-  const messages = await ensureSessionMessagesLoaded(sessionId)
+  const messages = await ensureSessionMessagesLoaded(userId, sessionId)
   if (session.agent.messages.length === 0 && messages.length > 0) {
     session.agent.messages = messages
   }
@@ -225,13 +150,11 @@ export function clearSessionState(sessionId: string): void {
   void killCommand(s?.terminalKey ?? `term:${sessionId}`)
   sessions.delete(sessionId)
   clearSessionWorking(sessionId)
+  clearSessionMessagesCache(sessionId)
 }
 
 /**
  * 取消当前会话进行中的 run。
- *
- * 立即清空 controller / subscription，便于随后重新发送（例如重新编辑）。
- * 旧 run 的 finally 通过 AbortController 身份校验，不会误清新一轮运行。
  *
  * @param sessionId - 会话 ID
  */
@@ -272,14 +195,14 @@ function emitPreRunError(sessionId: string, message: string, runId?: string): vo
     runId: id,
     timestamp: Date.now()
   }
-  emit({ sessionId, event: started })
+  emitSessionStream({ sessionId, event: started })
   const err: RunErrorEvent = {
     type: EventType.RUN_ERROR,
     message,
     code: 'ERROR',
     timestamp: Date.now()
   }
-  emit({ sessionId, event: err })
+  emitSessionStream({ sessionId, event: err })
 }
 
 /**
@@ -287,7 +210,7 @@ function emitPreRunError(sessionId: string, message: string, runId?: string): vo
  *
  * @param messages - 当前 AG-UI 消息
  * @param userOrdinal - 用户消息序号（0-based）
- * @returns 截断后的消息列表（不含该用户消息及其后内容）
+ * @returns 截断后的消息列表
  */
 function truncateMessagesBeforeUserOrdinal(messages: Message[], userOrdinal: number): Message[] {
   if (userOrdinal < 0) return messages
@@ -301,19 +224,61 @@ function truncateMessagesBeforeUserOrdinal(messages: Message[], userOrdinal: num
 }
 
 /**
- * 运行用户消息（经 AG-UI runAgent）。
+ * 将完整 AG-UI Message[] 异步写入 SQLite（失败只打日志）。
  *
- * 同会话同时只允许一次 run：已有运行中的智能体时直接拒绝。
- * 不同会话各自独立，可并行执行。
- * Desktop 仅组装 AG-UI Message 与 RunAgentInput。
+ * @param userId - 用户 id
+ * @param sessionId - 会话 ID
+ * @param messages - 完整 AG-UI 轨迹
+ */
+async function persistSessionMessages(
+  userId: string,
+  sessionId: string,
+  messages: Message[]
+): Promise<void> {
+  try {
+    await persistSessionAguiMessages(userId, sessionId, messages)
+  } catch (error) {
+    agentLog.warn(
+      `[persistSessionMessages] failed: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
+/**
+ * 确保会话 runtime 已根据 SQLite 元数据就绪。
  *
- * 若 `options.editUserOrdinal` 已设置，则先按用户消息序号截断历史，再以本次文本替换该条并重跑。
+ * @param userId - 用户 id
+ * @param sessionId - 会话 ID
+ */
+async function ensureRuntimeReady(
+  userId: string,
+  sessionId: string
+): Promise<SessionRuntime | null> {
+  const meta = await getSession(userId, sessionId)
+  let cwd: string | undefined
+  try {
+    const ws = await getWorkspace(userId, meta.workspaceId)
+    cwd = ws.path?.trim() || undefined
+  } catch {
+    cwd = undefined
+  }
+  initSessionState(userId, meta.workspaceId, sessionId, cwd)
+  await ensureSessionAgentHydrated(userId, sessionId)
+  return sessions.get(sessionId) ?? null
+}
+
+/**
+ * 运行用户消息（经 AG-UI runAgent），事件经 emitSessionStream 推送。
  *
+ * 同会话同时只允许一次 run；不同会话可并行。
+ *
+ * @param userId - 用户 id
  * @param sessionId - 会话 ID
  * @param userText - 用户输入文本
- * @param options - 发送选项（模式、工作区路径、重新编辑序号等）
+ * @param options - 发送选项
  */
 export async function runUserMessage(
+  userId: string,
   sessionId: string,
   userText: string,
   options?: AgentSendOptions
@@ -324,17 +289,18 @@ export async function runUserMessage(
     emitPreRunError(sessionId, '消息为空')
     return
   }
-  const settings = getSettings()
+
+  const settings = await getAppSettings()
   agentLog.info(`composerMode: ${composerMode}, settingsKeys: ${Object.keys(settings).join(',')}`)
 
-  const sessionBefore = sessions.get(sessionId)
-  if (sessionBefore) {
-    initSessionState(sessionBefore.workspaceId, sessionId)
+  let session: SessionRuntime | null
+  try {
+    session = await ensureRuntimeReady(userId, sessionId)
+  } catch {
+    emitPreRunError(sessionId, '会话不存在或已过期')
+    return
   }
 
-  await ensureSessionAgentHydrated(sessionId)
-
-  const session = sessions.get(sessionId)
   if (!session) {
     emitPreRunError(sessionId, '会话不存在或已过期')
     return
@@ -343,12 +309,16 @@ export async function runUserMessage(
     throw new Error('当前会话已有智能体在运行，请等待完成或停止后再发送')
   }
 
-  const workspace = getWorkspaceById(session.workspaceId)
-  // 本轮 send 可显式传入路径；未传时回退会话绑定工作区
-  const workspacePath = options?.workspacePath?.trim() || workspace?.path?.trim() || ''
-  agentLog.info(
-    `[runUserMessage] workspacePath: ${workspacePath}, sessionWorkspace: ${workspace?.path}`
-  )
+  let workspacePath = options?.workspacePath?.trim() || ''
+  if (!workspacePath) {
+    try {
+      const ws = await getWorkspace(userId, session.workspaceId)
+      workspacePath = ws.path?.trim() || ''
+    } catch {
+      workspacePath = ''
+    }
+  }
+  agentLog.info(`[runUserMessage] workspacePath: ${workspacePath}`)
 
   if (!workspacePath) {
     emitPreRunError(sessionId, '当前会话未绑定工作区目录，请先绑定路径')
@@ -369,20 +339,16 @@ export async function runUserMessage(
       session.agent.messages,
       Math.floor(editUserOrdinal)
     )
-    // 历史被截断：旧 prior 不再可靠
     clearSessionWorking(sessionId)
-    // 先落盘截断后的前缀，避免取消/失败后 UI 与远端仍保留旧尾部
-    await persistSessionMessages(sessionId, session.agent.messages)
+    await persistSessionMessages(userId, sessionId, session.agent.messages)
   }
 
   const ac = new AbortController()
-  // 在任意 await 之前占住会话，避免同会话并发进入
   session.controller = ac
 
   const runId = makeRunId()
   const runStartedAt = Date.now()
 
-  // 追加本轮用户消息到 AG-UI agent.messages；runAgent 以之为 RunAgentInput.messages
   const userMessage: Message = {
     id: `u-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     role: 'user',
@@ -391,18 +357,17 @@ export async function runUserMessage(
   const fullMessages: Message[] = [...session.agent.messages, userMessage]
   session.agent.messages = fullMessages
 
-  // 压缩长历史 + 注入画像 + 预取知识库
   let memoryDroppedPrefix: Message[] = []
   let memorySystemSection: string | undefined
   const memorySummarizer = provider ? createMemorySummarizer(provider) : null
   const prepared = await prepareSessionMemory({
+    userId,
     sessionId,
     messages: fullMessages,
     ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
   })
   memoryDroppedPrefix = prepared.droppedPrefix
   session.agent.messages = prepared.messages
-
   memorySystemSection = prepared.systemSection?.trim() || undefined
 
   const forwardedProps = session.agent.buildRunForwardedProps({
@@ -418,7 +383,7 @@ export async function runUserMessage(
   })
 
   /**
-   * 将 compact 丢弃的前缀拼回 run 后的 messages，保证 UI/落盘仍是完整轨迹。
+   * 将 compact 丢弃的前缀拼回 run 后的 messages。
    *
    * @param runMessages - runAgent 之后的 agent.messages
    * @returns 完整 AG-UI 消息列表
@@ -435,7 +400,7 @@ export async function runUserMessage(
 
     const sub = session.agent.subscribe({
       onEvent: ({ event }) => {
-        emit({ sessionId, event })
+        emitSessionStream({ sessionId, event })
       }
     })
     session.subscription = sub
@@ -449,15 +414,14 @@ export async function runUserMessage(
 
     const latest = sessions.get(sessionId)
     if (!latest) return
-    // 取消后若已启动新一轮（重新编辑），勿用本轮结果覆盖截断后的历史
     if (ac.signal.aborted && latest.controller !== null && latest.controller !== ac) return
 
     latest.agent.messages = restoreFullMessages(latest.agent.messages)
-    await persistSessionMessages(sessionId, latest.agent.messages)
+    await persistSessionMessages(userId, sessionId, latest.agent.messages)
 
-    // 本轮成功后异步刷新用户画像（失败不阻断）
     if (memorySummarizer) {
       void refreshUserProfileFromMessages({
+        userId,
         messages: latest.agent.messages,
         summarizer: memorySummarizer
       })
@@ -465,10 +429,9 @@ export async function runUserMessage(
   } catch (e) {
     const latest = sessions.get(sessionId)
     if (ac.signal.aborted) {
-      // CANCELLED 已由 agent 事件流发出；若已有新一轮则跳过落盘
       if (!latest || (latest.controller !== null && latest.controller !== ac)) return
       latest.agent.messages = restoreFullMessages(latest.agent.messages)
-      await persistSessionMessages(sessionId, latest.agent.messages)
+      await persistSessionMessages(userId, sessionId, latest.agent.messages)
       return
     }
     const message = e instanceof Error ? e.message : String(e)
@@ -478,15 +441,14 @@ export async function runUserMessage(
       code: 'ERROR',
       timestamp: Date.now()
     }
-    emit({ sessionId, event: err })
+    emitSessionStream({ sessionId, event: err })
 
     if (latest) {
       latest.agent.messages = restoreFullMessages(latest.agent.messages)
-      await persistSessionMessages(sessionId, latest.agent.messages)
+      await persistSessionMessages(userId, sessionId, latest.agent.messages)
     }
   } finally {
     const latest = sessions.get(sessionId)
-    // 仅清理本轮 AbortController，避免取消后立刻重发时误清新一轮
     if (latest && latest.controller === ac) {
       latest.subscription?.unsubscribe()
       latest.controller = null

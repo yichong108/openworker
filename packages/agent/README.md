@@ -14,7 +14,7 @@ Agent 可选 MCP。
 
 ## 边界与依赖
 
-- **Desktop 宿主禁止直接依赖本包**；应经 [`@openworker/uni-agent`](../uni-agent/README.md)。
+- **Desktop / Native 宿主禁止直接依赖本包**；应经 [`@openworker/uni-agent`](../uni-agent/README.md)。
 - **外部禁止直接使用 `createAgent` / `agent.send`**；一律经 `OpenWorkerAgent.runAgent`（或 `run`）与 AG-UI 事件。
 - `createAgent` 仅由 `OpenWorkerAgent` 内部委托，不从包根导出。
 - MCP 宿主能力经 `OpenWorkerAgent.mcp`（probe / warmup / dispose）。

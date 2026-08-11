@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter } from 'express'
 import type { PatchSessionRequest, SessionMessagesPayload } from '@openworker/shared'
 
+import { clearSessionState } from '../agent/agent-service.js'
 import { fail, ok, BadRequestError, NotFoundError } from '../http/envelope.js'
 import { getAuthedUser, requireAuth } from '../middleware/auth.js'
 import {
@@ -43,7 +44,9 @@ sessionsRouter.patch('/sessions/:id', async (req, res) => {
 sessionsRouter.delete('/sessions/:id', async (req, res) => {
   try {
     const user = getAuthedUser(req)
-    await softDeleteSession(user.id, req.params.id!)
+    const sessionId = req.params.id!
+    await softDeleteSession(user.id, sessionId)
+    clearSessionState(sessionId)
     res.status(200).json(ok({ ok: true }))
   } catch (error) {
     if (error instanceof NotFoundError) {

@@ -5,8 +5,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@openworker/uni-agent": ["../../packages/uni-agent/src/index.ts"],
-      "@openworker/agent": ["../../packages/agent/src/index.ts"],
       "@openworker/shared": ["../../packages/shared/src/index.ts"]
     }
   },

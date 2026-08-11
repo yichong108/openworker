@@ -1,8 +1,7 @@
 /**
- * Desktop 侧 agent ↔ @openworker/memory 粘合层。
+ * Native 侧 agent ↔ @openworker/memory 粘合层。
  *
- * 唯一对接点：会话 compact + 用户画像读写/抽取、产出 runAgent 用的 messages 与 systemSection。
- * 包内算法见 @openworker/memory；会话 prior 用进程内 Map；画像经 API `/me/profile` 持久化。
+ * 会话 prior 用进程内 Map；画像经本地 user-profile-service 持久化。
  */
 
 import type { Message } from '@ag-ui/client'
@@ -23,15 +22,14 @@ import {
 } from '@openworker/memory'
 import { generateText, type LanguageModel } from 'ai'
 
-import { getAccessToken } from '@/main/auth-token'
-import { agentLog } from '@/main/agent/agent-log'
-import { apiGetUserProfile, apiPutUserProfile } from '@/main/user-profile-api'
+import { agentLog } from './agent-log.js'
+import { getUserProfile, putUserProfile } from '../services/user-profile-service.js'
 
 /** 会话工作记忆（summary / pinned），keyed by sessionId */
 const workingBySession = new Map<string, { summary: string; pinned: string[] }>()
 
-/** 当前登录用户画像缓存（登出清空） */
-let profileCache: UserProfile | null = null
+/** 用户画像缓存，keyed by userId */
+const profileCacheByUser = new Map<string, UserProfile>()
 
 /** 抽取画像时取最近消息条数上限 */
 const PROFILE_EXTRACT_MESSAGE_LIMIT = 12
@@ -101,82 +99,80 @@ export function clearSessionWorking(sessionId: string): void {
 }
 
 /**
- * 清除全部会话工作记忆与用户画像缓存（登出时调用）。
+ * 清除全部会话工作记忆与用户画像缓存。
  */
 export function clearAllSessionWorking(): void {
   workingBySession.clear()
-  profileCache = null
+  profileCacheByUser.clear()
 }
 
 /**
- * 从 API 加载用户画像（带进程内缓存）。
+ * 从本地服务加载用户画像（带进程内缓存）。
  *
- * 无 token 或失败时返回空 facts，不抛出。
- *
+ * @param userId - 用户 id
  * @param force - 为 true 时跳过缓存强制拉取
  * @returns UserProfile
  */
-export async function loadUserProfile(force: boolean = false): Promise<UserProfile> {
-  if (!force && profileCache) {
-    return {
-      facts: [...profileCache.facts],
-      updatedAt: profileCache.updatedAt
+export async function loadUserProfile(
+  userId: string,
+  force: boolean = false
+): Promise<UserProfile> {
+  if (!force) {
+    const cached = profileCacheByUser.get(userId)
+    if (cached) {
+      return {
+        facts: [...cached.facts],
+        updatedAt: cached.updatedAt
+      }
     }
   }
-  if (!getAccessToken()) {
-    profileCache = { facts: [], updatedAt: 0 }
-    return { facts: [], updatedAt: 0 }
-  }
   try {
-    const dto = await apiGetUserProfile()
-    profileCache = {
+    const dto = await getUserProfile(userId)
+    const profile: UserProfile = {
       facts: Array.isArray(dto.facts) ? dto.facts : [],
       updatedAt: typeof dto.updatedAt === 'number' ? dto.updatedAt : 0
     }
+    profileCacheByUser.set(userId, profile)
   } catch (error) {
     agentLog.warn(
       `[memory] loadUserProfile failed: ${error instanceof Error ? error.message : String(error)}`
     )
-    if (!profileCache) {
-      profileCache = { facts: [], updatedAt: 0 }
+    if (!profileCacheByUser.has(userId)) {
+      profileCacheByUser.set(userId, { facts: [], updatedAt: 0 })
     }
   }
+  const cached = profileCacheByUser.get(userId) ?? { facts: [], updatedAt: 0 }
   return {
-    facts: [...(profileCache?.facts ?? [])],
-    updatedAt: profileCache?.updatedAt ?? 0
+    facts: [...cached.facts],
+    updatedAt: cached.updatedAt
   }
 }
 
 /**
- * 将用户画像整包写入 API 并更新缓存。
+ * 将用户画像整包写入本地服务并更新缓存。
  *
+ * @param userId - 用户 id
  * @param profile - 合并后的画像
  */
-export async function saveUserProfile(profile: UserProfile): Promise<void> {
-  if (!getAccessToken()) {
-    profileCache = profile
-    return
-  }
+export async function saveUserProfile(userId: string, profile: UserProfile): Promise<void> {
   try {
-    const saved = await apiPutUserProfile({ facts: profile.facts })
-    profileCache = {
+    const saved = await putUserProfile(userId, { facts: profile.facts })
+    profileCacheByUser.set(userId, {
       facts: Array.isArray(saved.facts) ? saved.facts : profile.facts,
       updatedAt: typeof saved.updatedAt === 'number' ? saved.updatedAt : profile.updatedAt
-    }
+    })
   } catch (error) {
     agentLog.warn(
       `[memory] saveUserProfile failed: ${error instanceof Error ? error.message : String(error)}`
     )
-    // 仍更新本地缓存，避免同进程内读不到刚 merge 的结果
-    profileCache = profile
+    profileCacheByUser.set(userId, profile)
   }
 }
 
 /**
- * 发消息前压缩 AG-UI 历史并注入用户画像，供 OpenWorker runAgent 使用。
+ * 发消息前压缩 AG-UI 历史并注入用户画像，供 runAgent 使用。
  *
- * 默认：W=256k 尾部窗口；有新压缩内容时以 T=0.7 refine；画像从 API 读取并拼入 system。
- *
+ * @param input.userId - 用户 id（读写画像）
  * @param input.sessionId - 会话 ID（读写 prior）
  * @param input.messages - 完整 AG-UI 消息（含本轮 user）
  * @param input.budget - 可选预算覆盖
@@ -185,6 +181,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
  * @returns 压缩后的 messages、systemSection、working 与 droppedPrefix
  */
 export async function prepareSessionMemory(input: {
+  userId: string
   sessionId: string
   messages: Message[]
   budget?: Partial<SessionBudget>
@@ -222,7 +219,7 @@ export async function prepareSessionMemory(input: {
   }
 
   const sessionSection = formatSessionSystemSection(summary, compacted.pinned, budget.summaryChars)
-  const profile = await loadUserProfile()
+  const profile = await loadUserProfile(input.userId)
   const profileSection = formatProfileSection(profile)
   const systemSection = composeMemorySystemSection({ profileSection, sessionSection })
 
@@ -249,28 +246,27 @@ export async function prepareSessionMemory(input: {
 }
 
 /**
- * OpenWorker 一轮成功后：LLM 抽取用户事实 → merge → PUT /me/profile。
+ * 一轮成功后：LLM 抽取用户事实 → merge → 持久化画像。
  *
- * 默认开启；失败只打日志。Cursor 路径不应调用。
- *
+ * @param input.userId - 用户 id
  * @param input.messages - 完整或近期 AG-UI 消息
  * @param input.summarizer - 宿主 Summarizer
  * @param input.extractProfile - 是否抽取，默认 true
  */
 export async function refreshUserProfileFromMessages(input: {
+  userId: string
   messages: Message[]
   summarizer?: Summarizer
   extractProfile?: boolean
 }): Promise<void> {
   if (input.extractProfile === false) return
   if (!input.summarizer) return
-  if (!getAccessToken()) return
 
   const slice = (input.messages ?? []).slice(-PROFILE_EXTRACT_MESSAGE_LIMIT)
   if (slice.length === 0) return
 
   try {
-    const prior = await loadUserProfile()
+    const prior = await loadUserProfile(input.userId)
     const extracted = await extractProfileFacts({
       messages: slice,
       prior,
@@ -279,7 +275,7 @@ export async function refreshUserProfileFromMessages(input: {
     if (extracted.length === 0) return
 
     const merged = mergeProfileFacts(prior, extracted)
-    await saveUserProfile(merged)
+    await saveUserProfile(input.userId, merged)
   } catch (error) {
     agentLog.warn(
       `[memory] refreshUserProfileFromMessages failed: ${

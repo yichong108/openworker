@@ -2,7 +2,12 @@
 
 OpenWorker 本地 Native 服务（Node.js + Express + SQLite）。
 
-为 Desktop 提供与 `@openworker/api` **契约对齐**的本地数据面 HTTP API（鉴权、设置、工作区/会话、用户画像）。存储为 SQLite，**无 MySQL / Redis / RAG**。
+为 Desktop 提供：
+
+1. **数据面**（与 `@openworker/api` 契约对齐）：鉴权、设置、工作区/会话、用户画像
+2. **Agent 运行时**：会话级 UniAgent、AG-UI SSE 流、skills / MCP / 终端
+
+存储为 SQLite，**无 MySQL / Redis / RAG**。
 
 SQLite 使用 Node 内置 [`node:sqlite`](https://nodejs.org/api/sqlite.html)（`DatabaseSync`），无需编译原生插件；需要 Node.js ≥ 22.5。
 
@@ -20,12 +25,13 @@ pnpm native:dev
 
 ## 与 Desktop 的关系
 
-Desktop 主进程会在启动时自动拉起 Native（若端口上 `/health` 已 ok 则复用，不重复占用）：
+Desktop 主进程会在启动时自动拉起 Native（若端口上 `/health` 已 ok 则复用）：
 
 - **开发**：用系统 Node 跑本包 `dist/desktop-bundle.cjs`（或 `dist/index.js` / tsx 源码）
-- **安装包**：`extraResources` 携带 `desktop-bundle.cjs` → `resources/native/index.js`，以 `ELECTRON_RUN_AS_NODE=1` + Electron 可执行文件运行（无需用户安装 Node）
+- **安装包**：`extraResources` 携带 `desktop-bundle.cjs` → `resources/native/index.js`，以 `ELECTRON_RUN_AS_NODE=1` + Electron 可执行文件运行
 
-Desktop **非 RAG** 请求（auth / settings / workspaces / sessions / profile）默认打本服务；**RAG**（`POST /rag/query`）仍走 `@openworker/api`。
+Desktop **Renderer** 直连本服务（HTTP + SSE）；Main 不再代理业务 IPC。  
+**RAG**（`POST /rag/query`）仍走 `@openworker/api`。
 
 因此日常开发不必单独开 `pnpm native:dev`；若已手动启动，Desktop 会复用且退出时不杀外部进程。
 
@@ -36,9 +42,12 @@ Desktop **非 RAG** 请求（auth / settings / workspaces / sessions / profile�
 | 数据库              | MySQL                    | SQLite                     |
 | 缓存                | Redis（settings 短缓存） | 无                         |
 | RAG / 知识库        | 有                       | **未实现**（请继续用 api） |
+| Agent 运行时        | 无                       | **有**（UniAgent + SSE）   |
 | 路径与 JWT envelope | 对齐                     | 对齐                       |
 
 ## HTTP 端点
+
+### 数据面
 
 | Method           | Path                                | Auth   | 说明                |
 | ---------------- | ----------------------------------- | ------ | ------------------- |
@@ -55,7 +64,20 @@ Desktop **非 RAG** 请求（auth / settings / workspaces / sessions / profile�
 | `PATCH`/`DELETE` | `/sessions/:id`                     | JWT    | 重命名·touch / 软删 |
 | `GET`/`PUT`      | `/sessions/:id/messages`            | JWT    | 消息整包读写        |
 
-响应格式与 api 一致：多数 `{ code, message, data }`；settings 为 `{ data }`；health 为 `{ status, timestamp, checks }`。
+### Agent / 工具面
+
+| Method       | Path                         | Auth | 说明                                               |
+| ------------ | ---------------------------- | ---- | -------------------------------------------------- |
+| `POST`       | `/sessions/:id/agent/run`    | JWT  | Body `{ text, mode?, ... }`；**SSE** 推 AG-UI 事件 |
+| `POST`       | `/sessions/:id/agent/cancel` | JWT  | 取消当前 run                                       |
+| `GET`        | `/skills`                    | JWT  | 列出 `~/.openworker/skills`                        |
+| `POST`       | `/mcp/probe`                 | JWT  | 探测 MCP 工具                                      |
+| `GET`/`POST` | `/mcp/warmup`                | JWT  | 读/跑 MCP 池化预热                                 |
+| `POST`       | `/terminal/run`              | JWT  | 右侧栏终端；**SSE** 推 stdout/stderr               |
+| `POST`       | `/terminal/cancel`           | JWT  | 取消终端                                           |
+| `POST`       | `/terminal/complete`         | JWT  | 路径补全                                           |
+
+响应格式：多数 `{ code, message, data }`；settings 为 `{ data }`；health 为 `{ status, timestamp, checks }`；SSE 为 `text/event-stream`（结束帧 `event: done`）。
 
 ## SQLite 路径与表
 
