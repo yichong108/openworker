@@ -589,6 +589,34 @@ importers:
 
   services/langfuse-local: {}
 
+  services/native:
+    dependencies:
+      cors:
+        specifier: ^2.8.5
+        version: 2.8.6
+      dotenv:
+        specifier: ^16.5.0
+        version: 16.6.1
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+    devDependencies:
+      '@types/cors':
+        specifier: ^2.8.18
+        version: 2.8.19
+      '@types/express':
+        specifier: ^5.0.2
+        version: 5.0.6
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.4
+        version: 4.23.1
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
 packages:
 
   7zip-bin@5.2.0:

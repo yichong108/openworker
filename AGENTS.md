@@ -112,6 +112,7 @@ class SessionManager {
 - [@openworker/shared](packages/shared/README.md) 公用工具
 - [@openworker/skills](packages/skills/README.md) 内置 Agent Skills
 - [@openworker/api](services/api/README.md) 后端API服务
+- [@openworker/native](services/native/README.md) 本地 Native 服务（Express + node:sqlite；默认库 `~/.openworker/native/native.sqlite`）
 - [@openworker/desktop](apps/desktop/README.md) 桌面客户端（OpenWorker 路径发消息前预取知识库 RAG，注入 system；管理文档见 Admin）
 - [@openworker/admin](apps/admin/README.md) 后台管理
 - [@openworker/cli](apps/cli/README.md) 命令行客户端
