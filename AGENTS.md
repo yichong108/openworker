@@ -9,6 +9,9 @@
 ## 包管理器
 
 - **仅允许使用 pnpm。** 本项目禁止使用 npm。所有依赖管理操作（安装、更新、添加依赖）必须使用 pnpm。
+- **共享依赖版本使用 pnpm catalog。** 版本定义在根目录 `pnpm-workspace.yaml` 的 `catalog`；各包在 `package.json` 中写 `"catalog:"` 引用。修改共享版本时只改 catalog，勿在子包写死版本号。
+- 需要 pnpm ≥ 9.5（见根 `packageManager`）。
+- **`shamefully-hoist=false`。** 禁止依赖幽灵提升；各包必须在自己的 `package.json` 中声明所用依赖。
 
 ## 语言与提交
 

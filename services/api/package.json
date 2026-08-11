@@ -35,7 +35,8 @@
     "@types/express": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
-    "@types/node": "^22.15.21",
-    "tsx": "^4.19.4"
+    "@types/node": "catalog:",
+    "tsx": "^4.19.4",
+    "typescript": "catalog:"
   }
 }

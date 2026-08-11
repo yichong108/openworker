@@ -13,7 +13,8 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@types/node": "^22.14.1",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
     "vitest": "^4.1.10"
   },
   "dependencies": {
