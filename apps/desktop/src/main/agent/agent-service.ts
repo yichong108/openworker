@@ -1,7 +1,8 @@
-import { killCommand, resolveChatModel } from '@openworker/uni-agent'
+import { killCommand } from '@openworker/uni-agent'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
 import type { WebContents } from 'electron'
 
+import { resolveChatModel } from '@/main/agent/chat-model'
 import { createSessionAgent, type SessionAguiAgent } from '@/main/agent/agent-instance'
 import { agentLog } from '@/main/agent/agent-log'
 import {

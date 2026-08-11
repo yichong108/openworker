@@ -15,8 +15,9 @@ import {
   type ToolCallResultEvent,
   type ToolCallStartEvent
 } from '@ag-ui/client'
-import { getChatModel, OpenWorkerAgent, type OpenWorkerAgentRunDefaults } from '@openworker/agent'
+import { OpenWorkerAgent, type OpenWorkerAgentRunDefaults } from '@openworker/agent'
 import { type AgentComposerMode, type AppSettings, MAX_AGENT_LOOP_STEPS } from '@openworker/shared'
+import { resolveChatModel } from './chat-model.js'
 
 /**
  * 根据设置与工作区创建 CLI OpenWorkerAgent 实例。
@@ -27,7 +28,7 @@ import { type AgentComposerMode, type AppSettings, MAX_AGENT_LOOP_STEPS } from '
  * @throws 未配置 API Key 时抛出
  */
 export function createCliAgent(settings: AppSettings, cwd: string): OpenWorkerAgent {
-  const provider = getChatModel(settings)
+  const provider = resolveChatModel(settings)
   if (!provider) {
     throw new Error(
       '请先配置 OPENWORKERER_API_KEY（或 OPENAI_API_KEY），参见 apps/cli/.env.example'

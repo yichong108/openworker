@@ -103,6 +103,7 @@ class SessionManager {
 
 - [@openworker/uni-agent](packages/uni-agent/README.md) 统一 AG-UI 门面（Desktop 宿主入口）
 - [@openworker/agent](packages/agent/README.md) OpenWorker ReAct 智能体（含 AG-UI OpenWorkerAgent）
+- [@openworker/llm](packages/llm/README.md) OpenAI 兼容聊天模型工厂 + 流式单步（AI SDK streamText）
 - [@openworker/memory](packages/memory/README.md) 单会话压缩 + 用户画像（纯函数；Desktop 粘合见 `apps/desktop/src/main/agent/memory.ts`；画像 API `/me/profile`）
 - [@openworker/rag](packages/rag/README.md) 知识库检索（关键词或 LlamaIndex+Ollama 语义；API 粘合见 `services/api`；`pnpm rag:setup-ollama`）
 - [@openworker/shared](packages/shared/README.md) 公用工具

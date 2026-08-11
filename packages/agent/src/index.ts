@@ -48,8 +48,6 @@ export {
   type SkillListItem
 } from './skills/load-skills.js'
 
-export { getChatModel, resolveChatModel } from './llm.js'
-
 /** 工作区工具组装 */
 export {
   buildWorkspaceRunPrompt,

@@ -15,6 +15,7 @@
   "dependencies": {
     "@ag-ui/client": "0.0.57",
     "@openworker/agent": "workspace:*",
+    "@openworker/llm": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "dotenv": "^17.4.2"

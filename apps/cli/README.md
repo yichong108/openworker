@@ -6,7 +6,7 @@
 
 ## 边界与依赖
 
-- 依赖 `@openworker/agent`（`OpenWorkerAgent` / `getChatModel`），经 AG-UI 协议驱动，不重复实现 ReAct / 工具。
+- 依赖 `@openworker/agent`（`OpenWorkerAgent`）与 `@openworker/llm`（`getChatModel`），经 AG-UI 协议驱动，不重复实现 ReAct / 工具。
 - 会话消息为 AG-UI `Message`，仅在进程内持有，不做桌面端式持久化。
 - 模型凭据来自环境变量（或 `.env`），不读桌面 AppSettings 存储。
 

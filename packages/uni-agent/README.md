@@ -43,4 +43,4 @@ await mcpHost.dispose()
 
 - AG-UI 入口：仅 `UniAgent`
 - Desktop 等宿主：只依赖本包
-- 终端 / 路径 / skills / `resolveChatModel` 为本包附带的宿主工具转发（非第二套 Agent API）
+- 终端 / 路径 / skills / `getChatModel` 为本包附带的宿主工具转发（非第二套 Agent API）

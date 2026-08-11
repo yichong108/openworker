@@ -12,7 +12,10 @@ export {
 } from './uni-agent.js'
 
 /** 宿主工具转发（避免 Desktop 直依 agent） */
-export { type AgentMcp, getChatModel, resolveChatModel } from '@openworker/agent'
+export { type AgentMcp } from '@openworker/agent'
+
+/** LLM 工厂（避免 Desktop 直依 agent） */
+export { getChatModel, type OpenAiChatModelOptions } from '@openworker/llm'
 
 export {
   listSkillsFromPaths,

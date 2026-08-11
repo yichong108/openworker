@@ -2,38 +2,18 @@
  * @file react-loop.ts
  * @description ReAct 循环实现（基于 AI SDK CoreMessage + ToolSet）
  */
+import { streamChatStep, toToolDeclarations } from '@openworker/llm'
 import { defaultSettings, MAX_AGENT_LOOP_STEPS } from '@openworker/shared'
-import {
-  streamText,
-  type CoreAssistantMessage,
-  type CoreMessage,
-  type CoreToolMessage,
-  type LanguageModel,
-  type Tool,
-  type ToolCallPart,
-  type ToolSet
+import type {
+  CoreAssistantMessage,
+  CoreMessage,
+  CoreToolMessage,
+  LanguageModel,
+  ToolCallPart,
+  ToolSet
 } from 'ai'
 
 import { agentLog } from './logger.js'
-
-/**
- * 构建仅用于模型声明的 ToolSet（去掉 execute，避免 streamText 自动执行）。
- *
- * ReAct 循环手动调用 Tool.execute，以便控制工具观察上报、错误与取消语义。
- *
- * @param tools - 完整 ToolSet（含 execute）
- * @returns 仅含 parameters/description 的声明用 ToolSet
- */
-function buildToolDeclarations(tools: ToolSet): ToolSet {
-  const set: ToolSet = {}
-  for (const [name, t] of Object.entries(tools)) {
-    set[name] = {
-      description: t.description,
-      parameters: t.parameters
-    } as Tool
-  }
-  return set
-}
 
 /**
  * 构造单条 tool 结果消息。
@@ -61,7 +41,7 @@ function toolResultMessage(tc: ToolCallPart, result: unknown): CoreToolMessage {
 /**
  * 依次执行工具调用，收集 tool 结果消息。
  *
- * @param toolCalls - streamText 返回的工具调用
+ * @param toolCalls - 模型返回的工具调用
  * @param tools - AI SDK ToolSet
  * @param messages - 传给 ToolExecutionOptions.messages：发起本轮 tool call 前的会话快照
  *   （不含顶层 system，也不含本轮带 tool-call 的 assistant，与 AI SDK 约定一致）
@@ -101,7 +81,7 @@ async function executeToolCalls(
  * 根据流式结果构造 assistant CoreMessage。
  *
  * @param text - 助手文本
- * @param toolCalls - streamText 返回的工具调用
+ * @param toolCalls - 模型返回的工具调用
  * @returns assistant 消息
  */
 function buildAssistantMessage(text: string, toolCalls: ToolCallPart[]): CoreAssistantMessage {
@@ -120,7 +100,7 @@ function buildAssistantMessage(text: string, toolCalls: ToolCallPart[]): CoreAss
 /**
  * ReAct 循环
  *
- * 入参与返回均为 AI SDK `CoreMessage` / `ToolSet`，可直接对接 streamText。
+ * 入参与返回均为 AI SDK `CoreMessage` / `ToolSet`；模型调用经 `@openworker/llm` 的 `streamChatStep`。
  *
  * 每步文本先经 `onToken` 增量流出（打字机效果）；步结束时再分流：
  * - 本步有 tool calls → `onTextRevoke`（撤回已流出的 Result）+ `onThinking`（进入 Worked → Thought）
@@ -153,7 +133,7 @@ export async function runReactLoop(
   const resolvedMaxSteps = maxSteps ?? MAX_AGENT_LOOP_STEPS
   const resolvedTimeoutMs = timeoutMs ?? defaultSettings.agentRunTimeoutMs
 
-  const declarations = buildToolDeclarations(tools)
+  const declarations = toToolDeclarations(tools)
   const working = [...messages]
   let steps = 0
 
@@ -175,30 +155,15 @@ export async function runReactLoop(
       tools: Object.keys(declarations)
     })
 
-    const result = streamText({
+    const { text, toolCalls, usage, streamedLen } = await streamChatStep({
       model,
       system: systemPrompt,
       messages: working,
       tools: declarations,
-      abortSignal: ac.signal
+      abortSignal: ac.signal,
+      onTextDelta: onToken
     })
 
-    // 增量流出以保留打字机效果；若本步最终伴有 tool calls，再 revoke + 转入 Thought
-    let stepText = ''
-    let streamedLen = 0
-    for await (const chunk of result.fullStream) {
-      if (chunk.type === 'text-delta') {
-        if (chunk.textDelta) {
-          stepText += chunk.textDelta
-          onToken(chunk.textDelta)
-          streamedLen += chunk.textDelta.length
-        }
-      }
-    }
-
-    const text = (await result.text) || stepText
-    const toolCalls = await result.toolCalls
-    const usage = await result.usage
     const stepDurationMs = Date.now() - stepStartedAt
 
     agentLog.info(`[react-loop] llm:out step=${steps} durationMs=${stepDurationMs}`, {
