@@ -5,7 +5,7 @@
 import type { PutUserProfileRequest, UserProfileDto } from '@openworker/shared'
 
 import { getAccessToken } from '@/main/auth-token'
-import { getApiBaseUrl } from '@/main/settings-api'
+import { getNativeBaseUrl } from '@/main/native-service'
 
 /** API envelope */
 type ApiEnvelope<T> = {
@@ -40,7 +40,7 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
     throw new UserProfileApiError(40102, 'Not authenticated')
   }
 
-  const url = `${getApiBaseUrl()}${path}`
+  const url = `${getNativeBaseUrl()}${path}`
   const headers: Record<string, string> = {
     Accept: 'application/json',
     Authorization: `Bearer ${token}`

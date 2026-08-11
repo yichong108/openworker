@@ -24,10 +24,11 @@ import type {
   WorkspacesPayload
 } from '@/shared/ipc'
 
-/** 扩展 Vite 环境变量类型（渲染进程直连 API） */
+/** 扩展 Vite 环境变量类型（渲染进程直连 Native 数据面） */
 declare global {
   interface ImportMetaEnv {
     readonly VITE_API_URL?: string
+    readonly VITE_OPENWORKER_NATIVE_BASE_URL?: string
     readonly VITE_OPENWORKERER_API_BASE_URL?: string
   }
 }

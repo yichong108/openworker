@@ -10,7 +10,7 @@ import type {
 
 import { getAccessToken } from '@/main/auth-token'
 import { mainLog } from '@/main/logger'
-import { getApiBaseUrl } from '@/main/settings-api'
+import { getNativeBaseUrl } from '@/main/native-service'
 import type { SessionInfo, WorkspaceInfo } from '@/shared/ipc'
 
 /** API envelope */
@@ -76,7 +76,7 @@ async function apiRequest<T>(method: string, path: string, body?: unknown): Prom
     throw new WorkspaceSessionApiError(40102, 'Not authenticated')
   }
 
-  const url = `${getApiBaseUrl()}${path}`
+  const url = `${getNativeBaseUrl()}${path}`
   const headers: Record<string, string> = {
     Accept: 'application/json',
     Authorization: `Bearer ${token}`

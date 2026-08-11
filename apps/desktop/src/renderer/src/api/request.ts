@@ -2,10 +2,12 @@ import axios, { type AxiosRequestConfig } from 'axios'
 
 const API_SUCCESS_CODE = 0
 
+/** 渲染进程 auth 等数据面默认打 Native（与主进程 getNativeBaseUrl 一致） */
 const API_URL =
   import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_OPENWORKER_NATIVE_BASE_URL ||
   import.meta.env.VITE_OPENWORKERER_API_BASE_URL ||
-  'http://127.0.0.1:3100'
+  'http://127.0.0.1:3200'
 
 interface ApiEnvelope<T> {
   code: number

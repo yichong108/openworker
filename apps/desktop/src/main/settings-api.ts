@@ -1,6 +1,7 @@
 import { type AppSettings, normalizeSettings } from '@openworker/shared'
 
 import { mainLog } from '@/main/logger'
+import { getNativeBaseUrl } from '@/main/native-service'
 
 /** Settings API 响应体 */
 type SettingsApiResponse = {
@@ -8,9 +9,10 @@ type SettingsApiResponse = {
 }
 
 /**
- * 解析桌面端对接的 API 根地址
+ * 解析桌面端对接的云端 / RAG API 根地址
  *
  * 优先读 `OPENWORKERER_API_BASE_URL`，默认本地开发地址 `http://127.0.0.1:3100`。
+ * 仅用于 RAG 等仍走 `@openworker/api` 的能力；auth / settings / workspaces 等走 Native。
  *
  * @returns 去掉尾部斜杠后的 base URL
  */
@@ -20,13 +22,13 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * 从 API 服务拉取全局 AppSettings
+ * 从 Native 服务拉取全局 AppSettings
  *
  * @returns 规范化后的 AppSettings
  * @throws 当 HTTP 非 2xx 或响应结构非法时抛出
  */
 export async function fetchSettingsFromApi(): Promise<AppSettings> {
-  const url = `${getApiBaseUrl()}/settings`
+  const url = `${getNativeBaseUrl()}/settings`
   const res = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' }
@@ -43,14 +45,14 @@ export async function fetchSettingsFromApi(): Promise<AppSettings> {
 }
 
 /**
- * 将 partial settings 推送到 API 服务并返回合并后的完整配置
+ * 将 partial settings 推送到 Native 服务并返回合并后的完整配置
  *
  * @param patch - 要合并的字段
- * @returns API 返回并规范化后的 AppSettings
+ * @returns Native 返回并规范化后的 AppSettings
  * @throws 当 HTTP 非 2xx 或响应结构非法时抛出
  */
 export async function putSettingsToApi(patch: Partial<AppSettings>): Promise<AppSettings> {
-  const url = `${getApiBaseUrl()}/settings`
+  const url = `${getNativeBaseUrl()}/settings`
   const res = await fetch(url, {
     method: 'PUT',
     headers: {

@@ -29,5 +29,13 @@ export const env = {
    * SQLite 数据库文件绝对或相对路径。
    * 未设置时默认为 ~/.openworker/native/native.sqlite。
    */
-  sqlitePath: process.env.SQLITE_PATH?.trim() || defaultSqlitePath()
+  sqlitePath: process.env.SQLITE_PATH?.trim() || defaultSqlitePath(),
+
+  /**
+   * JWT 签名密钥；生产环境务必通过 JWT_SECRET 覆盖
+   */
+  jwtSecret: process.env.JWT_SECRET ?? 'openworker-dev-jwt-secret-change-me',
+
+  /** access token 有效期（如 `7d`、`12h`） */
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d'
 } as const
