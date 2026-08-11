@@ -72,13 +72,11 @@ function sanitizeGeneratedSessionName(raw: string): string {
 /**
  * 根据首条用户消息异步生成会话名并重命名。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 id
  * @param firstMessage - 用户首条消息全文
  * @returns 是否已成功重命名
  */
 export async function autoNameSessionFromFirstMessage(
-  userId: string,
   sessionId: string,
   firstMessage: string
 ): Promise<boolean> {
@@ -92,7 +90,7 @@ export async function autoNameSessionFromFirstMessage(
 
   let sessionAtStart
   try {
-    sessionAtStart = await getSession(userId, sessionId)
+    sessionAtStart = await getSession(sessionId)
   } catch {
     autoNameScheduled.delete(sessionId)
     return false
@@ -125,13 +123,13 @@ export async function autoNameSessionFromFirstMessage(
       return false
     }
 
-    const sessionNow = await getSession(userId, sessionId)
+    const sessionNow = await getSession(sessionId)
     if (sessionNow.name !== sessionAtStart.name) {
       return false
     }
     if (sessionNow.name === nextName) return false
 
-    await patchSession(userId, sessionId, { name: nextName })
+    await patchSession(sessionId, { name: nextName })
     return true
   } catch (error) {
     autoNameScheduled.delete(sessionId)

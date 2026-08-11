@@ -3,7 +3,6 @@ import type { PatchSessionRequest, SessionMessagesPayload } from '@openworker/sh
 
 import { clearSessionState } from '../agent/agent-service.js'
 import { fail, ok, BadRequestError, NotFoundError } from '../http/envelope.js'
-import { getAuthedUser, requireAuth } from '../middleware/auth.js'
 import {
   getSessionMessages,
   patchSession,
@@ -12,20 +11,17 @@ import {
 } from '../services/session-service.js'
 
 /**
- * 会话路由（需 JWT）
+ * 会话路由（本机单租户）
  *
  * - PATCH/DELETE /sessions/:id
  * - GET/PUT /sessions/:id/messages
  */
 export const sessionsRouter: ExpressRouter = Router()
 
-sessionsRouter.use(requireAuth)
-
 sessionsRouter.patch('/sessions/:id', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
     const body = (req.body ?? {}) as PatchSessionRequest
-    const session = await patchSession(user.id, req.params.id!, body)
+    const session = await patchSession(req.params.id!, body)
     res.status(200).json(ok({ session }))
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -43,9 +39,8 @@ sessionsRouter.patch('/sessions/:id', async (req, res) => {
 
 sessionsRouter.delete('/sessions/:id', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
     const sessionId = req.params.id!
-    await softDeleteSession(user.id, sessionId)
+    await softDeleteSession(sessionId)
     clearSessionState(sessionId)
     res.status(200).json(ok({ ok: true }))
   } catch (error) {
@@ -60,8 +55,7 @@ sessionsRouter.delete('/sessions/:id', async (req, res) => {
 
 sessionsRouter.get('/sessions/:id/messages', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
-    const data = await getSessionMessages(user.id, req.params.id!)
+    const data = await getSessionMessages(req.params.id!)
     res.status(200).json(ok(data))
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -75,9 +69,8 @@ sessionsRouter.get('/sessions/:id/messages', async (req, res) => {
 
 sessionsRouter.put('/sessions/:id/messages', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
     const body = (req.body ?? {}) as SessionMessagesPayload
-    const data = await putSessionMessages(user.id, req.params.id!, body)
+    const data = await putSessionMessages(req.params.id!, body)
     res.status(200).json(ok(data))
   } catch (error) {
     if (error instanceof NotFoundError) {

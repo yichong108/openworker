@@ -2,7 +2,7 @@
  * 解析 POST SSE（text/event-stream）响应流
  */
 
-import { getApiBaseUrl, getStoredAccessToken } from '@/renderer/src/api/request'
+import { getApiBaseUrl } from '@/renderer/src/api/request'
 
 export type SseHandlers = {
   /** data 帧（无 event 名或默认） */
@@ -27,13 +27,11 @@ export async function postSse(
   handlers: SseHandlers,
   signal?: AbortSignal
 ): Promise<void> {
-  const token = getStoredAccessToken()
   const res = await fetch(`${getApiBaseUrl()}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      Accept: 'text/event-stream'
     },
     body: JSON.stringify(body ?? {}),
     signal

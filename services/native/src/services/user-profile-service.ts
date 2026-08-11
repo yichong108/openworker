@@ -1,14 +1,14 @@
 /**
- * 用户画像持久化 — 按 user_id 读写 facts_json（SQLite TEXT）
+ * 本机画像持久化 — 单行读写 facts_json（SQLite TEXT）
  */
 
 import type { PutUserProfileRequest, UserFactDto, UserProfileDto } from '@openworker/shared'
 
 import { BadRequestError } from '../http/envelope.js'
-import { getDb } from '../db/sqlite.js'
+import { getDb, LOCAL_PROFILE_ID } from '../db/sqlite.js'
 
 type ProfileRow = {
-  user_id: string
+  id: string
   facts_json: string
   updated_at: string
 }
@@ -75,20 +75,19 @@ function parseFactsJson(raw: unknown): UserFactDto[] {
 }
 
 /**
- * 读取用户画像；无记录时返回空 facts。
+ * 读取本机画像；无记录时返回空 facts。
  *
- * @param userId - 用户 id
  * @returns UserProfileDto
  */
-export async function getUserProfile(userId: string): Promise<UserProfileDto> {
+export async function getUserProfile(): Promise<UserProfileDto> {
   const row = getDb()
     .prepare(
-      `SELECT user_id, facts_json, updated_at
+      `SELECT id, facts_json, updated_at
        FROM user_profiles
-       WHERE user_id = ?
+       WHERE id = ?
        LIMIT 1`
     )
-    .get(userId) as ProfileRow | undefined
+    .get(LOCAL_PROFILE_ID) as ProfileRow | undefined
   if (!row) {
     return { facts: [], updatedAt: 0 }
   }
@@ -99,28 +98,24 @@ export async function getUserProfile(userId: string): Promise<UserProfileDto> {
 }
 
 /**
- * 整包覆盖写入用户画像。
+ * 整包覆盖写入本机画像。
  *
- * @param userId - 用户 id
  * @param body - PutUserProfileRequest
  * @returns 写入后的 UserProfileDto
  * @throws BadRequestError 当 body 非法时
  */
-export async function putUserProfile(
-  userId: string,
-  body: PutUserProfileRequest
-): Promise<UserProfileDto> {
+export async function putUserProfile(body: PutUserProfileRequest): Promise<UserProfileDto> {
   const facts = normalizeFacts(body?.facts)
   const now = new Date().toISOString()
   getDb()
     .prepare(
-      `INSERT INTO user_profiles (user_id, facts_json, updated_at)
+      `INSERT INTO user_profiles (id, facts_json, updated_at)
        VALUES (?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
+       ON CONFLICT(id) DO UPDATE SET
          facts_json = excluded.facts_json,
          updated_at = excluded.updated_at`
     )
-    .run(userId, JSON.stringify(facts), now)
+    .run(LOCAL_PROFILE_ID, JSON.stringify(facts), now)
   return {
     facts,
     updatedAt: new Date(now).getTime()

@@ -34,7 +34,6 @@ import { getWorkspace } from '../services/workspace-service.js'
 type AgentUnsubscribe = { unsubscribe: () => void }
 
 type SessionRuntime = {
-  userId: string
   workspaceId: string
   /** 该会话独立的 AG-UI agent（勿跨会话复用）；消息以 agent.messages 为准 */
   agent: SessionAguiAgent
@@ -73,22 +72,15 @@ function makeRunId(): string {
 /**
  * 初始化或校正会话运行时：每个会话绑定独立 AG-UI Agent。
  *
- * @param userId - 用户 id
  * @param workspaceId - 工作区 ID
  * @param sessionId - 会话 ID
  * @param cwd - 工作区路径（可选）
  */
-export function initSessionState(
-  userId: string,
-  workspaceId: string,
-  sessionId: string,
-  cwd?: string
-): void {
+export function initSessionState(workspaceId: string, sessionId: string, cwd?: string): void {
   const existing = sessions.get(sessionId)
   if (existing) {
-    if (existing.workspaceId !== workspaceId || existing.userId !== userId) {
+    if (existing.workspaceId !== workspaceId) {
       const prev = existing.agent
-      existing.userId = userId
       existing.workspaceId = workspaceId
       existing.agent = createAgentForWorkspace(cwd, sessionId, prev.messages)
       void prev.dispose()
@@ -98,7 +90,6 @@ export function initSessionState(
 
   const messages = getCachedSessionMessages(sessionId)
   sessions.set(sessionId, {
-    userId,
     workspaceId,
     agent: createAgentForWorkspace(cwd, sessionId, messages),
     controller: null,
@@ -110,13 +101,12 @@ export function initSessionState(
 /**
  * 确保会话 Agent 已加载完整 Message[]。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  */
-export async function ensureSessionAgentHydrated(userId: string, sessionId: string): Promise<void> {
+export async function ensureSessionAgentHydrated(sessionId: string): Promise<void> {
   const session = sessions.get(sessionId)
   if (!session) return
-  const messages = await ensureSessionMessagesLoaded(userId, sessionId)
+  const messages = await ensureSessionMessagesLoaded(sessionId)
   if (session.agent.messages.length === 0 && messages.length > 0) {
     session.agent.messages = messages
   }
@@ -226,17 +216,12 @@ function truncateMessagesBeforeUserOrdinal(messages: Message[], userOrdinal: num
 /**
  * 将完整 AG-UI Message[] 异步写入 SQLite（失败只打日志）。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  * @param messages - 完整 AG-UI 轨迹
  */
-async function persistSessionMessages(
-  userId: string,
-  sessionId: string,
-  messages: Message[]
-): Promise<void> {
+async function persistSessionMessages(sessionId: string, messages: Message[]): Promise<void> {
   try {
-    await persistSessionAguiMessages(userId, sessionId, messages)
+    await persistSessionAguiMessages(sessionId, messages)
   } catch (error) {
     agentLog.warn(
       `[persistSessionMessages] failed: ${error instanceof Error ? error.message : String(error)}`
@@ -247,23 +232,19 @@ async function persistSessionMessages(
 /**
  * 确保会话 runtime 已根据 SQLite 元数据就绪。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  */
-async function ensureRuntimeReady(
-  userId: string,
-  sessionId: string
-): Promise<SessionRuntime | null> {
-  const meta = await getSession(userId, sessionId)
+async function ensureRuntimeReady(sessionId: string): Promise<SessionRuntime | null> {
+  const meta = await getSession(sessionId)
   let cwd: string | undefined
   try {
-    const ws = await getWorkspace(userId, meta.workspaceId)
+    const ws = await getWorkspace(meta.workspaceId)
     cwd = ws.path?.trim() || undefined
   } catch {
     cwd = undefined
   }
-  initSessionState(userId, meta.workspaceId, sessionId, cwd)
-  await ensureSessionAgentHydrated(userId, sessionId)
+  initSessionState(meta.workspaceId, sessionId, cwd)
+  await ensureSessionAgentHydrated(sessionId)
   return sessions.get(sessionId) ?? null
 }
 
@@ -272,13 +253,11 @@ async function ensureRuntimeReady(
  *
  * 同会话同时只允许一次 run；不同会话可并行。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  * @param userText - 用户输入文本
  * @param options - 发送选项
  */
 export async function runUserMessage(
-  userId: string,
   sessionId: string,
   userText: string,
   options?: AgentSendOptions
@@ -295,7 +274,7 @@ export async function runUserMessage(
 
   let session: SessionRuntime | null
   try {
-    session = await ensureRuntimeReady(userId, sessionId)
+    session = await ensureRuntimeReady(sessionId)
   } catch {
     emitPreRunError(sessionId, '会话不存在或已过期')
     return
@@ -312,7 +291,7 @@ export async function runUserMessage(
   let workspacePath = options?.workspacePath?.trim() || ''
   if (!workspacePath) {
     try {
-      const ws = await getWorkspace(userId, session.workspaceId)
+      const ws = await getWorkspace(session.workspaceId)
       workspacePath = ws.path?.trim() || ''
     } catch {
       workspacePath = ''
@@ -340,7 +319,7 @@ export async function runUserMessage(
       Math.floor(editUserOrdinal)
     )
     clearSessionWorking(sessionId)
-    await persistSessionMessages(userId, sessionId, session.agent.messages)
+    await persistSessionMessages(sessionId, session.agent.messages)
   }
 
   const ac = new AbortController()
@@ -361,7 +340,6 @@ export async function runUserMessage(
   let memorySystemSection: string | undefined
   const memorySummarizer = provider ? createMemorySummarizer(provider) : null
   const prepared = await prepareSessionMemory({
-    userId,
     sessionId,
     messages: fullMessages,
     ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
@@ -417,11 +395,10 @@ export async function runUserMessage(
     if (ac.signal.aborted && latest.controller !== null && latest.controller !== ac) return
 
     latest.agent.messages = restoreFullMessages(latest.agent.messages)
-    await persistSessionMessages(userId, sessionId, latest.agent.messages)
+    await persistSessionMessages(sessionId, latest.agent.messages)
 
     if (memorySummarizer) {
       void refreshUserProfileFromMessages({
-        userId,
         messages: latest.agent.messages,
         summarizer: memorySummarizer
       })
@@ -431,7 +408,7 @@ export async function runUserMessage(
     if (ac.signal.aborted) {
       if (!latest || (latest.controller !== null && latest.controller !== ac)) return
       latest.agent.messages = restoreFullMessages(latest.agent.messages)
-      await persistSessionMessages(userId, sessionId, latest.agent.messages)
+      await persistSessionMessages(sessionId, latest.agent.messages)
       return
     }
     const message = e instanceof Error ? e.message : String(e)
@@ -445,7 +422,7 @@ export async function runUserMessage(
 
     if (latest) {
       latest.agent.messages = restoreFullMessages(latest.agent.messages)
-      await persistSessionMessages(userId, sessionId, latest.agent.messages)
+      await persistSessionMessages(sessionId, latest.agent.messages)
     }
   } finally {
     const latest = sessions.get(sessionId)

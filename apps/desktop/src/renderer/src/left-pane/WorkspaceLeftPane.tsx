@@ -3,33 +3,17 @@ import { useWorkspaceLeftPane } from './useWorkspaceLeftPane'
 import {
   FolderAddOutlined,
   InboxOutlined,
-  LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
   RightOutlined,
-  SettingOutlined,
-  UserOutlined
+  SettingOutlined
 } from '@ant-design/icons'
-import { Avatar, Button, Dropdown, Input, Modal, Typography } from 'antd'
+import { Button, Dropdown, Input, Modal, Typography } from 'antd'
 import type { DragEvent } from 'react'
 import { createPortal } from 'react-dom'
 
-import { useAuthStore } from '@/renderer/src/store/auth-store'
-
 const { Text } = Typography
-
-/**
- * 由用户名生成头像展示用首字（无用户名时回退空串）
- *
- * @param username - 登录用户名
- * @returns 用于 Avatar 的单个字符
- */
-function getUserAvatarLabel(username: string | undefined): string {
-  const trimmed = username?.trim() ?? ''
-  if (!trimmed) return ''
-  return trimmed.charAt(0).toUpperCase()
-}
 
 export type WorkspaceLeftPaneProps = {
   /** 顶栏左侧挂载点：侧栏收起时仅将「展开」按钮 portal 到此，展开时按钮在侧栏内 */
@@ -38,12 +22,6 @@ export type WorkspaceLeftPaneProps = {
 
 export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPaneProps) {
   const p = useWorkspaceLeftPane()
-  const authUser = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
-
-  const handleLogout = () => {
-    logout()
-  }
 
   const leftToggleInTopbar = (
     <Button
@@ -257,43 +235,7 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
           )}
           {!p.isSidebarCollapsed ? (
             <div className="app-sidebar-footer">
-              {authUser ? (
-                <Dropdown
-                  menu={{
-                    items: [
-                      {
-                        key: 'logout',
-                        label: '退出登录',
-                        icon: <LogoutOutlined />,
-                        onClick: handleLogout
-                      }
-                    ]
-                  }}
-                  trigger={['click']}
-                  placement="topLeft"
-                  overlayClassName="app-sidebar-user-dropdown"
-                  overlayStyle={{ minWidth: 120 }}
-                >
-                  <button
-                    type="button"
-                    className="app-sidebar-user"
-                    aria-label={`当前用户 ${authUser.username}，打开用户菜单`}
-                  >
-                    <Avatar
-                      size={28}
-                      className="app-sidebar-user-avatar"
-                      icon={!getUserAvatarLabel(authUser.username) ? <UserOutlined /> : undefined}
-                    >
-                      {getUserAvatarLabel(authUser.username)}
-                    </Avatar>
-                    <Text className="app-sidebar-user-name" ellipsis>
-                      {authUser.username}
-                    </Text>
-                  </button>
-                </Dropdown>
-              ) : (
-                <div className="app-sidebar-user-spacer" />
-              )}
+              <div className="app-sidebar-footer-spacer" />
               <Button
                 type="text"
                 icon={<SettingOutlined />}

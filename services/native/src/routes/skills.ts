@@ -6,16 +6,13 @@ import { Router, type Router as ExpressRouter } from 'express'
 
 import { listUserSkills } from '../agent/skills.js'
 import { fail, ok } from '../http/envelope.js'
-import { requireAuth } from '../middleware/auth.js'
 
 /**
- * Skills 路由（需 JWT）
+ * Skills 路由（本机单租户）
  *
  * - GET /skills — 列出 ~/.openworker/skills
  */
 export const skillsRouter: ExpressRouter = Router()
-
-skillsRouter.use(requireAuth)
 
 skillsRouter.get('/skills', async (_req, res) => {
   try {

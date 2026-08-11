@@ -4,10 +4,10 @@ OpenWorker 本地 Native 服务（Node.js + Express + SQLite）。
 
 为 Desktop 提供：
 
-1. **数据面**（与 `@openworker/api` 契约对齐）：鉴权、设置、工作区/会话、用户画像
+1. **数据面**：设置、工作区/会话、本机画像（单租户，无登录）
 2. **Agent 运行时**：会话级 UniAgent、AG-UI SSE 流、skills / MCP / 终端
 
-存储为 SQLite，**无 MySQL / Redis / RAG**。
+存储为 SQLite，**无 MySQL / Redis / RAG**；本机单租户（schema v2），无用户/JWT。
 
 SQLite 使用 Node 内置 [`node:sqlite`](https://nodejs.org/api/sqlite.html)（`DatabaseSync`），无需编译原生插件；需要 Node.js ≥ 22.5。
 
@@ -21,7 +21,7 @@ pnpm install
 pnpm native:dev
 ```
 
-默认监听 `http://127.0.0.1:3200`（仅绑定回环地址）。默认管理员：`admin` / `admin`。
+默认监听 `http://127.0.0.1:3200`（仅绑定回环地址）。
 
 ## 与 Desktop 的关系
 
@@ -37,45 +37,44 @@ Desktop **Renderer** 直连本服务（HTTP + SSE）；Main 不再代理业务 I
 
 ## 与 api 的差异
 
-| 项                  | api (`:3100`)            | native (`:3200`)           |
-| ------------------- | ------------------------ | -------------------------- |
-| 数据库              | MySQL                    | SQLite                     |
-| 缓存                | Redis（settings 短缓存） | 无                         |
-| RAG / 知识库        | 有                       | **未实现**（请继续用 api） |
-| Agent 运行时        | 无                       | **有**（UniAgent + SSE）   |
-| 路径与 JWT envelope | 对齐                     | 对齐                       |
+| 项           | api (`:3100`)            | native (`:3200`)           |
+| ------------ | ------------------------ | -------------------------- |
+| 数据库       | MySQL                    | SQLite                     |
+| 缓存         | Redis（settings 短缓存） | 无                         |
+| RAG / 知识库 | 有                       | **未实现**（请继续用 api） |
+| Agent 运行时 | 无                       | **有**（UniAgent + SSE）   |
+| 鉴权         | JWT 多用户               | **无**（本机单租户）       |
 
 ## HTTP 端点
 
+本机单租户：业务路由无需 Bearer。仅绑定 `127.0.0.1`。
+
 ### 数据面
 
-| Method           | Path                                | Auth   | 说明                |
-| ---------------- | ----------------------------------- | ------ | ------------------- |
-| `GET`            | `/health`                           | 无     | SQLite 探活         |
-| `POST`           | `/auth/login`                       | 无     | 账号密码 → JWT      |
-| `GET`            | `/auth/me`                          | Bearer | 恢复会话用户        |
-| `GET`            | `/users`                            | 无     | 用户列表            |
-| `GET`/`PUT`      | `/settings`                         | 无     | 全局 AppSettings    |
-| `GET`/`PUT`      | `/me/profile`                       | JWT    | 用户画像            |
-| `GET`/`POST`     | `/workspaces`                       | JWT    | 工作区列表/创建     |
-| `PUT`            | `/workspaces/reorder`               | JWT    | 重排                |
-| `PATCH`/`DELETE` | `/workspaces/:id`                   | JWT    | 更新/软删           |
-| `GET`/`POST`     | `/workspaces/:workspaceId/sessions` | JWT    | 会话列表/创建       |
-| `PATCH`/`DELETE` | `/sessions/:id`                     | JWT    | 重命名·touch / 软删 |
-| `GET`/`PUT`      | `/sessions/:id/messages`            | JWT    | 消息整包读写        |
+| Method           | Path                                | 说明                |
+| ---------------- | ----------------------------------- | ------------------- |
+| `GET`            | `/health`                           | SQLite 探活         |
+| `GET`/`PUT`      | `/settings`                         | 全局 AppSettings    |
+| `GET`/`PUT`      | `/me/profile`                       | 本机画像（单行）    |
+| `GET`/`POST`     | `/workspaces`                       | 工作区列表/创建     |
+| `PUT`            | `/workspaces/reorder`               | 重排                |
+| `PATCH`/`DELETE` | `/workspaces/:id`                   | 更新/软删           |
+| `GET`/`POST`     | `/workspaces/:workspaceId/sessions` | 会话列表/创建       |
+| `PATCH`/`DELETE` | `/sessions/:id`                     | 重命名·touch / 软删 |
+| `GET`/`PUT`      | `/sessions/:id/messages`            | 消息整包读写        |
 
 ### Agent / 工具面
 
-| Method       | Path                         | Auth | 说明                                               |
-| ------------ | ---------------------------- | ---- | -------------------------------------------------- |
-| `POST`       | `/sessions/:id/agent/run`    | JWT  | Body `{ text, mode?, ... }`；**SSE** 推 AG-UI 事件 |
-| `POST`       | `/sessions/:id/agent/cancel` | JWT  | 取消当前 run                                       |
-| `GET`        | `/skills`                    | JWT  | 列出 `~/.openworker/skills`                        |
-| `POST`       | `/mcp/probe`                 | JWT  | 探测 MCP 工具                                      |
-| `GET`/`POST` | `/mcp/warmup`                | JWT  | 读/跑 MCP 池化预热                                 |
-| `POST`       | `/terminal/run`              | JWT  | 右侧栏终端；**SSE** 推 stdout/stderr               |
-| `POST`       | `/terminal/cancel`           | JWT  | 取消终端                                           |
-| `POST`       | `/terminal/complete`         | JWT  | 路径补全                                           |
+| Method       | Path                         | 说明                                               |
+| ------------ | ---------------------------- | -------------------------------------------------- |
+| `POST`       | `/sessions/:id/agent/run`    | Body `{ text, mode?, ... }`；**SSE** 推 AG-UI 事件 |
+| `POST`       | `/sessions/:id/agent/cancel` | 取消当前 run                                       |
+| `GET`        | `/skills`                    | 列出 `~/.openworker/skills`                        |
+| `POST`       | `/mcp/probe`                 | 探测 MCP 工具                                      |
+| `GET`/`POST` | `/mcp/warmup`                | 读/跑 MCP 池化预热                                 |
+| `POST`       | `/terminal/run`              | 右侧栏终端；**SSE** 推 stdout/stderr               |
+| `POST`       | `/terminal/cancel`           | 取消终端                                           |
+| `POST`       | `/terminal/complete`         | 路径补全                                           |
 
 响应格式：多数 `{ code, message, data }`；settings 为 `{ data }`；health 为 `{ status, timestamp, checks }`；SSE 为 `text/event-stream`（结束帧 `event: done`）。
 
@@ -87,7 +86,9 @@ Desktop **Renderer** 直连本服务（HTTP + SSE）；Main 不再代理业务 I
 ~/.openworker/native/native.sqlite
 ```
 
-业务表：`users`、`app_settings`、`workspaces`、`sessions`、`user_profiles`（另有 `_meta` 骨架标记）。不含知识库表。
+业务表（schema v2）：`app_settings`、`workspaces`、`sessions`、`user_profiles`（本机单行画像，`id=default`）；`_meta` 含 `schema_version`。不含 `users` / 知识库表。
+
+启动时若检测到旧多用户库，会将 `admin`（或最早用户）的数据迁移到单租户表。异常半迁移时可删除 `native.sqlite` 后冷启动。
 
 可选覆盖（例如单测隔离）：
 
@@ -131,9 +132,7 @@ SQLite 不可用时返回 HTTP `503`，`status` 为 `degraded`。
 
 参见 [`.env.example`](./.env.example)。
 
-| 变量             | 默认                                 | 说明                |
-| ---------------- | ------------------------------------ | ------------------- |
-| `PORT`           | `3200`                               | HTTP 监听端口       |
-| `SQLITE_PATH`    | `~/.openworker/native/native.sqlite` | SQLite 文件路径     |
-| `JWT_SECRET`     | 开发占位密钥                         | JWT 签名密钥        |
-| `JWT_EXPIRES_IN` | `7d`                                 | access token 有效期 |
+| 变量          | 默认                                 | 说明            |
+| ------------- | ------------------------------------ | --------------- |
+| `PORT`        | `3200`                               | HTTP 监听端口   |
+| `SQLITE_PATH` | `~/.openworker/native/native.sqlite` | SQLite 文件路径 |

@@ -49,19 +49,15 @@ export function seedSessionMessagesCache(sessionId: string, messages: Message[])
 /**
  * 确保会话消息已从 SQLite 加载到内存。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  * @returns AG-UI Message 列表
  */
-export async function ensureSessionMessagesLoaded(
-  userId: string,
-  sessionId: string
-): Promise<Message[]> {
+export async function ensureSessionMessagesLoaded(sessionId: string): Promise<Message[]> {
   if (messagesHydrated.has(sessionId)) {
     return getCachedSessionMessages(sessionId)
   }
   try {
-    const payload = await getSessionMessages(userId, sessionId)
+    const payload = await getSessionMessages(sessionId)
     const messages = asMessages(payload.messages ?? [])
     seedSessionMessagesCache(sessionId, messages)
     return messages
@@ -77,20 +73,18 @@ export async function ensureSessionMessagesLoaded(
 /**
  * 将完整 AG-UI Message[] 写入内存与 SQLite，并 touch 会话。
  *
- * @param userId - 用户 id
  * @param sessionId - 会话 ID
  * @param messages - 完整 AG-UI 轨迹
  */
 export async function persistSessionAguiMessages(
-  userId: string,
   sessionId: string,
   messages: Message[]
 ): Promise<void> {
   messagesBySession.set(sessionId, messages)
   messagesHydrated.add(sessionId)
-  await putSessionMessages(userId, sessionId, { messages })
+  await putSessionMessages(sessionId, { messages })
   try {
-    await patchSession(userId, sessionId, { touch: true })
+    await patchSession(sessionId, { touch: true })
   } catch {
     // touch 失败不阻断主流程
   }

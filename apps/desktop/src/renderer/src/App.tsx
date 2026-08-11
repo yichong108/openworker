@@ -1,6 +1,6 @@
 import '@/renderer/src/App.scss'
 import { BugOutlined } from '@ant-design/icons'
-import { App as AntdApp, ConfigProvider, FloatButton, Menu, MenuProps, Spin } from 'antd'
+import { App as AntdApp, ConfigProvider, FloatButton, Menu, MenuProps } from 'antd'
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -12,7 +12,6 @@ import {
 
 import { AboutOpenworkerModal } from '@/renderer/src/AboutOpenworkerModal'
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
-import { LoginPage } from '@/renderer/src/auth/LoginPage'
 import { WorkspaceCenterPane } from '@/renderer/src/center-pane'
 import { WorkspaceLeftPane } from '@/renderer/src/left-pane'
 import { renderLog } from '@/renderer/src/logger'
@@ -21,7 +20,6 @@ import {
   resetNativeTitlebarModalStack
 } from '@/renderer/src/native-titlebar-bridge'
 import { WorkspaceRightPane } from '@/renderer/src/right-pane/WorkspaceRightPane'
-import { useAuthStore } from '@/renderer/src/store/auth-store'
 import { useUiStore } from '@/renderer/src/store/ui-store'
 import { useWorkspaceStore } from '@/renderer/src/store/workspace-store'
 import { type AboutAppInfo, HOME_WORKSPACE_ID } from '@/shared/ipc'
@@ -40,45 +38,10 @@ const WIN_MENUBAR_MENU_THEME = {
   }
 } as const
 
-export function App() {
-  const authHydrated = useAuthStore((s) => s.hydrated)
-  const accessToken = useAuthStore((s) => s.accessToken)
-  const dataHydrated = useAuthStore((s) => s.dataHydrated)
-  const hydrateAuth = useAuthStore((s) => s.hydrate)
-
-  useEffect(() => {
-    void hydrateAuth()
-  }, [hydrateAuth])
-
-  if (!authHydrated) {
-    return (
-      <div className="app-auth-boot">
-        <Spin size="large" />
-      </div>
-    )
-  }
-
-  if (!accessToken) {
-    return <LoginPage />
-  }
-
-  if (!dataHydrated) {
-    return (
-      <div className="app-auth-boot">
-        <Spin size="large" />
-      </div>
-    )
-  }
-
-  return <AuthenticatedAppShell />
-}
-
 /**
- * 已登录后的主工作区壳（三栏布局）
- *
- * 与登录闸门分离，避免未登录时仍初始化工作区相关副作用。
+ * 桌面应用根组件：本机单租户，启动即进入主工作区壳（三栏布局）。
  */
-function AuthenticatedAppShell() {
+export function App() {
   const RIGHT_PANE_MIN_WIDTH = 420
   const RIGHT_PANE_MAX_WIDTH = 860
   const RIGHT_PANE_DEFAULT_WIDTH = 560

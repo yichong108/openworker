@@ -1,6 +1,4 @@
-import bcrypt from 'bcryptjs'
 import { mkdirSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { env } from '../config/env.js'
@@ -8,12 +6,11 @@ import { env } from '../config/env.js'
 /** 进程内单例数据库连接 */
 let db: DatabaseSync | null = null
 
-/** 默认管理员账号（仅在 users 表无该用户时写入） */
-const DEFAULT_ADMIN_USERNAME = 'admin'
-/** 默认管理员明文密码；生产环境应尽快修改 */
-const DEFAULT_ADMIN_PASSWORD = 'admin'
-/** bcrypt 计算成本 */
-const BCRYPT_ROUNDS = 10
+/** 当前单租户 schema 版本（写入 `_meta.schema_version`） */
+const SCHEMA_VERSION = '2'
+
+/** 本机画像单行主键（对齐 app_settings） */
+export const LOCAL_PROFILE_ID = 'default'
 
 /**
  * 获取（并按需打开）SQLite 连接
@@ -39,10 +36,268 @@ export function getDb(): DatabaseSync {
 }
 
 /**
- * 确保业务 schema 已就绪，并写入默认管理员账号
+ * 判断表是否存在。
  *
- * 创建 `_meta` 与业务表（users / app_settings / workspaces / sessions / user_profiles）。
- * 使用 IF NOT EXISTS / 按用户名查重，可安全在每次启动时调用。
+ * @param database - SQLite 连接
+ * @param tableName - 表名
+ */
+function tableExists(database: DatabaseSync, tableName: string): boolean {
+  const row = database
+    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`)
+    .get(tableName) as { name: string } | undefined
+  return Boolean(row?.name)
+}
+
+/**
+ * 读取 `_meta.schema_version`。
+ *
+ * @param database - SQLite 连接
+ * @returns 版本字符串；未写入时返回 null
+ */
+function getSchemaVersion(database: DatabaseSync): string | null {
+  if (!tableExists(database, '_meta')) return null
+  const row = database
+    .prepare(`SELECT value FROM _meta WHERE key = ? LIMIT 1`)
+    .get('schema_version') as { value: string } | undefined
+  return row?.value ?? null
+}
+
+/**
+ * 写入 `_meta.schema_version`。
+ *
+ * @param database - SQLite 连接
+ * @param version - 版本字符串
+ */
+function setSchemaVersion(database: DatabaseSync, version: string): void {
+  database
+    .prepare(
+      `INSERT INTO _meta (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    )
+    .run('schema_version', version)
+}
+
+/**
+ * 从旧多用户库中选定迁移源用户：优先 admin，否则最早创建的用户。
+ *
+ * @param database - SQLite 连接
+ * @returns 源 user_id；无用户时返回 null
+ */
+function resolveMigrationSourceUserId(database: DatabaseSync): string | null {
+  if (!tableExists(database, 'users')) return null
+  const admin = database.prepare(`SELECT id FROM users WHERE username = ? LIMIT 1`).get('admin') as
+    | { id: string }
+    | undefined
+  if (admin?.id) return admin.id
+  const first = database.prepare(`SELECT id FROM users ORDER BY created_at ASC LIMIT 1`).get() as
+    | { id: string }
+    | undefined
+  return first?.id ?? null
+}
+
+/**
+ * 将旧多用户表迁移为本机单租户表（schema v2）。
+ *
+ * 拷贝选定用户的 workspaces / sessions / profile，再删除旧表。
+ *
+ * @param database - SQLite 连接
+ */
+function migrateFromMultiUserSchema(database: DatabaseSync): void {
+  const sourceUserId = resolveMigrationSourceUserId(database)
+  console.log(
+    `[native] migrating sqlite to schema v${SCHEMA_VERSION}` +
+      (sourceUserId ? ` (source user_id=${sourceUserId})` : ' (no source user)')
+  )
+
+  database.exec('PRAGMA foreign_keys = OFF')
+  database.exec('BEGIN')
+  try {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS workspaces_v2 (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        path TEXT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT NULL DEFAULT NULL
+      )
+    `)
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS sessions_v2 (
+        id TEXT PRIMARY KEY NOT NULL,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        messages_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT NULL DEFAULT NULL,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces_v2 (id)
+      )
+    `)
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS user_profiles_v2 (
+        id TEXT PRIMARY KEY NOT NULL,
+        facts_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `)
+
+    if (sourceUserId && tableExists(database, 'workspaces')) {
+      database
+        .prepare(
+          `INSERT OR IGNORE INTO workspaces_v2
+             (id, name, path, sort_order, is_default, created_at, updated_at, deleted_at)
+           SELECT id, name, path, sort_order, is_default, created_at, updated_at, deleted_at
+           FROM workspaces
+           WHERE user_id = ?`
+        )
+        .run(sourceUserId)
+    }
+
+    if (sourceUserId && tableExists(database, 'sessions')) {
+      database
+        .prepare(
+          `INSERT OR IGNORE INTO sessions_v2
+             (id, workspace_id, name, messages_json, created_at, updated_at, deleted_at)
+           SELECT id, workspace_id, name, messages_json, created_at, updated_at, deleted_at
+           FROM sessions
+           WHERE user_id = ?`
+        )
+        .run(sourceUserId)
+    }
+
+    if (sourceUserId && tableExists(database, 'user_profiles')) {
+      database
+        .prepare(
+          `INSERT OR IGNORE INTO user_profiles_v2 (id, facts_json, updated_at)
+           SELECT ?, facts_json, updated_at
+           FROM user_profiles
+           WHERE user_id = ?
+           LIMIT 1`
+        )
+        .run(LOCAL_PROFILE_ID, sourceUserId)
+    }
+
+    if (tableExists(database, 'sessions')) {
+      database.exec(`DROP TABLE sessions`)
+    }
+    if (tableExists(database, 'workspaces')) {
+      database.exec(`DROP TABLE workspaces`)
+    }
+    if (tableExists(database, 'user_profiles')) {
+      database.exec(`DROP TABLE user_profiles`)
+    }
+    if (tableExists(database, 'users')) {
+      database.exec(`DROP TABLE users`)
+    }
+
+    database.exec(`ALTER TABLE workspaces_v2 RENAME TO workspaces`)
+    database.exec(`ALTER TABLE sessions_v2 RENAME TO sessions`)
+    database.exec(`ALTER TABLE user_profiles_v2 RENAME TO user_profiles`)
+
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_workspaces_sort
+        ON workspaces (sort_order)
+    `)
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_workspaces_deleted
+        ON workspaces (deleted_at)
+    `)
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sessions_ws_updated
+        ON sessions (workspace_id, updated_at)
+    `)
+    database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_sessions_ws_deleted
+        ON sessions (workspace_id, deleted_at)
+    `)
+
+    setSchemaVersion(database, SCHEMA_VERSION)
+    database.exec('COMMIT')
+    console.log(`[native] sqlite migration to schema v${SCHEMA_VERSION} complete`)
+  } catch (error) {
+    database.exec('ROLLBACK')
+    console.error('[native] sqlite migration failed', error)
+    throw error
+  } finally {
+    database.exec('PRAGMA foreign_keys = ON')
+  }
+}
+
+/**
+ * 创建单租户业务表（幂等）。
+ *
+ * @param database - SQLite 连接
+ */
+function createSingleTenantTables(database: DatabaseSync): void {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      id TEXT PRIMARY KEY NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS workspaces (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      path TEXT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT NULL DEFAULT NULL
+    )
+  `)
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_workspaces_sort
+      ON workspaces (sort_order)
+  `)
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_workspaces_deleted
+      ON workspaces (deleted_at)
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY NOT NULL,
+      workspace_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      messages_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT NULL DEFAULT NULL,
+      FOREIGN KEY (workspace_id) REFERENCES workspaces (id)
+    )
+  `)
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_ws_updated
+      ON sessions (workspace_id, updated_at)
+  `)
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_sessions_ws_deleted
+      ON sessions (workspace_id, deleted_at)
+  `)
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id TEXT PRIMARY KEY NOT NULL,
+      facts_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+}
+
+/**
+ * 确保业务 schema 已就绪（本机单租户 schema v2）
+ *
+ * 创建 `_meta` 与业务表（app_settings / workspaces / sessions / user_profiles）。
+ * 若检测到旧多用户表（含 `users` 或 schema_version 非 2），则迁移选定用户数据后切换。
  * JSON 字段以 TEXT 存储；时间戳由业务层显式写入 ISO 字符串。
  */
 export function ensureSchema(): void {
@@ -59,109 +314,34 @@ export function ensureSchema(): void {
     .prepare(`INSERT OR IGNORE INTO _meta (key, value) VALUES (?, ?)`)
     .run('initialized_at', new Date().toISOString())
 
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
+  const version = getSchemaVersion(database)
+  const needsMigration =
+    version !== SCHEMA_VERSION &&
+    (tableExists(database, 'users') ||
+      (tableExists(database, 'workspaces') && version !== SCHEMA_VERSION))
 
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS app_settings (
-      id TEXT PRIMARY KEY NOT NULL,
-      payload TEXT NOT NULL,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
+  if (needsMigration && tableExists(database, 'users')) {
+    migrateFromMultiUserSchema(database)
+    createSingleTenantTables(database)
+    setSchemaVersion(database, SCHEMA_VERSION)
+    return
+  }
 
-  // 复合主键 (user_id, id)：允许每用户共用固定 id（如 workspace-home）
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS workspaces (
-      user_id TEXT NOT NULL,
-      id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      path TEXT NULL,
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      is_default INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      deleted_at TEXT NULL DEFAULT NULL,
-      PRIMARY KEY (user_id, id),
-      FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-  `)
+  // 已是 v2，或全新空库：确保表存在
+  if (tableExists(database, 'workspaces')) {
+    // 防御：若 workspaces 仍含 user_id 列且无 users（异常半迁移），要求重建
+    const cols = database.prepare(`PRAGMA table_info(workspaces)`).all() as Array<{
+      name: string
+    }>
+    if (cols.some((c) => c.name === 'user_id')) {
+      throw new Error(
+        '[native] legacy workspaces.user_id detected without users table; delete native.sqlite and restart'
+      )
+    }
+  }
 
-  database.exec(`
-    CREATE INDEX IF NOT EXISTS idx_workspaces_user_sort
-      ON workspaces (user_id, sort_order)
-  `)
-  database.exec(`
-    CREATE INDEX IF NOT EXISTS idx_workspaces_user_deleted
-      ON workspaces (user_id, deleted_at)
-  `)
-
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      user_id TEXT NOT NULL,
-      id TEXT NOT NULL,
-      workspace_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      messages_json TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      deleted_at TEXT NULL DEFAULT NULL,
-      PRIMARY KEY (user_id, id),
-      FOREIGN KEY (user_id) REFERENCES users (id),
-      FOREIGN KEY (user_id, workspace_id) REFERENCES workspaces (user_id, id)
-    )
-  `)
-
-  database.exec(`
-    CREATE INDEX IF NOT EXISTS idx_sessions_user_ws_updated
-      ON sessions (user_id, workspace_id, updated_at)
-  `)
-  database.exec(`
-    CREATE INDEX IF NOT EXISTS idx_sessions_ws_deleted
-      ON sessions (user_id, workspace_id, deleted_at)
-  `)
-
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS user_profiles (
-      user_id TEXT PRIMARY KEY NOT NULL,
-      facts_json TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-  `)
-
-  seedDefaultAdmin()
-}
-
-/**
- * 若不存在 admin 用户，则插入默认管理员（账号/密码均为 admin）
- *
- * 使用查重后再插入，避免重复启动时覆盖已修改的密码。
- */
-function seedDefaultAdmin(): void {
-  const database = getDb()
-  const existing = database
-    .prepare('SELECT id FROM users WHERE username = ? LIMIT 1')
-    .get(DEFAULT_ADMIN_USERNAME) as { id: string } | undefined
-  if (existing) return
-
-  const passwordHash = bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, BCRYPT_ROUNDS)
-  database
-    .prepare(
-      `INSERT INTO users (id, username, password_hash, role, created_at)
-       VALUES (?, ?, ?, ?, ?)`
-    )
-    .run(randomUUID(), DEFAULT_ADMIN_USERNAME, passwordHash, 'admin', new Date().toISOString())
-  console.log(
-    `[native] seeded default admin user: ${DEFAULT_ADMIN_USERNAME} / ${DEFAULT_ADMIN_PASSWORD}`
-  )
+  createSingleTenantTables(database)
+  setSchemaVersion(database, SCHEMA_VERSION)
 }
 
 /**

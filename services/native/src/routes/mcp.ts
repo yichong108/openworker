@@ -12,18 +12,15 @@ import {
   startMcpWarmup
 } from '../agent/mcp-warmup.js'
 import { fail, ok } from '../http/envelope.js'
-import { requireAuth } from '../middleware/auth.js'
 
 /**
- * MCP 路由（需 JWT）
+ * MCP 路由（本机单租户）
  *
  * - POST /mcp/probe
  * - GET  /mcp/warmup
  * - POST /mcp/warmup
  */
 export const mcpRouter: ExpressRouter = Router()
-
-mcpRouter.use(requireAuth)
 
 mcpRouter.post('/mcp/probe', async (req, res) => {
   try {

@@ -241,11 +241,25 @@ export function useWorkspaceCenterPane({
     return next
   }, [liveAguiEvents, runStats])
 
+  /**
+   * 从 Native 拉取会话消息并写入本地 state。
+   *
+   * 非 force 时若本地消息更长（如首发乐观追加），则不覆盖，避免空列表冲掉回显。
+   *
+   * @param sessionId - 会话 id
+   * @param force - 为 true 时强制以服务端列表覆盖本地
+   */
   const ensureSessionMessages = useCallback(async (sessionId: string, force = false) => {
     if (!sessionId) return
     if (!force && hydratedMessageSessions.current.has(sessionId)) return
     const list = await apiGetSessionChatMessages(sessionId)
-    setMessages((m) => ({ ...m, [sessionId]: list }))
+    setMessages((m) => {
+      const local = m[sessionId] ?? []
+      if (!force && local.length > list.length) {
+        return m
+      }
+      return { ...m, [sessionId]: list }
+    })
     hydratedMessageSessions.current.add(sessionId)
   }, [])
 
@@ -622,6 +636,8 @@ export function useWorkspaceCenterPane({
         return
       }
       let sessionId: string
+      /** 空白首发已在 setActiveId 前写入乐观 user，避免后续重复追加 */
+      let userMessageAppended = false
       if (activeId) {
         sessionId = activeId
       } else {
@@ -632,6 +648,17 @@ export function useWorkspaceCenterPane({
           const provisional = t.replace(/\s+/g, ' ').trim().slice(0, 50) || '新会话'
           const created = await apiCreateSession(composerSelectedWorkspaceId, provisional)
           sessionId = created.id
+          // 必须在 setActiveId / await 之前标记 hydrate 并乐观追加，
+          // 否则 activeId effect 会拉到空 messages 并覆盖本地回显
+          hydratedMessageSessions.current.add(sessionId)
+          setMessages((m) => {
+            const cur = m[sessionId] ?? []
+            return {
+              ...m,
+              [sessionId]: [...cur, { id: randomId(), role: 'user' as const, content: t }]
+            }
+          })
+          userMessageAppended = true
           setActiveId(sessionId)
           await refreshSessionsForWorkspace(composerSelectedWorkspaceId)
         } catch (error) {
@@ -647,14 +674,16 @@ export function useWorkspaceCenterPane({
         return
       }
       sendInFlightRef.current.add(sessionId)
-      hydratedMessageSessions.current.add(sessionId)
-      setMessages((m) => {
-        const cur = m[sessionId] ?? []
-        return {
-          ...m,
-          [sessionId]: [...cur, { id: randomId(), role: 'user' as const, content: t }]
-        }
-      })
+      if (!userMessageAppended) {
+        hydratedMessageSessions.current.add(sessionId)
+        setMessages((m) => {
+          const cur = m[sessionId] ?? []
+          return {
+            ...m,
+            [sessionId]: [...cur, { id: randomId(), role: 'user' as const, content: t }]
+          }
+        })
+      }
       try {
         const r = await apiSendAgentMessage(
           sessionId,

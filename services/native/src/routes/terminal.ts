@@ -8,11 +8,10 @@ import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'
-import { getAuthedUser, requireAuth } from '../middleware/auth.js'
 import { getWorkspace } from '../services/workspace-service.js'
 
 /**
- * Terminal 路由（需 JWT）
+ * Terminal 路由（本机单租户）
  *
  * - POST /terminal/run — SSE 推送 stdout/stderr，结束帧含完整 output
  * - POST /terminal/cancel
@@ -20,10 +19,7 @@ import { getWorkspace } from '../services/workspace-service.js'
  */
 export const terminalRouter: ExpressRouter = Router()
 
-terminalRouter.use(requireAuth)
-
 terminalRouter.post('/terminal/run', async (req, res) => {
-  const user = getAuthedUser(req)
   const body = (req.body ?? {}) as { workspaceId?: string; command?: string }
   const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId.trim() : ''
   const command = typeof body.command === 'string' ? body.command : ''
@@ -35,7 +31,7 @@ terminalRouter.post('/terminal/run', async (req, res) => {
 
   let cwd: string
   try {
-    const ws = await getWorkspace(user.id, workspaceId)
+    const ws = await getWorkspace(workspaceId)
     cwd = ws.path?.trim() || ''
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -108,7 +104,6 @@ terminalRouter.post('/terminal/cancel', async (req, res) => {
 
 terminalRouter.post('/terminal/complete', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
     const body = (req.body ?? {}) as { workspaceId?: string; commandLine?: string }
     const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId.trim() : ''
     const commandLine = typeof body.commandLine === 'string' ? body.commandLine : ''
@@ -116,7 +111,7 @@ terminalRouter.post('/terminal/complete', async (req, res) => {
       res.status(200).json(fail(40050, 'workspaceId is required'))
       return
     }
-    const ws = await getWorkspace(user.id, workspaceId)
+    const ws = await getWorkspace(workspaceId)
     const cwd = ws.path?.trim() || ''
     if (!cwd) {
       res.status(200).json(ok({ items: [] as string[] }))

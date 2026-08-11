@@ -11,27 +11,23 @@ import { subscribeSessionStream } from '../agent/agent-stream.js'
 import { endSse, initSseResponse, writeSsePayload } from '../agent/sse.js'
 import { autoNameSessionFromFirstMessage } from '../agent/session-auto-name.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'
-import { getAuthedUser, requireAuth } from '../middleware/auth.js'
 import { getSession } from '../services/session-service.js'
 
 /**
- * Agent 路由（需 JWT）
+ * Agent 路由（本机单租户）
  *
  * - POST /sessions/:id/agent/run — SSE 推送 AG-UI 事件
  * - POST /sessions/:id/agent/cancel — 取消当前 run
  */
 export const agentRouter: ExpressRouter = Router()
 
-agentRouter.use(requireAuth)
-
 agentRouter.post('/sessions/:id/agent/run', async (req, res) => {
-  const user = getAuthedUser(req)
   const sessionId = req.params.id!
   const body = (req.body ?? {}) as AgentSendOptions & { text?: string }
   const text = typeof body.text === 'string' ? body.text : ''
 
   try {
-    await getSession(user.id, sessionId)
+    await getSession(sessionId)
   } catch (error) {
     if (error instanceof NotFoundError) {
       res.status(200).json(fail(40420, error.message))
@@ -57,10 +53,10 @@ agentRouter.post('/sessions/:id/agent/run', async (req, res) => {
   })
 
   // 首条消息自动命名（与历史 Desktop 行为一致：与 run 并行）
-  void autoNameSessionFromFirstMessage(user.id, sessionId, text)
+  void autoNameSessionFromFirstMessage(sessionId, text)
 
   try {
-    await runUserMessage(user.id, sessionId, text, {
+    await runUserMessage(sessionId, text, {
       mode: body.mode,
       workspacePath: body.workspacePath,
       editUserOrdinal: body.editUserOrdinal
@@ -88,9 +84,8 @@ agentRouter.post('/sessions/:id/agent/run', async (req, res) => {
 
 agentRouter.post('/sessions/:id/agent/cancel', async (req, res) => {
   try {
-    const user = getAuthedUser(req)
     const sessionId = req.params.id!
-    await getSession(user.id, sessionId)
+    await getSession(sessionId)
     cancelRun(sessionId)
     res.status(200).json(ok({ ok: true }))
   } catch (error) {

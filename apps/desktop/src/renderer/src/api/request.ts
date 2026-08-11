@@ -8,9 +8,6 @@ const API_URL =
   import.meta.env.VITE_OPENWORKER_NATIVE_BASE_URL ||
   'http://127.0.0.1:3200'
 
-/** localStorage 中持久化登录会话的 key（与 auth-store 一致） */
-const AUTH_STORAGE_KEY = 'openworker.auth.session'
-
 interface ApiEnvelope<T> {
   code: number
   message: string
@@ -63,31 +60,6 @@ const client = axios.create({
 export function getApiBaseUrl(): string {
   return API_URL.replace(/\/$/, '')
 }
-
-/**
- * 从 localStorage 读取当前 JWT（避免 request ↔ auth-store 循环依赖）。
- *
- * @returns accessToken 或 null
- */
-export function getStoredAccessToken(): string | null {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { accessToken?: unknown }
-    return typeof parsed.accessToken === 'string' && parsed.accessToken ? parsed.accessToken : null
-  } catch {
-    return null
-  }
-}
-
-client.interceptors.request.use((config) => {
-  const token = getStoredAccessToken()
-  if (token) {
-    config.headers = config.headers ?? {}
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
 
 /**
  * 将失败结果转为可展示的错误文案。

@@ -20,7 +20,7 @@
 
 渲染进程通过 [`api/request.ts`](src/renderer/src/api/request.ts) / [`api/native-api.ts`](src/renderer/src/api/native-api.ts) 访问：
 
-- **数据面**：auth / settings / workspaces / sessions / profile
+- **数据面**：settings / workspaces / sessions / profile（本机单租户，无登录）
 - **Agent**：`POST /sessions/:id/agent/run`（SSE 推送 AG-UI 事件）、`POST .../cancel`
 - **skills / MCP / 右侧栏终端**：对应 Native HTTP（终端为 SSE）
 
