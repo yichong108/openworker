@@ -16,7 +16,16 @@ pnpm install
 pnpm native:dev
 ```
 
-默认监听 `http://127.0.0.1:3200`。
+默认监听 `http://127.0.0.1:3200`（仅绑定回环地址）。
+
+## 与 Desktop 的关系
+
+Desktop 主进程会在启动时自动拉起 Native（若端口上 `/health` 已 ok 则复用，不重复占用）：
+
+- **开发**：用系统 Node 跑本包 `dist/desktop-bundle.cjs`（或 `dist/index.js` / tsx 源码）
+- **安装包**：`extraResources` 携带 `desktop-bundle.cjs` → `resources/native/index.js`，以 `ELECTRON_RUN_AS_NODE=1` + Electron 可执行文件运行（无需用户安装 Node）
+
+因此日常开发不必单独开 `pnpm native:dev`；若已手动启动，Desktop 会复用且退出时不杀外部进程。
 
 ## SQLite 路径
 
@@ -57,14 +66,14 @@ SQLite 不可用时返回 HTTP `503`，`status` 为 `degraded`。
 
 ## 脚本
 
-| 命令                    | 说明                  |
-| ----------------------- | --------------------- |
-| `pnpm native:dev`       | 开发模式（tsx watch） |
-| `pnpm native:build`     | 编译到 `dist/`        |
-| `pnpm native:start`     | 运行编译产物          |
-| `pnpm native:typecheck` | TypeScript 检查       |
+| 命令                    | 说明                                             |
+| ----------------------- | ------------------------------------------------ |
+| `pnpm native:dev`       | 开发模式（tsx watch）                            |
+| `pnpm native:build`     | `tsc` + esbuild 单文件 `dist/desktop-bundle.cjs` |
+| `pnpm native:start`     | 运行 `tsc` 产物 `dist/index.js`                  |
+| `pnpm native:typecheck` | TypeScript 检查                                  |
 
-也可在包目录内使用 `pnpm --filter @openworker/native <script>`。
+也可在包目录内使用 `pnpm --filter @openworker/native <script>`。包内另有 `bundle` 脚本仅跑 esbuild。
 
 ## 环境变量
 

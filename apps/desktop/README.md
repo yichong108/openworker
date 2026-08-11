@@ -8,4 +8,14 @@
 
 ## 边界与依赖
 
+### Native 本地服务
+
+主进程在 `app.whenReady` 时通过 [`native-service.ts`](src/main/native-service.ts) 拉起 `@openworker/native`（默认 `http://127.0.0.1:3200`）：
+
+- 开发：系统 Node 跑 monorepo 中的 `desktop-bundle.cjs` / `dist`（无则 tsx）
+- 安装包：`resources/native/index.js` + `ELECTRON_RUN_AS_NODE=1`（`pnpm desktop:build` 会先 `native:build`）
+- `/health` 已就绪则复用，退出时只杀本进程 spawn 的实例
+
+环境变量见 [`.env.example`](.env.example)（`OPENWORKER_NATIVE_PORT` / `OPENWORKER_NATIVE_BASE_URL` / `OPENWORKER_NATIVE_USE_ELECTRON_NODE`）。
+
 ## 反模式（本模块已出现过/严禁）

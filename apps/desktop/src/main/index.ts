@@ -23,6 +23,7 @@ import {
 import { ensureUserSkillsLayout, listUserSkills } from '@/main/agent/skills'
 import { shutdownLangfuseTracing, startLangfuseTracingIfConfigured } from '@/main/langfuse'
 import { mainLog } from '@/main/logger'
+import { startNativeService, stopNativeService } from '@/main/native-service'
 import { clearAccessToken, setAccessToken } from '@/main/auth-token'
 import { migrateLocalWorkspaceSessionToApiIfNeeded } from '@/main/migrate-workspace-session'
 import { autoNameSessionFromFirstMessage } from '@/main/session-auto-name'
@@ -739,6 +740,7 @@ app.whenReady().then(() => {
   void (async () => {
     await loadDevtoolsExtension()
     await ensureUserSkillsLayout()
+    await startNativeService()
     await loadSettingsFromApi()
     // 工作区/会话在登录后经 AUTH_HYDRATE_DATA 拉取，启动时不访问需 JWT 的 API
     registerIpc()
@@ -752,6 +754,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   applicationIsQuitting = true
+  stopNativeService()
   void getMcpHostAgent().mcp.dispose()
   void shutdownLangfuseTracing()
 })

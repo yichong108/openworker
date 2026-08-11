@@ -62,3 +62,19 @@ export function pingSqlite(): boolean {
     return false
   }
 }
+
+/**
+ * 关闭进程内 SQLite 单例连接
+ *
+ * 供 SIGTERM/SIGINT 优雅退出使用；重复调用安全。关闭失败只记日志，避免阻塞进程退出。
+ */
+export function closeDb(): void {
+  if (!db) return
+  try {
+    db.close()
+  } catch (error) {
+    console.error('[native] sqlite close failed', error)
+  } finally {
+    db = null
+  }
+}

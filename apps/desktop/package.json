@@ -10,7 +10,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "electron-vite dev",
     "dev:debug": "electron-vite dev --inspect=9229 --remoteDebuggingPort=9222 --sourcemap",
-    "build": "electron-vite build && electron-builder",
+    "build": "pnpm --filter @openworker/native build && electron-vite build && electron-builder",
     "build:app": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json"
@@ -92,6 +92,10 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../../services/native/dist/desktop-bundle.cjs",
+        "to": "native/index.js"
       }
     ],
     "win": {

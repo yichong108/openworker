@@ -1,5 +1,5 @@
 import cors from 'cors'
-import express from 'express'
+import express, { type Express } from 'express'
 import { healthRouter } from './routes/health.js'
 
 /**
@@ -10,7 +10,7 @@ import { healthRouter } from './routes/health.js'
  *
  * @returns 配置完成的 Express 应用
  */
-export function createApp() {
+export function createApp(): Express {
   const app = express()
 
   app.use(cors())
