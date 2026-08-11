@@ -36,9 +36,18 @@ export const env = {
   },
 
   /**
-   * 知识库原文与关键词索引根目录（每库子目录 `{kbId}/`）
+   * 知识库原文与索引根目录（每库子目录 `{kbId}/`）
    */
   ragDataDir: process.env.RAG_DATA_DIR ?? './data/rag',
+
+  /**
+   * RAG embedding：`none` 关键词；`ollama` 使用 LlamaIndex + 本地 Ollama
+   */
+  ragEmbedding: {
+    provider: (process.env.RAG_EMBEDDING_PROVIDER ?? 'none') as 'none' | 'ollama',
+    ollamaBaseUrl: process.env.RAG_OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434',
+    ollamaEmbedModel: process.env.RAG_OLLAMA_EMBED_MODEL ?? 'nomic-embed-text'
+  },
 
   /**
    * 可选：RAG `withAnswer` 时调用的 OpenAI 兼容 Chat（如 DeepSeek）

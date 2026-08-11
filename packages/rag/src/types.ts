@@ -20,7 +20,7 @@ export type UpsertDocumentInput = {
 }
 
 /**
- * 关键词 / 后续语义检索的查询入参
+ * 关键词 / 语义检索的查询入参
  */
 export type RagQueryInput = {
   text: string
@@ -37,7 +37,7 @@ export type RagQueryResult = {
 /**
  * 单库 RAG 存储抽象
  *
- * MVP 为关键词实现；后续可替换为向量语义实现，保持方法签名不变。
+ * 无 embedding 时为关键词实现；配置 Ollama embedding 时走 LlamaIndex 语义检索。
  */
 export type RagStore = {
   /**
@@ -64,9 +64,28 @@ export type RagStore = {
 }
 
 /**
+ * Ollama embedding 配置（可选注入 embedModel 供测试）
+ */
+export type RagOllamaEmbeddingOptions = {
+  provider: 'ollama'
+  model: string
+  baseUrl: string
+  /**
+   * 可选：注入自定义 Embedding（须实现 getTextEmbedding）
+   *
+   * 用于单测；生产路径由 OllamaEmbedding 创建。
+   */
+  embedModel?: {
+    getTextEmbedding(text: string): Promise<number[]>
+  }
+}
+
+/**
  * 创建 RagStore 的选项
  */
 export type CreateRagStoreOptions = {
-  /** 该知识库的本地持久化目录（含 index.json） */
+  /** 该知识库的本地持久化目录（含 index.json / llamaindex/） */
   persistDir: string
+  /** 未设置时使用关键词索引；provider=ollama 时使用 LlamaIndex 语义索引 */
+  embedding?: RagOllamaEmbeddingOptions
 }

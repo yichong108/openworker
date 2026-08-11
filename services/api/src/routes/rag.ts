@@ -7,7 +7,7 @@ import { queryRag } from '../services/rag-query-service.js'
 /**
  * RAG 检索路由（暂无鉴权，供 Admin 测试页使用）
  *
- * - POST /rag/query — 关键词检索；可选 knowledgeBaseId / withAnswer
+ * - POST /rag/query — 检索（语义或关键词）；可选 knowledgeBaseId / withAnswer
  */
 export const ragRouter = Router()
 

@@ -20,7 +20,8 @@ import { queryRag } from '../api/rag-api'
 /**
  * RAG 服务测试页
  *
- * 支持指定知识库或清空选择以全库关键词检索；可选 withAnswer（需 API 配置 RAG_LLM_*）。
+ * 支持指定知识库或清空选择以全库检索（API 侧：Ollama 语义 / 关键词回退）；
+ * 可选 withAnswer（需 API 配置 RAG_LLM_*）。
  */
 export function RagTestPage() {
   const [bases, setBases] = useState<KnowledgeBase[]>([])
@@ -63,8 +64,9 @@ export function RagTestPage() {
         RAG 测试
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-        当前为关键词检索。知识库留空表示检索全部知识库并合并 top-k。生成回答需在 API 配置
-        RAG_LLM_API_KEY / RAG_LLM_MODEL。
+        检索由 API 决定：配置 RAG_EMBEDDING_PROVIDER=ollama 时为 LlamaIndex + Ollama
+        语义检索（失败回退关键词）；否则为关键词。知识库留空表示全库合并 top-k。生成回答需配置
+        RAG_LLM_API_KEY / RAG_LLM_MODEL。本地可执行 pnpm rag:setup-ollama。
       </Typography.Paragraph>
       {error ? <Alert type="error" showIcon message={error} /> : null}
 

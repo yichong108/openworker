@@ -201,29 +201,44 @@ curl -X PUT http://127.0.0.1:3100/sessions/<id>/messages \
   -d '{"messages":[{"id":"u1","role":"user","content":"hi"}]}'
 ```
 
-## Knowledge / RAG API（关键词 MVP，暂无鉴权）
+## Knowledge / RAG API（暂无鉴权）
 
-环境变量：`RAG_DATA_DIR`（默认 `./data/rag`）；可选回答：`RAG_LLM_API_KEY` / `RAG_LLM_BASE_URL` / `RAG_LLM_MODEL`。
+环境变量：
 
-| Method           | Path                                      | 说明                                                                |
-| ---------------- | ----------------------------------------- | ------------------------------------------------------------------- |
-| GET/POST         | `/knowledge-bases`                        | 列表 / 创建知识库                                                   |
-| GET/PATCH/DELETE | `/knowledge-bases/:id`                    | 详情 / 更新 / 软删                                                  |
-| GET/POST         | `/knowledge-bases/:id/documents`          | 文档列表 / multipart 上传（字段 `file`，`.txt`/`.md`）              |
-| DELETE           | `/knowledge-bases/:kbId/documents/:docId` | 删除文档                                                            |
-| POST             | `/rag/query`                              | 关键词检索；body: `{ query, knowledgeBaseId?, topK?, withAnswer? }` |
+| 变量                                     | 默认                     | 说明                                        |
+| ---------------------------------------- | ------------------------ | ------------------------------------------- |
+| `RAG_DATA_DIR`                           | `./data/rag`             | 原文与索引根目录                            |
+| `RAG_EMBEDDING_PROVIDER`                 | `none`                   | `none`=关键词；`ollama`=LlamaIndex + Ollama |
+| `RAG_OLLAMA_BASE_URL`                    | `http://127.0.0.1:11434` | Ollama 地址                                 |
+| `RAG_OLLAMA_EMBED_MODEL`                 | `nomic-embed-text`       | embedding 模型                              |
+| `RAG_LLM_API_KEY` / `BASE_URL` / `MODEL` | —                        | 可选 `withAnswer` Chat                      |
 
-`knowledgeBaseId` 省略时在全部知识库中检索并按 score 合并 top-k。
+本地一键准备 Ollama（安装、拉模、写入本服务 `.env`）：
+
+```bash
+pnpm rag:setup-ollama
+```
+
+| Method           | Path                                      | 说明                                                          |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| GET/POST         | `/knowledge-bases`                        | 列表 / 创建知识库                                             |
+| GET/PATCH/DELETE | `/knowledge-bases/:id`                    | 详情 / 更新 / 软删                                            |
+| GET/POST         | `/knowledge-bases/:id/documents`          | 文档列表 / multipart 上传（字段 `file`，`.txt`/`.md`）        |
+| DELETE           | `/knowledge-bases/:kbId/documents/:docId` | 删除文档                                                      |
+| POST             | `/rag/query`                              | 检索；body: `{ query, knowledgeBaseId?, topK?, withAnswer? }` |
+
+`knowledgeBaseId` 省略时在全部知识库中检索并按 score 合并 top-k。`provider=ollama` 时为语义检索；Ollama 不可用时 query 回退关键词。
 
 ## 脚本
 
-| 命令                                         | 说明                  |
-| -------------------------------------------- | --------------------- |
-| `pnpm --filter @openworker/api dev`          | 开发模式（tsx watch） |
-| `pnpm --filter @openworker/api build`        | 编译到 `dist/`        |
-| `pnpm --filter @openworker/api start`        | 运行编译产物          |
-| `pnpm --filter @openworker/api typecheck`    | TypeScript 类型检查   |
-| `pnpm --filter @openworker/api docker:up`    | 启动 MySQL + Redis    |
-| `pnpm --filter @openworker/api docker:down`  | 停止并移除容器        |
-| `pnpm --filter @openworker/api docker:logs`  | 跟踪容器日志          |
-| `pnpm --filter @openworker/api docker:reset` | 停止并删除数据卷      |
+| 命令                                         | 说明                             |
+| -------------------------------------------- | -------------------------------- |
+| `pnpm rag:setup-ollama`                      | 安装 Ollama 并配置 RAG embedding |
+| `pnpm --filter @openworker/api dev`          | 开发模式（tsx watch）            |
+| `pnpm --filter @openworker/api build`        | 编译到 `dist/`                   |
+| `pnpm --filter @openworker/api start`        | 运行编译产物                     |
+| `pnpm --filter @openworker/api typecheck`    | TypeScript 类型检查              |
+| `pnpm --filter @openworker/api docker:up`    | 启动 MySQL + Redis               |
+| `pnpm --filter @openworker/api docker:down`  | 停止并移除容器                   |
+| `pnpm --filter @openworker/api docker:logs`  | 跟踪容器日志                     |
+| `pnpm --filter @openworker/api docker:reset` | 停止并删除数据卷                 |

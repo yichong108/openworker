@@ -1,7 +1,7 @@
 {
   "name": "@openworker/rag",
   "version": "0.0.0",
-  "description": "OpenWorker RAG store — keyword retrieval MVP with semantic-ready interface",
+  "description": "OpenWorker RAG store — keyword or LlamaIndex+Ollama semantic retrieval",
   "type": "module",
   "private": true,
   "exports": {
@@ -15,5 +15,9 @@
   "devDependencies": {
     "@types/node": "^22.14.1",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@llamaindex/ollama": "^0.1.24",
+    "llamaindex": "^0.12.1"
   }
 }

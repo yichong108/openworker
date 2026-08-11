@@ -105,7 +105,7 @@ class SessionManager {
 - [@openworker/agent](packages/agent/README.md) OpenWorker ReAct 智能体（含 AG-UI OpenWorkerAgent）
 - [@openworker/cursor-agent](packages/cursor-agent/README.md) Cursor SDK AG-UI 适配（CursorAgent）
 - [@openworker/memory](packages/memory/README.md) 单会话压缩 + 用户画像（纯函数；Desktop 粘合见 `apps/desktop/src/main/agent/memory.ts`；画像 API `/me/profile`）
-- [@openworker/rag](packages/rag/README.md) 知识库检索（关键词 MVP；API 粘合见 `services/api`；后续可语义化）
+- [@openworker/rag](packages/rag/README.md) 知识库检索（关键词或 LlamaIndex+Ollama 语义；API 粘合见 `services/api`；`pnpm rag:setup-ollama`）
 - [@openworker/shared](packages/shared/README.md) 公用工具
 - [@openworker/skills](packages/skills/README.md) 内置 Agent Skills
 - [@openworker/api](services/api/README.md) 后端API服务

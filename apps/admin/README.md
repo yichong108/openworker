@@ -6,7 +6,7 @@ OpenWorker 后台管理前端（Vite + React + Ant Design）。
 
 - 用户列表：`GET /users`
 - 知识库文档：多知识库 CRUD、`.txt`/`.md` 上传与删除
-- RAG 测试：关键词检索（可指定库或全库）；可选生成回答（需 API 配置 `RAG_LLM_*`）
+- RAG 测试：语义检索（API `RAG_EMBEDDING_PROVIDER=ollama` + LlamaIndex/Ollama）或关键词回退；可选生成回答（需 `RAG_LLM_*`）
 
 ## 快速开始
 

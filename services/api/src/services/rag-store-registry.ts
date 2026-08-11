@@ -28,14 +28,26 @@ export function getKnowledgeBaseFilesDir(knowledgeBaseId: string): string {
 /**
  * 获取（或创建并缓存）指定知识库的 RagStore
  *
+ * 当 `RAG_EMBEDDING_PROVIDER=ollama` 时注入 Ollama embedding；否则为关键词索引。
+ *
  * @param knowledgeBaseId - 知识库 id
- * @returns 关键词 RagStore
+ * @returns RagStore 实例
  */
 export function getRagStore(knowledgeBaseId: string): RagStore {
   const cached = storeCache.get(knowledgeBaseId)
   if (cached) return cached
   const persistDir = getKnowledgeBaseDir(knowledgeBaseId)
-  const store = createRagStore({ persistDir })
+  const store =
+    env.ragEmbedding.provider === 'ollama'
+      ? createRagStore({
+          persistDir,
+          embedding: {
+            provider: 'ollama',
+            model: env.ragEmbedding.ollamaEmbedModel,
+            baseUrl: env.ragEmbedding.ollamaBaseUrl
+          }
+        })
+      : createRagStore({ persistDir })
   storeCache.set(knowledgeBaseId, store)
   return store
 }

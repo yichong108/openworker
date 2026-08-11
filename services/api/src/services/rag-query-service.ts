@@ -66,7 +66,7 @@ async function generateAnswer(query: string, nodes: RagQueryNode[]): Promise<str
 }
 
 /**
- * 在单个知识库内执行关键词检索，并为节点标注库信息
+ * 在单个知识库内执行检索，并为节点标注库信息
  *
  * @param knowledgeBaseId - 知识库 id
  * @param knowledgeBaseName - 知识库名称

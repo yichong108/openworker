@@ -43,7 +43,7 @@ function statusColor(status: string): string {
  * 知识库与文档管理页
  *
  * 左侧管理多知识库，右侧管理当前库的 `.txt`/`.md` 文档上传与删除。
- * 当前检索后端为关键词 MVP（无需 Embedding）。
+ * 检索后端由 API 的 RAG_EMBEDDING_PROVIDER 决定（ollama 语义或关键词）。
  */
 export function KnowledgePage() {
   const [bases, setBases] = useState<KnowledgeBase[]>([])
@@ -157,7 +157,7 @@ export function KnowledgePage() {
         知识库文档
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-        当前为关键词检索（无需 Embedding）。支持上传 .txt / .md / .markdown。
+        支持上传 .txt / .md / .markdown。检索模式见「RAG 测试」页说明（Ollama 语义或关键词）。
       </Typography.Paragraph>
       {error ? <Alert type="error" showIcon message={error} /> : null}
 
