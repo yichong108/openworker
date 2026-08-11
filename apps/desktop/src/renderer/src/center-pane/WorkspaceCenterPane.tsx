@@ -7,11 +7,9 @@ import {
 } from './useWorkspaceCenterPane'
 import { WorkspaceMessagesInner } from './WorkspaceMessagesInner'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { Alert, Button, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Space, Tag } from 'antd'
 
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
-
-const { Text } = Typography
 
 export type WorkspaceCenterPaneProps = UseWorkspaceCenterPaneOptions
 
@@ -50,16 +48,9 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
           </div>
         )}
         <div className="app-topbar-body">
-          {p.activeId ? (
+          {p.activeId && p.isRun ? (
             <Space>
-              <Text>
-                {
-                  (p.sessionsByWorkspace[p.composerSelectedWorkspaceId] ?? []).find(
-                    (s) => s.id === p.activeId
-                  )?.name
-                }
-              </Text>
-              {p.isRun && <Tag color="processing">执行中</Tag>}
+              <Tag color="processing">执行中</Tag>
             </Space>
           ) : null}
         </div>
