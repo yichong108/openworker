@@ -21,7 +21,6 @@ import {
   runUserMessage
 } from '@/main/agent/agent-service'
 import { ensureUserSkillsLayout, listUserSkills } from '@/main/agent/skills'
-import { shutdownLangfuseTracing, startLangfuseTracingIfConfigured } from '@/main/langfuse'
 import { mainLog } from '@/main/logger'
 import { startNativeService, stopNativeService } from '@/main/native-service'
 import { clearAccessToken, setAccessToken } from '@/main/auth-token'
@@ -76,8 +75,6 @@ import {
   type WebEditAction,
   type WindowChromeAction
 } from '@/shared/ipc'
-
-void startLangfuseTracingIfConfigured()
 
 mainLog.info('Electron 主进程启动')
 
@@ -756,7 +753,6 @@ app.on('before-quit', () => {
   applicationIsQuitting = true
   stopNativeService()
   void getMcpHostAgent().mcp.dispose()
-  void shutdownLangfuseTracing()
 })
 
 app.on('window-all-closed', () => {

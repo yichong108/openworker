@@ -9,7 +9,6 @@
  * 例如：.env.production.local > .env.production > .env.local > .env
  *
  * 合并完成后关闭第三方 LLM 内置追踪（不使用 LangSmith）。
- * Langfuse 见 `LANGFUSE_*` 环境变量，在 `index.ts` 中于本模块之后启动 OpenTelemetry。
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'

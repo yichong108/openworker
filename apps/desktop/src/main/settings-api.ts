@@ -9,19 +9,6 @@ type SettingsApiResponse = {
 }
 
 /**
- * 解析桌面端对接的云端 / RAG API 根地址
- *
- * 优先读 `OPENWORKERER_API_BASE_URL`，默认本地开发地址 `http://127.0.0.1:3100`。
- * 仅用于 RAG 等仍走 `@openworker/api` 的能力；auth / settings / workspaces 等走 Native。
- *
- * @returns 去掉尾部斜杠后的 base URL
- */
-export function getApiBaseUrl(): string {
-  const raw = (process.env.OPENWORKERER_API_BASE_URL || 'http://127.0.0.1:3100').trim()
-  return raw.replace(/\/+$/, '') || 'http://127.0.0.1:3100'
-}
-
-/**
  * 从 Native 服务拉取全局 AppSettings
  *
  * @returns 规范化后的 AppSettings

@@ -11,8 +11,6 @@ import {
   prepareSessionMemory,
   refreshUserProfileFromMessages
 } from '@/main/agent/memory'
-import { prefetchRagSystemSection } from '@/main/agent/rag-context'
-import { flushLangfuseTracing } from '@/main/langfuse'
 import {
   ensureSessionMessagesLoaded,
   getCachedSessionMessages,
@@ -405,10 +403,7 @@ export async function runUserMessage(
   memoryDroppedPrefix = prepared.droppedPrefix
   session.agent.messages = prepared.messages
 
-  // Desktop 预取 RAG（不经 agent 工具）；与 memory 段落一并注入 system
-  const ragSection = await prefetchRagSystemSection(agentUserText)
-  memorySystemSection =
-    [prepared.systemSection, ragSection].filter((s) => s?.trim()).join('\n\n') || undefined
+  memorySystemSection = prepared.systemSection?.trim() || undefined
 
   const forwardedProps = session.agent.buildRunForwardedProps({
     composerMode,
@@ -497,6 +492,5 @@ export async function runUserMessage(
       latest.controller = null
       latest.subscription = null
     }
-    void flushLangfuseTracing()
   }
 }
