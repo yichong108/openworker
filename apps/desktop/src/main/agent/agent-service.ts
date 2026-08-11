@@ -15,6 +15,7 @@ import {
   prepareSessionMemory,
   refreshUserProfileFromMessages
 } from '@/main/agent/memory'
+import { prefetchRagSystemSection } from '@/main/agent/rag-context'
 import { flushLangfuseTracing } from '@/main/langfuse'
 import {
   ensureSessionMessagesLoaded,
@@ -427,7 +428,7 @@ export async function runUserMessage(
   const fullMessages: Message[] = [...session.agent.messages, userMessage]
   session.agent.messages = fullMessages
 
-  // OpenWorker：压缩长历史 + 注入画像（W=256k，refine/画像抽取默认开 T=0.7）；Cursor 跳过
+  // OpenWorker：压缩长历史 + 注入画像 + 预取知识库；Cursor 跳过
   let memoryDroppedPrefix: Message[] = []
   let memorySystemSection: string | undefined
   const memorySummarizer =
@@ -439,8 +440,12 @@ export async function runUserMessage(
       ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
     })
     memoryDroppedPrefix = prepared.droppedPrefix
-    memorySystemSection = prepared.systemSection || undefined
     session.agent.messages = prepared.messages
+
+    // Desktop 预取 RAG（不经 agent 工具）；与 memory 段落一并注入 system
+    const ragSection = await prefetchRagSystemSection(agentUserText)
+    memorySystemSection =
+      [prepared.systemSection, ragSection].filter((s) => s?.trim()).join('\n\n') || undefined
   }
 
   // 统一组装参数；按 agentType 裁剪由 UniAgent 内部完成

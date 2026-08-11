@@ -109,7 +109,7 @@ class SessionManager {
 - [@openworker/shared](packages/shared/README.md) 公用工具
 - [@openworker/skills](packages/skills/README.md) 内置 Agent Skills
 - [@openworker/api](services/api/README.md) 后端API服务
-- [@openworker/desktop](apps/desktop/README.md) 桌面客户端
+- [@openworker/desktop](apps/desktop/README.md) 桌面客户端（OpenWorker 路径发消息前预取知识库 RAG，注入 system；管理文档见 Admin）
 - [@openworker/admin](apps/admin/README.md) 后台管理
 - [@openworker/cli](apps/cli/README.md) 命令行客户端
 - [@openworker/landing](apps/landing/README.md) 文档项目
