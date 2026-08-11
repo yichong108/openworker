@@ -61,6 +61,7 @@ export function useWorkspaceLeftPane() {
   const setActiveWorkspaceId = useUiStore((s) => s.setActiveWorkspaceId)
   const activeSessionId = useUiStore((s) => s.activeSessionId)
   const setActiveSessionId = useUiStore((s) => s.setActiveSessionId)
+  const inputDraft = useUiStore((s) => s.inputDraft)
   const setInputDraft = useUiStore((s) => s.setInputDraft)
   const byWorkspaceUi = useUiStore((s) => s.byWorkspace)
 
@@ -69,8 +70,19 @@ export function useWorkspaceLeftPane() {
     for (const [wid, list] of Object.entries(sessionsByWorkspace)) {
       out[wid] = filterSessionsForSidebar(list, byWorkspaceUi[wid]?.sidebarHiddenSessionIds)
     }
+    // 未落库的空白对话：有输入时与输入框一致，空输入时显示「新会话」
+    if (activeWorkspaceId && activeSessionId === null) {
+      const draftSession: SessionInfo = {
+        id: '__draft__',
+        name: inputDraft.trim() === '' ? '新会话' : inputDraft,
+        createdAt: 0,
+        updatedAt: 0
+      }
+      const existing = out[activeWorkspaceId] ?? []
+      out[activeWorkspaceId] = [draftSession, ...existing]
+    }
     return out
-  }, [sessionsByWorkspace, byWorkspaceUi])
+  }, [sessionsByWorkspace, byWorkspaceUi, activeWorkspaceId, activeSessionId, inputDraft])
 
   const workspacesForSidebar = useMemo(() => {
     const homeHasSessions = (sessionsByWorkspaceForSidebar[HOME_WORKSPACE_ID] ?? []).length > 0

@@ -4,12 +4,12 @@
 
 ## 一句话
 
-只暴露 `UniAgent` 类（`extends AbstractAgent`）。内部委托 OpenWorker 后端；宿主不直接依赖 `@openworker/agent`。
+暴露 `UniAgent` 类（`extends AbstractAgent`）与简单问答 `ask`。内部委托 OpenWorker 后端；宿主不直接依赖 `@openworker/agent`。
 
 ## 使用
 
 ```ts
-import { UniAgent } from '@openworker/uni-agent'
+import { UniAgent, ask } from '@openworker/uni-agent'
 
 const agent = new UniAgent({
   agentId: 'desktop-session',
@@ -26,6 +26,12 @@ const forwardedProps = agent.buildRunForwardedProps({
 })
 await agent.runAgent({ runId: 'r1', forwardedProps })
 await agent.dispose()
+```
+
+简单问答（临时 UniAgent，一轮后返回纯文本）：
+
+```ts
+const answer = await ask('今天天气怎么样？', { provider })
 ```
 
 MCP 宿主：

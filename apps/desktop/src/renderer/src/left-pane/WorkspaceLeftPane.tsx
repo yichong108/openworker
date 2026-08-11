@@ -193,42 +193,57 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
                       </div>
                       {isExpanded && (
                         <div className="app-session-sublist">
-                          {workspaceSessions.map((session) => (
-                            <Dropdown
-                              key={session.id}
-                              menu={{
-                                items: [
-                                  {
-                                    key: 'rename',
-                                    label: '重命名',
-                                    onClick: () => p.handleSessionRenameRequest(session)
-                                  }
-                                ]
-                              }}
-                              trigger={['contextMenu']}
-                            >
+                          {workspaceSessions.map((session) => {
+                            const isDraft = session.id === '__draft__'
+                            const isActiveSession =
+                              session.id === p.activeSessionId ||
+                              (isDraft && p.activeSessionId === null)
+                            const sessionRow = (
                               <div
-                                className={`app-session-item app-session-item-sub ${session.id === p.activeSessionId ? 'is-active' : ''}`}
-                                onClick={() => void p.handleSessionClick(workspace.id, session.id)}
+                                className={`app-session-item app-session-item-sub ${isActiveSession ? 'is-active' : ''}`}
+                                onClick={() => {
+                                  if (isDraft) return
+                                  void p.handleSessionClick(workspace.id, session.id)
+                                }}
                               >
                                 <div className="app-session-item-inner">
                                   <div className="app-session-title">{session.name}</div>
-                                  <button
-                                    type="button"
-                                    className="app-session-archive-btn"
-                                    title="归档"
-                                    aria-label="归档"
-                                    onClick={(event) => {
-                                      event.stopPropagation()
-                                      p.handleRemoveSessionFromSidebar(workspace.id, session)
-                                    }}
-                                  >
-                                    <InboxOutlined aria-hidden />
-                                  </button>
+                                  {!isDraft ? (
+                                    <button
+                                      type="button"
+                                      className="app-session-archive-btn"
+                                      title="归档"
+                                      aria-label="归档"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        p.handleRemoveSessionFromSidebar(workspace.id, session)
+                                      }}
+                                    >
+                                      <InboxOutlined aria-hidden />
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
-                            </Dropdown>
-                          ))}
+                            )
+                            if (isDraft) return <div key={session.id}>{sessionRow}</div>
+                            return (
+                              <Dropdown
+                                key={session.id}
+                                menu={{
+                                  items: [
+                                    {
+                                      key: 'rename',
+                                      label: '重命名',
+                                      onClick: () => p.handleSessionRenameRequest(session)
+                                    }
+                                  ]
+                                }}
+                                trigger={['contextMenu']}
+                              >
+                                {sessionRow}
+                              </Dropdown>
+                            )
+                          })}
                           {workspaceSessions.length === 0 && (
                             <div className="app-session-placeholder">当前工作区暂无会话</div>
                           )}

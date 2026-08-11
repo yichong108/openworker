@@ -25,6 +25,7 @@ import { shutdownLangfuseTracing, startLangfuseTracingIfConfigured } from '@/mai
 import { mainLog } from '@/main/logger'
 import { clearAccessToken, setAccessToken } from '@/main/auth-token'
 import { migrateLocalWorkspaceSessionToApiIfNeeded } from '@/main/migrate-workspace-session'
+import { autoNameSessionFromFirstMessage } from '@/main/session-auto-name'
 import {
   clearSessionsMemory,
   createSession,
@@ -597,7 +598,18 @@ function registerIpc(): void {
         }
       }
       try {
-        await runUserMessage(sessionId, text.trim(), opts ? { ...opts, mode } : { mode })
+        const priorMessages = await ensureSessionMessagesLoaded(sessionId)
+        const isFirstUserMessage = !priorMessages.some((m) => m.role === 'user')
+        const userText = text.trim()
+
+        // 首轮用户消息：与本轮 run 并行，经 ask 异步生成会话名
+        if (isFirstUserMessage) {
+          void autoNameSessionFromFirstMessage(sessionId, userText).then((renamed) => {
+            if (renamed) broadcastSessions()
+          })
+        }
+
+        await runUserMessage(sessionId, userText, opts ? { ...opts, mode } : { mode })
         broadcastSessions()
         return { ok: true as const }
       } catch (err) {

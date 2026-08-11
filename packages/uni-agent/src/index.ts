@@ -1,7 +1,7 @@
 /**
  * @openworker/uni-agent 公共 API。
  *
- * 宿主 AG-UI 入口仅为 `UniAgent` 类；内部委托 OpenWorker 后端。
+ * 宿主 AG-UI 入口为 `UniAgent` 类与简单问答 `ask`；内部委托 OpenWorker 后端。
  */
 
 export {
@@ -10,6 +10,8 @@ export {
   type UniAgentRunDefaults,
   type UniAgentRunInput
 } from './uni-agent.js'
+
+export { ask, type AskOptions } from './ask.js'
 
 /** 宿主工具转发（避免 Desktop 直依 agent） */
 export { type AgentMcp } from '@openworker/agent'

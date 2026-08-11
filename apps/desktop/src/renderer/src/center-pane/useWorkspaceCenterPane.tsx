@@ -231,6 +231,10 @@ export function useWorkspaceCenterPane({
   const hydratedMessageSessions = useRef<Set<string>>(new Set())
   /** 同会话发送 IPC 进行中，防止连点重复发送（不等同于 agent 已 RUN_STARTED） */
   const sendInFlightRef = useRef(new Set<string>())
+  /** 空白对话首发创建会话中的互斥锁，防止连点创建多个会话 */
+  const blankCreateInFlightRef = useRef(false)
+  /** 整次 send() 防重入（含 Enter / 按钮连点） */
+  const sendClickLockRef = useRef(false)
 
   const timeline = useMemo(() => {
     const next: Record<string, ToolTimelineEvent[]> = {}
@@ -622,13 +626,21 @@ export function useWorkspaceCenterPane({
       if (activeId) {
         sessionId = activeId
       } else {
-        const created = await bridge.createSession()
-        if (!created) {
-          msgApi.warning('请先创建或选择工作区')
-          return
+        if (blankCreateInFlightRef.current) return
+        blankCreateInFlightRef.current = true
+        try {
+          // 空白对话首发：临时名与首条消息一致（截断），随后由主进程 ask 异步正式命名
+          const provisional = t.replace(/\s+/g, ' ').trim().slice(0, 50) || '新会话'
+          const created = await bridge.createSession(provisional)
+          if (!created) {
+            msgApi.warning('请先创建或选择工作区')
+            return
+          }
+          sessionId = created.id
+          setActiveId(sessionId)
+        } finally {
+          blankCreateInFlightRef.current = false
         }
-        sessionId = created.id
-        setActiveId(sessionId)
       }
       if (running[sessionId] || sendInFlightRef.current.has(sessionId)) {
         msgApi.warning('当前会话已有智能体在运行，请等待完成或停止后再发送')
@@ -676,10 +688,16 @@ export function useWorkspaceCenterPane({
 
   const send = async () => {
     const t = input.trim()
-    if (!t) return
+    if (!t || sendClickLockRef.current) return
+    sendClickLockRef.current = true
     setSlashToken(null)
-    setInput('')
-    await sendAgentText(t, composerMode)
+    try {
+      // 先创建/发送再清空输入，避免空白会话侧栏名在 activeId 置位前闪成「新会话」
+      await sendAgentText(t, composerMode)
+      setInput('')
+    } finally {
+      sendClickLockRef.current = false
+    }
   }
 
   /**
