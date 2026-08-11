@@ -1,13 +1,8 @@
 import { killCommand, resolveChatModel } from '@openworker/uni-agent'
-import { normalizeAgentType, type AgentType } from '@openworker/shared'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
 import type { WebContents } from 'electron'
 
-import {
-  createSessionAgent,
-  getConfiguredAgentType,
-  type SessionAguiAgent
-} from '@/main/agent/agent-instance'
+import { createSessionAgent, type SessionAguiAgent } from '@/main/agent/agent-instance'
 import { agentLog } from '@/main/agent/agent-log'
 import {
   clearSessionWorking,
@@ -40,10 +35,6 @@ type AgentUnsubscribe = { unsubscribe: () => void }
 
 type SessionRuntime = {
   workspaceId: string
-  /** 创建该会话 agent 时使用的类型；设置变更后需重建 */
-  agentType: AgentType
-  /** agentType + Cursor 密钥/模型指纹；变更时重建 agent */
-  agentFingerprint: string
   /** 该会话独立的 AG-UI agent（勿跨会话复用）；消息以 agent.messages 为准 */
   agent: SessionAguiAgent
   controller: AbortController | null
@@ -52,21 +43,7 @@ type SessionRuntime = {
 }
 
 /**
- * 生成会话 agent 重建指纹（类型或 Cursor 凭据变更时失效）。
- *
- * @returns 指纹字符串
- */
-function getAgentSettingsFingerprint(): string {
-  const settings = getSettings()
-  const agentType = normalizeAgentType(settings.agentType)
-  if (agentType === 'cursor') {
-    return `cursor:${settings.cursorApiKey.trim()}:${settings.cursorModel.trim()}`
-  }
-  return 'openworker'
-}
-
-/**
- * 按工作区创建会话级 AG-UI Agent（OpenWorker 或 Cursor）。
+ * 按工作区创建会话级 AG-UI Agent。
  *
  * @param workspaceId - 工作区 ID
  * @param sessionId - 会话 ID（作为 AG-UI threadId）
@@ -179,24 +156,17 @@ export function bindAgentIpc(wc: WebContents): void {
 /**
  * 初始化或校正会话运行时：每个会话绑定独立 AG-UI Agent。
  *
- * 若会话已存在但工作区或 agentType 变更，则重建该会话的 agent，并保留 AG-UI 消息。
+ * 若会话已存在但工作区变更，则重建该会话的 agent，并保留 AG-UI 消息。
  *
  * @param workspaceId - 工作区 ID
  * @param sessionId - 会话 ID
  */
 export function initSessionState(workspaceId: string, sessionId: string): void {
-  const configuredType = getConfiguredAgentType()
-  const fingerprint = getAgentSettingsFingerprint()
   const existing = sessions.get(sessionId)
   if (existing) {
-    const workspaceChanged = existing.workspaceId !== workspaceId
-    const agentChanged =
-      existing.agentType !== configuredType || existing.agentFingerprint !== fingerprint
-    if (workspaceChanged || agentChanged) {
+    if (existing.workspaceId !== workspaceId) {
       const prev = existing.agent
       existing.workspaceId = workspaceId
-      existing.agentType = configuredType
-      existing.agentFingerprint = fingerprint
       existing.agent = createAgentForWorkspace(workspaceId, sessionId, prev.messages)
       void prev.dispose()
     }
@@ -207,8 +177,6 @@ export function initSessionState(workspaceId: string, sessionId: string): void {
   const messages = getCachedSessionMessages(sessionId)
   sessions.set(sessionId, {
     workspaceId,
-    agentType: configuredType,
-    agentFingerprint: fingerprint,
     agent: createAgentForWorkspace(workspaceId, sessionId, messages),
     controller: null,
     subscription: null,
@@ -334,7 +302,7 @@ function truncateMessagesBeforeUserOrdinal(messages: Message[], userOrdinal: num
 }
 
 /**
- * 运行用户消息（经 AG-UI runAgent：OpenWorkerAgent 或 CursorAgent）。
+ * 运行用户消息（经 AG-UI runAgent）。
  *
  * 同会话同时只允许一次 run：已有运行中的智能体时直接拒绝。
  * 不同会话各自独立，可并行执行。
@@ -358,12 +326,8 @@ export async function runUserMessage(
     return
   }
   const settings = getSettings()
-  const agentType = normalizeAgentType(settings.agentType)
-  agentLog.info(
-    `agentType: ${agentType}, composerMode: ${composerMode}, settingsKeys: ${Object.keys(settings).join(',')}`
-  )
+  agentLog.info(`composerMode: ${composerMode}, settingsKeys: ${Object.keys(settings).join(',')}`)
 
-  // 设置可能已切换 agentType：发送前校正会话 agent
   const sessionBefore = sessions.get(sessionId)
   if (sessionBefore) {
     initSessionState(sessionBefore.workspaceId, sessionId)
@@ -428,27 +392,23 @@ export async function runUserMessage(
   const fullMessages: Message[] = [...session.agent.messages, userMessage]
   session.agent.messages = fullMessages
 
-  // OpenWorker：压缩长历史 + 注入画像 + 预取知识库；Cursor 跳过
+  // 压缩长历史 + 注入画像 + 预取知识库
   let memoryDroppedPrefix: Message[] = []
   let memorySystemSection: string | undefined
-  const memorySummarizer =
-    agentType === 'openworker' && provider ? createMemorySummarizer(provider) : null
-  if (agentType === 'openworker') {
-    const prepared = await prepareSessionMemory({
-      sessionId,
-      messages: fullMessages,
-      ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
-    })
-    memoryDroppedPrefix = prepared.droppedPrefix
-    session.agent.messages = prepared.messages
+  const memorySummarizer = provider ? createMemorySummarizer(provider) : null
+  const prepared = await prepareSessionMemory({
+    sessionId,
+    messages: fullMessages,
+    ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
+  })
+  memoryDroppedPrefix = prepared.droppedPrefix
+  session.agent.messages = prepared.messages
 
-    // Desktop 预取 RAG（不经 agent 工具）；与 memory 段落一并注入 system
-    const ragSection = await prefetchRagSystemSection(agentUserText)
-    memorySystemSection =
-      [prepared.systemSection, ragSection].filter((s) => s?.trim()).join('\n\n') || undefined
-  }
+  // Desktop 预取 RAG（不经 agent 工具）；与 memory 段落一并注入 system
+  const ragSection = await prefetchRagSystemSection(agentUserText)
+  memorySystemSection =
+    [prepared.systemSection, ragSection].filter((s) => s?.trim()).join('\n\n') || undefined
 
-  // 统一组装参数；按 agentType 裁剪由 UniAgent 内部完成
   const forwardedProps = session.agent.buildRunForwardedProps({
     composerMode,
     abortController: ac,
@@ -474,7 +434,7 @@ export async function runUserMessage(
 
   try {
     agentLog.info(
-      `[runUserMessage] run-start: ${runId}, sessionId: ${sessionId}, agentType: ${agentType}, timestampMs: ${runStartedAt}`
+      `[runUserMessage] run-start: ${runId}, sessionId: ${sessionId}, timestampMs: ${runStartedAt}`
     )
 
     const sub = session.agent.subscribe({
@@ -500,7 +460,7 @@ export async function runUserMessage(
     await persistSessionMessages(sessionId, latest.agent.messages)
 
     // 本轮成功后异步刷新用户画像（失败不阻断）
-    if (agentType === 'openworker' && memorySummarizer) {
+    if (memorySummarizer) {
       void refreshUserProfileFromMessages({
         messages: latest.agent.messages,
         summarizer: memorySummarizer

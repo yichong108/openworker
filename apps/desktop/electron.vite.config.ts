@@ -21,7 +21,6 @@ function readGitShortHash(cwd: string): string {
 const aliasSrc = resolve(rootDir, 'src')
 const aliasUniAgent = resolve(rootDir, '../../packages/uni-agent/src/index.ts')
 const aliasAgent = resolve(rootDir, '../../packages/agent/src/index.ts')
-const aliasCursorAgent = resolve(rootDir, '../../packages/cursor-agent/src/index.ts')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
 const aliasMemory = resolve(rootDir, '../../packages/memory/src/index.ts')
 /** 内置 skills 内容根目录（开发/未打包时由 define 注入，避免打包后 import.meta.url 漂移） */
@@ -45,7 +44,6 @@ export default defineConfig({
         '@openworker/uni-agent': aliasUniAgent,
         // uni-agent 源码打包时解析其后端依赖
         '@openworker/agent': aliasAgent,
-        '@openworker/cursor-agent': aliasCursorAgent,
         '@openworker/shared': aliasShared,
         '@openworker/memory': aliasMemory
       }
@@ -55,7 +53,6 @@ export default defineConfig({
         exclude: [
           '@openworker/uni-agent',
           '@openworker/agent',
-          '@openworker/cursor-agent',
           '@openworker/shared',
           '@openworker/memory'
         ]
@@ -65,9 +62,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(rootDir, 'src/main/index.ts')
-        },
-        // Cursor SDK 含原生二进制，保持 external 由 Node/Electron 解析
-        external: [/^@cursor\//]
+        }
       }
     }
   },
@@ -77,7 +72,6 @@ export default defineConfig({
         '@': aliasSrc,
         '@openworker/uni-agent': aliasUniAgent,
         '@openworker/agent': aliasAgent,
-        '@openworker/cursor-agent': aliasCursorAgent,
         '@openworker/shared': aliasShared,
         '@openworker/memory': aliasMemory
       }
@@ -87,7 +81,6 @@ export default defineConfig({
         exclude: [
           '@openworker/uni-agent',
           '@openworker/agent',
-          '@openworker/cursor-agent',
           '@openworker/shared',
           '@openworker/memory'
         ]

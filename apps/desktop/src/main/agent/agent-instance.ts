@@ -1,50 +1,32 @@
 /**
  * Desktop agent 工厂。
  *
- * 只负责把设置中的 agentType / 凭据传给 UniAgent；不在此判断用哪个后端。
+ * 把工作区 / 会话上下文传给 UniAgent。
  */
 import { UniAgent } from '@openworker/uni-agent'
-import { normalizeAgentType, type AgentType } from '@openworker/shared'
 import type { Message } from '@ag-ui/client'
-
-import { getSettings } from '@/main/store'
 
 /** 会话级 AG-UI Agent */
 export type SessionAguiAgent = UniAgent
 
 /**
- * 读取当前设置中的 Agent 类型。
- *
- * @returns openworker | cursor
- */
-export function getConfiguredAgentType(): AgentType {
-  return normalizeAgentType(getSettings().agentType)
-}
-
-/**
  * 为单个会话创建独立 UniAgent。
  *
- * @param options - cwd / messages / threadId / agentType
+ * @param options - cwd / messages / threadId
  * @returns 新的 UniAgent
  */
 export function createSessionAgent(options?: {
   cwd?: string
   messages?: Message[]
   threadId?: string
-  agentType?: AgentType
 }): UniAgent {
-  const settings = getSettings()
-  const agentType = options?.agentType ?? getConfiguredAgentType()
   const cwd = options?.cwd?.trim() || undefined
 
   return new UniAgent({
-    agentType,
     role: 'session',
     agentId: 'openworker-desktop',
     description: 'OpenWorker desktop session agent',
     cwd,
-    cursorApiKey: settings.cursorApiKey,
-    cursorModel: settings.cursorModel,
     ...(options?.threadId ? { threadId: options.threadId } : {}),
     ...(options?.messages ? { initialMessages: options.messages } : {})
   })
@@ -58,7 +40,7 @@ export function createSessionOpenWorkerAgent(options?: {
   messages?: Message[]
   threadId?: string
 }): UniAgent {
-  return createSessionAgent({ ...options, agentType: 'openworker' })
+  return createSessionAgent(options)
 }
 
 /** 应用级 MCP 宿主（warmup / probe / dispose），不用于会话 run */
@@ -72,7 +54,6 @@ let mcpHostAgent: UniAgent | undefined
 export function getMcpHostAgent(): UniAgent {
   if (!mcpHostAgent) {
     mcpHostAgent = new UniAgent({
-      agentType: 'openworker',
       role: 'mcp-host',
       agentId: 'openworker-mcp-host',
       description: 'OpenWorker desktop MCP host'
@@ -91,7 +72,6 @@ export async function resetMcpHostAgent(): Promise<UniAgent> {
     await mcpHostAgent.dispose()
   }
   mcpHostAgent = new UniAgent({
-    agentType: 'openworker',
     role: 'mcp-host',
     agentId: 'openworker-mcp-host',
     description: 'OpenWorker desktop MCP host'

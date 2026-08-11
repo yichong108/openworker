@@ -1,7 +1,7 @@
 /**
  * @openworker/uni-agent 公共 API。
  *
- * 宿主 AG-UI 入口仅为 `UniAgent` 类；内部按 agentType 委托后端。
+ * 宿主 AG-UI 入口仅为 `UniAgent` 类；内部委托 OpenWorker 后端。
  */
 
 export {
@@ -11,7 +11,7 @@ export {
   type UniAgentRunInput
 } from './uni-agent.js'
 
-/** 宿主工具转发（避免 Desktop 直依 agent / cursor-agent） */
+/** 宿主工具转发（避免 Desktop 直依 agent） */
 export { type AgentMcp, getChatModel, resolveChatModel } from '@openworker/agent'
 
 export {

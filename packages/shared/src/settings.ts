@@ -113,26 +113,11 @@ export type ProviderProfile = {
   apiKey: string
 }
 
-/** Desktop 会话使用的 Agent 实现类型 */
-export type AgentType = 'openworker' | 'cursor'
-
-/** 规范化 agentType，非法值回退为 openworker */
-export function normalizeAgentType(value: unknown): AgentType {
-  if (value === 'cursor') return 'cursor'
-  return 'openworker'
-}
-
 export type AppSettings = {
   provider: ModelProviderId
   providerProfiles: Record<ModelProviderId, ProviderProfile>
-  /** 会话 Agent 实现：openworker（ReAct）或 cursor（SDK local） */
-  agentType: AgentType
   agentRunTimeoutMs: number
   tavilyApiKey: string
-  /** Cursor SDK API Key（agentType=cursor 时使用） */
-  cursorApiKey: string
-  /** Cursor 模型 ID，默认 composer-2.5 */
-  cursorModel: string
   mcpServers: McpServerEntry[]
 }
 
@@ -147,16 +132,11 @@ export const defaultProviderProfiles = (): Record<ModelProviderId, ProviderProfi
   }
 })
 
-export const DEFAULT_CURSOR_MODEL = 'composer-2.5'
-
 export const defaultSettings: AppSettings = {
   provider: 'deepseek',
   providerProfiles: defaultProviderProfiles(),
-  agentType: 'openworker',
   agentRunTimeoutMs: 600_000,
   tavilyApiKey: '',
-  cursorApiKey: '',
-  cursorModel: DEFAULT_CURSOR_MODEL,
   mcpServers: []
 }
 
@@ -165,10 +145,7 @@ export function getActiveProviderProfile(s: AppSettings): ProviderProfile {
   return s.providerProfiles[s.provider]
 }
 
-export type SettingsFormValues = Pick<
-  AppSettings,
-  'agentRunTimeoutMs' | 'tavilyApiKey' | 'agentType' | 'cursorApiKey' | 'cursorModel'
-> & {
+export type SettingsFormValues = Pick<AppSettings, 'agentRunTimeoutMs' | 'tavilyApiKey'> & {
   baseUrl: string
   model: string
   apiKey: string
@@ -180,11 +157,8 @@ export function settingsToFormValues(s: AppSettings): SettingsFormValues {
     baseUrl: p.baseUrl,
     model: p.model,
     apiKey: p.apiKey,
-    agentType: normalizeAgentType(s.agentType),
     agentRunTimeoutMs: s.agentRunTimeoutMs,
-    tavilyApiKey: s.tavilyApiKey ?? '',
-    cursorApiKey: s.cursorApiKey ?? '',
-    cursorModel: (s.cursorModel ?? '').trim() || DEFAULT_CURSOR_MODEL
+    tavilyApiKey: s.tavilyApiKey ?? ''
   }
 }
 
@@ -195,7 +169,7 @@ export function mergeFormIntoProviderProfiles(
   const next: Record<ModelProviderId, ProviderProfile> = {
     deepseek: { ...profiles.deepseek }
   }
-  // 表单切换 Agent 类型时，未挂载字段可能为 undefined，回退已有 profile
+  // 未挂载字段可能为 undefined，回退已有 profile
   next.deepseek = {
     baseUrl: (form.baseUrl ?? profiles.deepseek?.baseUrl ?? '').trim(),
     model: (form.model ?? profiles.deepseek?.model ?? '').trim(),
@@ -213,12 +187,9 @@ export function applySettingsForm(
     ...prev,
     provider: 'deepseek',
     providerProfiles,
-    agentType: normalizeAgentType(form.agentType),
     agentRunTimeoutMs: form.agentRunTimeoutMs ?? prev.agentRunTimeoutMs,
     // 未挂载的表单项可能为 undefined，保留上一份设置
-    tavilyApiKey: (form.tavilyApiKey ?? prev.tavilyApiKey ?? '').trim(),
-    cursorApiKey: (form.cursorApiKey ?? prev.cursorApiKey ?? '').trim(),
-    cursorModel: (form.cursorModel ?? prev.cursorModel ?? '').trim() || DEFAULT_CURSOR_MODEL
+    tavilyApiKey: (form.tavilyApiKey ?? prev.tavilyApiKey ?? '').trim()
   }
 }
 
@@ -248,6 +219,10 @@ export function normalizeSettings(
       streamFlushMs?: unknown
       streamFlushChars?: unknown
       maxTerminalOutputChars?: unknown
+      /** 已移除 Cursor Agent，忽略旧持久化 */
+      agentType?: unknown
+      cursorApiKey?: unknown
+      cursorModel?: unknown
     } = {}
 ): AppSettings {
   const defaults = defaultSettings
@@ -261,6 +236,9 @@ export function normalizeSettings(
     streamFlushMs: _legacyStreamFlushMs,
     streamFlushChars: _legacyStreamFlushChars,
     maxTerminalOutputChars: _legacyMaxTerminalOutputChars,
+    agentType: _legacyAgentType,
+    cursorApiKey: _legacyCursorApiKey,
+    cursorModel: _legacyCursorModel,
     ...inputRest
   } = input
   void _legacyMaxConcurrentStreams
@@ -268,6 +246,9 @@ export function normalizeSettings(
   void _legacyStreamFlushMs
   void _legacyStreamFlushChars
   void _legacyMaxTerminalOutputChars
+  void _legacyAgentType
+  void _legacyCursorApiKey
+  void _legacyCursorModel
   const legacy: LegacyFlatSettings = {
     baseUrl: legacyBaseUrl,
     model: legacyModel,
@@ -322,20 +303,11 @@ export function normalizeSettings(
     ...inputWithoutLegacy,
     provider,
     providerProfiles,
-    agentType: normalizeAgentType(inputWithoutLegacy.agentType),
     agentRunTimeoutMs: inputWithoutLegacy.agentRunTimeoutMs ?? defaults.agentRunTimeoutMs,
     tavilyApiKey:
       typeof inputWithoutLegacy.tavilyApiKey === 'string'
         ? inputWithoutLegacy.tavilyApiKey
         : defaults.tavilyApiKey,
-    cursorApiKey:
-      typeof inputWithoutLegacy.cursorApiKey === 'string'
-        ? inputWithoutLegacy.cursorApiKey
-        : defaults.cursorApiKey,
-    cursorModel:
-      typeof inputWithoutLegacy.cursorModel === 'string' && inputWithoutLegacy.cursorModel.trim()
-        ? inputWithoutLegacy.cursorModel.trim()
-        : defaults.cursorModel,
     mcpServers: parseMcpServersFromUnknown(
       inputWithoutLegacy.mcpServers !== undefined
         ? inputWithoutLegacy.mcpServers
