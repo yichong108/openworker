@@ -300,7 +300,7 @@
 .app-messages-inner {
   max-width: var(--aw-main-content-max-width);
   margin: 0 auto;
-  padding: 16px var(--aw-main-column-padding-x);
+  padding: 0 var(--aw-main-column-padding-x) 40vh;
   box-sizing: border-box;
 }
 
@@ -327,7 +327,11 @@
 }
 
 .app-message-card.is-user .ant-card-body {
-  padding: 8px 14px;
+  /* 边框画在 body 上并内缩 1px：列表顶无 padding 时，外层被 overflow 裁 1px 仍能看到完整描边 */
+  margin: 1px;
+  padding: 7px 13px;
+  border: 1px solid var(--aw-color-border);
+  border-radius: 11px;
 }
 
 .app-message-card.is-assistant .ant-card-body {
@@ -335,7 +339,7 @@
 }
 
 .app-message-card.is-user {
-  border: 1px solid var(--aw-color-border);
+  border: none;
   background: var(--aw-color-bg-container);
   box-shadow: var(--aw-shadow-soft);
 }
@@ -373,7 +377,7 @@
   cursor: text;
 }
 
-.app-message-card.is-user.is-editable:hover {
+.app-message-card.is-user.is-editable:hover .ant-card-body {
   border-color: var(--aw-color-border-secondary, var(--aw-color-border));
 }
 
