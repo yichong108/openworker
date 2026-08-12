@@ -23,7 +23,7 @@
     "preinstall": "npx only-allow pnpm",
     "build": "turbo run build",
     "dev:prepare": "pnpm --filter @openworker/api docker:up",
-    "dev": "pnpm run dev:prepare && turbo run dev --parallel --filter=!@openworker/phone --filter=!@openworker/admin --filter=!@openworker/landing --filter=!@openworker/cli",
+    "dev": "turbo run dev --parallel --filter=!@openworker/phone --filter=!@openworker/admin --filter=!@openworker/landing --filter=!@openworker/cli --filter=!@openworker/api",
     "dev:all": "pnpm run dev:prepare && turbo run dev --parallel",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
