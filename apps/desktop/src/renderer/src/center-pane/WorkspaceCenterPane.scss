@@ -118,6 +118,31 @@
   }
 }
 
+.app-session-messages-loading {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-session-messages-loading-circle {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  border-top-color: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  animation: app-session-messages-loading-spin 0.7s linear infinite;
+}
+
+@keyframes app-session-messages-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-composer-hero {
   flex: 1;
   min-height: 0;

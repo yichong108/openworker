@@ -234,9 +234,6 @@ function createWindow(): void {
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     mainLog.error(`[renderer] process gone: reason=${details.reason}, exitCode=${details.exitCode}`)
   })
-  if (isDev) {
-    mainWindow.webContents.openDevTools({ mode: 'bottom' })
-  }
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow?.maximize()
     mainWindow?.show()

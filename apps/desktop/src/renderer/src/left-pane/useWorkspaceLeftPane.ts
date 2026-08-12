@@ -111,7 +111,8 @@ export function useWorkspaceLeftPane() {
 
   const SIDEBAR_MIN_WIDTH = 240
   const SIDEBAR_MAX_WIDTH = 560
-  const SIDEBAR_DEFAULT_WIDTH = 300
+  /** 初始默认宽度取可拖拽下限，避免启动时侧栏偏宽 */
+  const SIDEBAR_DEFAULT_WIDTH = SIDEBAR_MIN_WIDTH
 
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)

@@ -254,6 +254,7 @@ export function useWorkspaceCenterPane({
    * 从 Native 拉取会话消息并写入本地 state。
    *
    * 非 force 时若本地消息更长（如首发乐观追加），则不覆盖，避免空列表冲掉回显。
+   * 未 hydrate 的会话在拉取完成前中间栏显示加载中，避免闪空对话。
    *
    * @param sessionId - 会话 id
    * @param force - 为 true 时强制以服务端列表覆盖本地
@@ -261,15 +262,21 @@ export function useWorkspaceCenterPane({
   const ensureSessionMessages = useCallback(async (sessionId: string, force = false) => {
     if (!sessionId) return
     if (!force && hydratedMessageSessions.current.has(sessionId)) return
-    const list = await apiGetSessionChatMessages(sessionId)
-    setMessages((m) => {
-      const local = m[sessionId] ?? []
-      if (!force && local.length > list.length) {
-        return m
-      }
-      return { ...m, [sessionId]: list }
-    })
-    hydratedMessageSessions.current.add(sessionId)
+    try {
+      const list = await apiGetSessionChatMessages(sessionId)
+      setMessages((m) => {
+        const local = m[sessionId] ?? []
+        if (!force && local.length > list.length) {
+          return m
+        }
+        return { ...m, [sessionId]: list }
+      })
+      hydratedMessageSessions.current.add(sessionId)
+    } catch {
+      // 失败也标记已尝试并写入空列表，避免中间栏永久转圈；已有本地消息则保留
+      hydratedMessageSessions.current.add(sessionId)
+      setMessages((m) => (sessionId in m ? m : { ...m, [sessionId]: [] }))
+    }
   }, [])
 
   /**
@@ -894,7 +901,14 @@ export function useWorkspaceCenterPane({
     if (activeWorkspaceId != null) return
     activateWorkspaceLocal(HOME_WORKSPACE_ID)
   }, [activateWorkspaceLocal, activeWorkspaceId, preloadOk])
-  const isEmptyConversation = currentMessages.length === 0
+  /**
+   * 当前会话历史尚未 hydrate 时不展示聊天区。
+   * 以 activeId 变更触发的渲染为准：请求尚未发出前也会进入加载态，避免闪空对话。
+   */
+  const isSessionMessagesLoading = Boolean(
+    activeId && !hydratedMessageSessions.current.has(activeId)
+  )
+  const isEmptyConversation = !isSessionMessagesLoading && currentMessages.length === 0
 
   const activePlanDraft = activeId ? planDrafts[activeId] : undefined
 
@@ -1146,6 +1160,7 @@ export function useWorkspaceCenterPane({
     composerWorkspaceToolbar,
     composerInput,
     planCard,
+    isSessionMessagesLoading,
     isEmptyConversation,
     currentMessages,
     isRun,

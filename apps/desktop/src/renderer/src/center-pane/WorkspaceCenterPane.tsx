@@ -68,7 +68,9 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
         ) : null}
       </div>
       {/* 内容区 */}
-      <div className={`app-content ${p.isEmptyConversation ? 'is-empty-conversation' : ''}`}>
+      <div
+        className={`app-content ${p.isEmptyConversation ? 'is-empty-conversation' : ''} ${p.isSessionMessagesLoading ? 'is-session-loading' : ''}`}
+      >
         {!p.preloadOk && (
           <div className="app-preload-alert-wrap">
             <Alert
@@ -79,7 +81,16 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
             />
           </div>
         )}
-        {p.isEmptyConversation ? (
+        {p.isSessionMessagesLoading ? (
+          <div
+            className="app-session-messages-loading"
+            role="status"
+            aria-live="polite"
+            aria-label="加载会话中"
+          >
+            <span className="app-session-messages-loading-circle" aria-hidden />
+          </div>
+        ) : p.isEmptyConversation ? (
           <div className="app-composer-hero">
             <div className="app-composer-hero-inner">
               {p.composerWorkspaceToolbar}

@@ -1,6 +1,5 @@
 import '@/renderer/src/App.scss'
-import { BugOutlined } from '@ant-design/icons'
-import { App as AntdApp, ConfigProvider, FloatButton, Menu, MenuProps } from 'antd'
+import { App as AntdApp, ConfigProvider, Menu, MenuProps } from 'antd'
 import {
   type MouseEvent as ReactMouseEvent,
   useCallback,
@@ -50,7 +49,6 @@ export function App() {
   const preloadOk = typeof window !== 'undefined' && typeof window.bridge !== 'undefined'
   const bridge = window.bridge
   const isWinCustomChrome = preloadOk && bridge.platform === 'win32'
-  const isDevEnv = import.meta.env.DEV
 
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const activeWorkspaceId = useUiStore((s) => s.activeWorkspaceId)
@@ -96,6 +94,15 @@ export function App() {
     }
   }, [bridge, msgApi])
 
+  /**
+   * 通过主进程 IPC 打开或关闭开发者工具（控制台）
+   */
+  const toggleDevtools = useCallback(() => {
+    void bridge.toggleDevtools().catch((err: Error) => {
+      console.error('打开 DevTools 失败:', err)
+    })
+  }, [bridge])
+
   const winMenubarItems: MenuProps['items'] = useMemo(() => {
     if (!isWinCustomChrome) return []
     const viewChildren: MenuProps['items'] = [
@@ -104,6 +111,13 @@ export function App() {
         label: '重新加载',
         onClick: () => {
           void bridge.windowAction('reload')
+        }
+      },
+      {
+        key: 'open-devtools',
+        label: '打开控制台',
+        onClick: () => {
+          toggleDevtools()
         }
       }
     ]
@@ -141,7 +155,7 @@ export function App() {
         ]
       }
     ]
-  }, [bridge, isWinCustomChrome, openAboutOpenworker])
+  }, [bridge, isWinCustomChrome, openAboutOpenworker, toggleDevtools])
 
   const [rightPaneWidth, setRightPaneWidth] = useState(RIGHT_PANE_DEFAULT_WIDTH)
   const [isRightPaneCollapsed, setIsRightPaneCollapsed] = useState(true)
@@ -216,19 +230,6 @@ export function App() {
     }
   }, [isRightPaneResizing, RIGHT_PANE_MAX_WIDTH, RIGHT_PANE_MIN_WIDTH])
 
-  const toggleDevtools = async () => {
-    bridge
-      .toggleDevtools()
-      .then(() => {
-        setTimeout(() => {
-          window.location.reload()
-        }, 1000)
-      })
-      .catch((err: Error) => {
-        console.error('打开 DevTools 失败:', err)
-      })
-  }
-
   return (
     <div className="app-shell">
       {isWinCustomChrome ? (
@@ -293,15 +294,6 @@ export function App() {
           setAboutInfo(null)
         }}
       />
-
-      {isDevEnv && (
-        <FloatButton
-          icon={<BugOutlined />}
-          tooltip="切换开发者工具"
-          onClick={() => void toggleDevtools()}
-          className="app-devtools-float"
-        />
-      )}
     </div>
   )
 }
