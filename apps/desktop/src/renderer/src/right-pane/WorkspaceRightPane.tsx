@@ -716,6 +716,8 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
     const term = new Terminal({
       convertEol: true,
       cursorBlink: true,
+      cursorStyle: 'bar',
+      cursorWidth: 1,
       fontSize: 12,
       lineHeight: 1.5,
       fontFamily: "Consolas, 'Courier New', monospace",
