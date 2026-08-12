@@ -108,6 +108,7 @@ export function useWorkspaceCenterPane({
   /** 各会话是否正在 Agent 执行中 */
   const running = useUiStore((s) => s.runningBySessionId)
   const setSessionRunning = useUiStore((s) => s.setSessionRunning)
+  const setSessionUnread = useUiStore((s) => s.setSessionUnread)
 
   const composerInputRef = useRef<InputRef>(null)
 
@@ -239,6 +240,10 @@ export function useWorkspaceCenterPane({
   const blankCreateInFlightRef = useRef(false)
   /** 整次 send() 防重入（含 Enter / 按钮连点） */
   const sendClickLockRef = useRef(false)
+  /** 发送时记录 mode/workspace，供 RUN_FINISHED 标记侧栏未读 */
+  const pendingModeBySessionId = useRef<
+    Record<string, { mode: AgentComposerMode; workspaceId: string }>
+  >({})
 
   const timeline = useMemo(() => {
     const next: Record<string, ToolTimelineEvent[]> = {}
@@ -504,6 +509,7 @@ export function useWorkspaceCenterPane({
             })
           }
           setSessionRunning(sessionId, false)
+          delete pendingModeBySessionId.current[sessionId]
           setRunStats((s) => {
             const cur = s[sessionId]
             if (!cur) return s
@@ -540,10 +546,21 @@ export function useWorkspaceCenterPane({
         })
         streamBuf.current[sessionId] = ''
         assistantMsgId.current[sessionId] = null
+        // 非当前查看会话：按发送 mode 标记未读并持久化
+        const pending = pendingModeBySessionId.current[sessionId]
+        delete pendingModeBySessionId.current[sessionId]
+        const { activeSessionId } = useUiStore.getState()
+        if (pending && sessionId !== activeSessionId) {
+          setSessionUnread(
+            pending.workspaceId,
+            sessionId,
+            pending.mode === 'plan' ? 'plan' : 'other'
+          )
+        }
         // 不在此处 force 重载：RUN_FINISHED 早于 main 落盘，强制拉取会用旧列表冲掉流式正文
       }
     },
-    [msgApi, setSessionRunning]
+    [msgApi, setSessionRunning, setSessionUnread]
   )
 
   useEffect(() => {
@@ -712,6 +729,10 @@ export function useWorkspaceCenterPane({
         return
       }
       sendInFlightRef.current.add(sessionId)
+      pendingModeBySessionId.current[sessionId] = {
+        mode,
+        workspaceId: composerSelectedWorkspaceId
+      }
       if (!userMessageAppended) {
         hydratedMessageSessions.current.add(sessionId)
         setMessages((m) => {
@@ -736,6 +757,7 @@ export function useWorkspaceCenterPane({
           handleStream
         )
         if (!r.ok) {
+          delete pendingModeBySessionId.current[sessionId]
           msgApi.error('发送失败: ' + r.error)
           setMessages((m) => {
             const cur = m[sessionId] ?? []
@@ -832,6 +854,10 @@ export function useWorkspaceCenterPane({
         { ...cur[idx]!, content: t, aguiEvents: undefined }
       ]
       sendInFlightRef.current.add(sessionId)
+      pendingModeBySessionId.current[sessionId] = {
+        mode: composerMode,
+        workspaceId: composerSelectedWorkspaceId
+      }
       hydratedMessageSessions.current.add(sessionId)
       setMessages((m) => ({ ...m, [sessionId]: truncated }))
       setLiveAguiEvents((prev) => ({ ...prev, [sessionId]: [] }))
@@ -851,6 +877,7 @@ export function useWorkspaceCenterPane({
           handleStream
         )
         if (!r.ok) {
+          delete pendingModeBySessionId.current[sessionId]
           msgApi.error('发送失败: ' + r.error)
           setMessages((m) => {
             const list = m[sessionId] ?? []

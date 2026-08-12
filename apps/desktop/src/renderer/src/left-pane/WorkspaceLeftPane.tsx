@@ -185,9 +185,18 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
                             const isSessionRunning = Boolean(
                               !isDraft && p.runningBySessionId[session.id]
                             )
+                            const unreadKind = !isDraft
+                              ? p.byWorkspaceUi[workspace.id]?.unreadBySessionId?.[session.id]
+                              : undefined
+                            const unreadClass =
+                              unreadKind === 'plan'
+                                ? 'is-unread-plan'
+                                : unreadKind === 'other'
+                                  ? 'is-unread-other'
+                                  : ''
                             const sessionRow = (
                               <div
-                                className={`app-session-item app-session-item-sub ${isActiveSession ? 'is-active' : ''} ${isSessionRunning ? 'is-running' : ''}`}
+                                className={`app-session-item app-session-item-sub ${isActiveSession ? 'is-active' : ''} ${isSessionRunning ? 'is-running' : ''} ${unreadClass}`.trim()}
                                 aria-busy={isSessionRunning || undefined}
                                 onClick={() => {
                                   if (isDraft) return

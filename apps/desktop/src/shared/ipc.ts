@@ -142,17 +142,23 @@ export const defaultRendererUiState: RendererUiState = {
   byWorkspace: {}
 }
 
+/** 侧栏会话未读类型：plan 橙色，其他模式蓝色 */
+export type SessionUnreadKind = 'plan' | 'other'
+
 export type WorkspaceUiState = {
   activeSessionId: string | null
   inputDraft: string
   /** 仍存在于远端，但不在左侧会话列表中展示 */
   sidebarHiddenSessionIds?: string[]
+  /** 侧栏未读：sessionId → plan(橙) | other(蓝) */
+  unreadBySessionId?: Record<string, SessionUnreadKind>
 }
 
 export const defaultWorkspaceUiState: WorkspaceUiState = {
   activeSessionId: null,
   inputDraft: '',
-  sidebarHiddenSessionIds: []
+  sidebarHiddenSessionIds: [],
+  unreadBySessionId: {}
 }
 
 /** 固定 ID：用户主目录工作区；与 @openworker/shared 对齐 */

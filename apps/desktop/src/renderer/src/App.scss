@@ -61,8 +61,9 @@
   --aw-color-icon: rgb(24 24 27 / 0.38);
   --aw-color-icon-hover: rgb(24 24 27 / 0.52);
   --aw-color-icon-muted: rgb(24 24 27 / 0.3);
-  /* 侧栏会话列表左侧圆点（仅装饰，比 icon-muted 更淡） */
-  --aw-color-session-dot: rgb(24 24 27 / 0.16);
+  /* 侧栏会话未读圆点 */
+  --aw-color-session-unread-plan: #f97316;
+  --aw-color-session-unread-other: #3b82f6;
   --aw-color-primary: #27272a;
   --aw-color-primary-bg: #e4e4e7;
   --aw-color-primary-border: rgb(10 10 10 / 0.4);
@@ -634,21 +635,34 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   content: '';
   position: absolute;
   top: 50%;
-  left: 11px;
-  width: 6px;
-  height: 6px;
+  left: 10.5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--aw-color-session-dot);
+  background: transparent;
+  opacity: 0;
   box-sizing: border-box;
   transform: translateY(-50%);
 }
 
+/* 未读：plan 橙 / 其他模式蓝（查看后清除 class） */
+.app-session-item-sub.is-unread-plan::before {
+  opacity: 1;
+  background: var(--aw-color-session-unread-plan);
+}
+
+.app-session-item-sub.is-unread-other::before {
+  opacity: 1;
+  background: var(--aw-color-session-unread-other);
+}
+
 /* 执行中：同槽位绝对定位转圈，不改 padding，避免会话名左右抖动 */
 .app-session-item-sub.is-running::before {
-  /* 与 6px 圆点同圆心（left+width/2 = 14px） */
+  /* 与 7px 圆点同圆心（left+width/2 = 14px） */
   left: 9px;
   width: 10px;
   height: 10px;
+  opacity: 1;
   background: transparent;
   border: 1.5px solid rgb(24 24 27 / 0.14);
   border-top-color: var(--aw-color-primary);
@@ -662,10 +676,6 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 .app-session-item.is-active {
   background: var(--aw-color-primary-bg);
   border-color: transparent;
-}
-
-.app-session-item-sub.is-active::before {
-  background: var(--aw-color-primary);
 }
 
 .app-session-item-sub.is-active.is-running::before {

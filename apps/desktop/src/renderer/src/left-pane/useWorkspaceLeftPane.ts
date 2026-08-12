@@ -542,6 +542,7 @@ export function useWorkspaceLeftPane() {
     activeWorkspaceId,
     activeSessionId,
     runningBySessionId,
+    byWorkspaceUi,
     workspacesForSidebar,
     workspaceTreeEmptyMessage,
     sessionsByWorkspaceForSidebar,
