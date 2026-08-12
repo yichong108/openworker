@@ -8,6 +8,11 @@ type UiStoreState = {
   inputDraft: string
   /** 递增以触发主区域对话输入框聚焦（如新会话） */
   composerFocusNonce: number
+  /**
+   * 会话是否正在 Agent 执行中（RUN_STARTED → 结束）
+   * 仅内存态，不持久化；供中栏与侧栏会话圆点共用
+   */
+  runningBySessionId: Record<string, boolean>
   byWorkspace: Record<string, WorkspaceUiState>
   hydrated: boolean
   hydrateFromMain: () => Promise<void>
@@ -15,6 +20,13 @@ type UiStoreState = {
   setActiveSessionId: (id: string | null) => void
   setInputDraft: (text: string) => void
   requestComposerFocus: () => void
+  /**
+   * 更新指定会话的执行中状态
+   *
+   * @param sessionId - 会话 id
+   * @param running - 是否正在执行（AI 答复中）
+   */
+  setSessionRunning: (sessionId: string, running: boolean) => void
 }
 
 let draftTimer: ReturnType<typeof setTimeout> | null = null
@@ -42,6 +54,7 @@ export const useUiStore = create<UiStoreState>((set, get) => ({
   activeSessionId: null,
   inputDraft: '',
   composerFocusNonce: 0,
+  runningBySessionId: {},
   byWorkspace: {},
   hydrated: false,
   hydrateFromMain: async () => {
@@ -103,5 +116,12 @@ export const useUiStore = create<UiStoreState>((set, get) => ({
       draftTimer = null
     }, 150)
   },
-  requestComposerFocus: () => set((s) => ({ composerFocusNonce: s.composerFocusNonce + 1 }))
+  requestComposerFocus: () => set((s) => ({ composerFocusNonce: s.composerFocusNonce + 1 })),
+  setSessionRunning: (sessionId, running) =>
+    set((s) => {
+      if (Boolean(s.runningBySessionId[sessionId]) === running) return s
+      return {
+        runningBySessionId: { ...s.runningBySessionId, [sessionId]: running }
+      }
+    })
 }))

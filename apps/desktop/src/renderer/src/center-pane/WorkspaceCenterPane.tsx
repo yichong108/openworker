@@ -7,7 +7,7 @@ import {
 } from './useWorkspaceCenterPane'
 import { WorkspaceMessagesInner } from './WorkspaceMessagesInner'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { Alert, Button, Space, Tag } from 'antd'
+import { Alert, Button } from 'antd'
 
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
 
@@ -47,13 +47,7 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
             />
           </div>
         )}
-        <div className="app-topbar-body">
-          {p.activeId && p.isRun ? (
-            <Space>
-              <Tag color="processing">执行中</Tag>
-            </Space>
-          ) : null}
-        </div>
+        <div className="app-topbar-body" />
         {p.isRightPaneCollapsed ? (
           <div className="app-topbar-trailing">
             <Button

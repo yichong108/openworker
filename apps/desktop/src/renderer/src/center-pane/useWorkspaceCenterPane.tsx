@@ -105,6 +105,9 @@ export function useWorkspaceCenterPane({
   const composerFocusNonce = useUiStore((s) => s.composerFocusNonce)
   /** 从主进程恢复 UI 状态 */
   const hydrateUiStore = useUiStore((s) => s.hydrateFromMain)
+  /** 各会话是否正在 Agent 执行中 */
+  const running = useUiStore((s) => s.runningBySessionId)
+  const setSessionRunning = useUiStore((s) => s.setSessionRunning)
 
   const composerInputRef = useRef<InputRef>(null)
 
@@ -226,7 +229,6 @@ export function useWorkspaceCenterPane({
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
   /** 本轮直播 AG-UI 工具相关事件（渲染层再派生 ToolTimelineEvent） */
   const [liveAguiEvents, setLiveAguiEvents] = useState<Record<string, BaseEvent[]>>({})
-  const [running, setRunning] = useState<Record<string, boolean>>({})
   const [runStats, setRunStats] = useState<Record<string, RunStats | undefined>>({})
   const streamBuf = useRef<Record<string, string>>({})
   const assistantMsgId = useRef<Record<string, string | null>>({})
@@ -388,7 +390,7 @@ export function useWorkspaceCenterPane({
       if (event.type === EventType.RUN_STARTED) {
         const e = event as RunStartedEvent
         const startedAt = e.timestamp ?? Date.now()
-        setRunning((r) => ({ ...r, [sessionId]: true }))
+        setSessionRunning(sessionId, true)
         setRunStats((s) => ({
           ...s,
           [sessionId]: {
@@ -501,7 +503,7 @@ export function useWorkspaceCenterPane({
               }
             })
           }
-          setRunning((r) => ({ ...r, [sessionId]: false }))
+          setSessionRunning(sessionId, false)
           setRunStats((s) => {
             const cur = s[sessionId]
             if (!cur) return s
@@ -524,7 +526,7 @@ export function useWorkspaceCenterPane({
 
       if (event.type === EventType.RUN_FINISHED) {
         const e = event as RunFinishedEvent
-        setRunning((r) => ({ ...r, [sessionId]: false }))
+        setSessionRunning(sessionId, false)
         setRunStats((s) => {
           const cur = s[sessionId]
           if (!cur) return s
@@ -541,7 +543,7 @@ export function useWorkspaceCenterPane({
         // 不在此处 force 重载：RUN_FINISHED 早于 main 落盘，强制拉取会用旧列表冲掉流式正文
       }
     },
-    [msgApi]
+    [msgApi, setSessionRunning]
   )
 
   useEffect(() => {
@@ -833,7 +835,7 @@ export function useWorkspaceCenterPane({
       hydratedMessageSessions.current.add(sessionId)
       setMessages((m) => ({ ...m, [sessionId]: truncated }))
       setLiveAguiEvents((prev) => ({ ...prev, [sessionId]: [] }))
-      setRunning((r) => ({ ...r, [sessionId]: false }))
+      setSessionRunning(sessionId, false)
       streamBuf.current[sessionId] = ''
       assistantMsgId.current[sessionId] = null
 
@@ -873,6 +875,7 @@ export function useWorkspaceCenterPane({
       msgApi,
       refreshSessionsForWorkspace,
       running,
+      setSessionRunning,
       workspacesWithComposerHomeStub
     ]
   )

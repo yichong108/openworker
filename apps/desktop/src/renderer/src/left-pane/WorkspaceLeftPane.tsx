@@ -2,11 +2,12 @@ import { SettingsModal } from './modals'
 import { useWorkspaceLeftPane } from './useWorkspaceLeftPane'
 import {
   FolderAddOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
   InboxOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PlusOutlined,
-  RightOutlined,
   SettingOutlined
 } from '@ant-design/icons'
 import { Button, Dropdown, Input, Modal, Typography } from 'antd'
@@ -108,6 +109,7 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
                       <div
                         className="app-workspace-node-header is-draggable"
                         draggable
+                        onClick={() => p.handleWorkspaceToggle(workspace.id)}
                         onDragStart={(event: DragEvent<HTMLDivElement>) =>
                           p.handleWorkspaceDragStart(event, workspace.id)
                         }
@@ -121,17 +123,21 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
                       >
                         <button
                           type="button"
-                          className="app-workspace-chevron-btn"
+                          className="app-workspace-folder-btn"
                           aria-label={isExpanded ? '收起工作区会话' : '展开工作区会话'}
                           onClick={(event) => {
                             event.stopPropagation()
                             p.handleWorkspaceToggle(workspace.id)
                           }}
                         >
-                          <RightOutlined
-                            className={`app-workspace-chevron ${isExpanded ? 'is-open' : ''}`}
-                            aria-hidden="true"
-                          />
+                          {isExpanded ? (
+                            <FolderOpenOutlined
+                              className="app-workspace-folder-icon is-open"
+                              aria-hidden
+                            />
+                          ) : (
+                            <FolderOutlined className="app-workspace-folder-icon" aria-hidden />
+                          )}
                         </button>
                         {p.handleRemoveWorkspaceFromSidebar ? (
                           <Dropdown
@@ -176,9 +182,13 @@ export function WorkspaceLeftPane({ leftTogglePortalHost }: WorkspaceLeftPanePro
                             const isActiveSession =
                               session.id === p.activeSessionId ||
                               (isDraft && p.activeSessionId === null)
+                            const isSessionRunning = Boolean(
+                              !isDraft && p.runningBySessionId[session.id]
+                            )
                             const sessionRow = (
                               <div
-                                className={`app-session-item app-session-item-sub ${isActiveSession ? 'is-active' : ''}`}
+                                className={`app-session-item app-session-item-sub ${isActiveSession ? 'is-active' : ''} ${isSessionRunning ? 'is-running' : ''}`}
+                                aria-busy={isSessionRunning || undefined}
                                 onClick={() => {
                                   if (isDraft) return
                                   void p.handleSessionClick(workspace.id, session.id)

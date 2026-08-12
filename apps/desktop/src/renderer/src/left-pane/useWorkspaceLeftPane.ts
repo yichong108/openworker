@@ -58,6 +58,8 @@ export function useWorkspaceLeftPane() {
   const inputDraft = useUiStore((s) => s.inputDraft)
   const setInputDraft = useUiStore((s) => s.setInputDraft)
   const byWorkspaceUi = useUiStore((s) => s.byWorkspace)
+  /** 各会话 Agent 执行中状态（侧栏圆点转圈） */
+  const runningBySessionId = useUiStore((s) => s.runningBySessionId)
 
   const sessionsByWorkspaceForSidebar = useMemo(() => {
     const out: Record<string, SessionInfo[]> = {}
@@ -539,6 +541,7 @@ export function useWorkspaceLeftPane() {
     isSidebarResizing,
     activeWorkspaceId,
     activeSessionId,
+    runningBySessionId,
     workspacesForSidebar,
     workspaceTreeEmptyMessage,
     sessionsByWorkspaceForSidebar,
