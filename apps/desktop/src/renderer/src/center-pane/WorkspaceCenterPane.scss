@@ -247,10 +247,30 @@
 }
 
 .app-messages-shell {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+
+  /*
+   * 滚动区底部贴近输入框的约 200px：从上到下渐显至 60% 画布色，避免消息硬切到 composer。
+   */
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 200px;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in srgb, var(--aw-color-bg-layout) 60%, transparent) 100%
+    );
+  }
 }
 
 /*
@@ -328,7 +348,7 @@
 
 .app-message-card.is-user .ant-card-body {
   /* 边框画在 body 上并内缩 1px：列表顶无 padding 时，外层被 overflow 裁 1px 仍能看到完整描边 */
-  margin: 1px;
+  margin: 0px;
   padding: 7px 13px;
   border: 1px solid var(--aw-color-border);
   border-radius: 11px;
@@ -346,7 +366,7 @@
 
 .app-message-card.is-user.is-sticky-prompt {
   position: sticky;
-  top: 0;
+  top: 0.1px;
   z-index: 2;
 }
 
