@@ -793,97 +793,97 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
 
   if (editing) {
     return (
-      <Card
-        size="small"
-        variant="outlined"
-        className="app-message-card is-user is-sticky-prompt is-editing"
-      >
-        <Input.TextArea
-          ref={editInputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoSize={{ minRows: 1, maxRows: 16 }}
-          variant="borderless"
-          className="app-message-user-edit-input"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault()
-              cancelEdit()
-              return
-            }
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              void submitEdit()
-            }
-          }}
-        />
-        <div className="app-message-user-actions is-editing">
-          <Button size="small" onClick={cancelEdit} disabled={submitting}>
-            取消
-          </Button>
-          <Button
-            size="small"
-            type="primary"
-            onClick={() => void submitEdit()}
-            disabled={!draft.trim() || submitting}
-            loading={submitting}
-          >
-            发送
-          </Button>
-        </div>
-      </Card>
+      <div className="app-message-sticky-prompt">
+        <Card size="small" variant="outlined" className="app-message-card is-user is-editing">
+          <Input.TextArea
+            ref={editInputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoSize={{ minRows: 1, maxRows: 16 }}
+            variant="borderless"
+            className="app-message-user-edit-input"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                cancelEdit()
+                return
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                void submitEdit()
+              }
+            }}
+          />
+          <div className="app-message-user-actions is-editing">
+            <Button size="small" onClick={cancelEdit} disabled={submitting}>
+              取消
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              onClick={() => void submitEdit()}
+              disabled={!draft.trim() || submitting}
+              loading={submitting}
+            >
+              发送
+            </Button>
+          </div>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
-      <Card
-        size="small"
-        variant="outlined"
-        className={`app-message-card is-user is-sticky-prompt${canEdit ? ' is-editable' : ''}`}
-        onClick={(e) => {
-          // 仅左键进入编辑；右键由上下文菜单处理，不进入编辑模式
-          if (e.button !== 0) return
-          if (!canEdit) return
-          beginEdit()
-        }}
-        onContextMenu={(e) => {
-          // 阻止右键冒泡到可能触发编辑的逻辑；菜单由 Dropdown 打开
-          e.stopPropagation()
-        }}
-        role={canEdit ? 'button' : undefined}
-        tabIndex={canEdit ? 0 : undefined}
-        onKeyDown={
-          canEdit
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  beginEdit()
+    <div className="app-message-sticky-prompt">
+      <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
+        <Card
+          size="small"
+          variant="outlined"
+          className={`app-message-card is-user${canEdit ? ' is-editable' : ''}`}
+          onClick={(e) => {
+            // 仅左键进入编辑；右键由上下文菜单处理，不进入编辑模式
+            if (e.button !== 0) return
+            if (!canEdit) return
+            beginEdit()
+          }}
+          onContextMenu={(e) => {
+            // 阻止右键冒泡到可能触发编辑的逻辑；菜单由 Dropdown 打开
+            e.stopPropagation()
+          }}
+          role={canEdit ? 'button' : undefined}
+          tabIndex={canEdit ? 0 : undefined}
+          onKeyDown={
+            canEdit
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    beginEdit()
+                  }
                 }
-              }
-            : undefined
-        }
-      >
-        <div className="app-message-content">{msg.content}</div>
-        {showStop ? (
-          <div className="app-message-user-actions">
-            <button
-              type="button"
-              className="app-message-user-action-btn is-stop"
-              onClick={(e) => {
-                e.stopPropagation()
-                ctx.onStopRun()
-              }}
-              aria-label="停止"
-              title="停止"
-            >
-              <StopOutlined />
-              <span>停止</span>
-            </button>
-          </div>
-        ) : null}
-      </Card>
-    </Dropdown>
+              : undefined
+          }
+        >
+          <div className="app-message-content">{msg.content}</div>
+          {showStop ? (
+            <div className="app-message-user-actions">
+              <button
+                type="button"
+                className="app-message-user-action-btn is-stop"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  ctx.onStopRun()
+                }}
+                aria-label="停止"
+                title="停止"
+              >
+                <StopOutlined />
+                <span>停止</span>
+              </button>
+            </div>
+          ) : null}
+        </Card>
+      </Dropdown>
+    </div>
   )
 }
 

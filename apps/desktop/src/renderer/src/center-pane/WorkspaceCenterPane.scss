@@ -328,10 +328,23 @@
 .app-message-turn {
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
-.app-message-turn + .app-message-turn .app-message-card.is-user {
-  margin-top: 14px;
+/* sticky 外壳：置顶时用画布色铺底，与下一条消息无缝贴齐 */
+.app-message-sticky-prompt {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  background: var(--aw-color-bg-layout);
+}
+
+.app-message-sticky-prompt .app-message-card.is-user {
+  margin-bottom: 0;
+  /* 底阴影会造成与下一条之间的视觉空隙 */
+  box-shadow: none;
 }
 
 .app-message-card {
@@ -348,7 +361,7 @@
 
 .app-message-card.is-user .ant-card-body {
   /* 边框画在 body 上并内缩 1px：列表顶无 padding 时，外层被 overflow 裁 1px 仍能看到完整描边 */
-  margin: 0px;
+  margin: 0;
   padding: 7px 13px;
   border: 1px solid var(--aw-color-border);
   border-radius: 11px;
@@ -362,24 +375,21 @@
   border: none;
   background: var(--aw-color-bg-container);
   box-shadow: var(--aw-shadow-soft);
-}
-
-.app-message-card.is-user.is-sticky-prompt {
-  position: sticky;
-  top: 0.1px;
-  z-index: 2;
+  margin-bottom: 0;
 }
 
 .app-message-card.is-assistant {
   border: none;
   box-shadow: none;
   background: transparent;
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-/* 助手卡片自身不占纵向 margin，与下一条消息的间距由下一条顶边距承担 */
-.app-message-card.is-assistant + .app-message-card {
+  /* 与上方用户卡的间距（原用户卡 margin-bottom: 10px），挂在助手侧以免 sticky 贴顶时留下空隙 */
+  margin-top: 10px;
+  /*
+   * 回合间距挂在助手卡底部（随助手内容滚走）。
+   * 不要写在 .app-message-turn padding-bottom / 下一回合用户卡 margin-top：
+   * sticky 置顶时那些间距会卡在两条用户框之间。
+   */
+  margin-bottom: 14px;
 }
 
 .app-message-content {
