@@ -73,10 +73,7 @@
   --aw-shadow-card: 0 1px 2px rgb(24 24 27 / 0.05), 0 4px 14px rgb(24 24 27 / 0.04);
   --aw-composer-surface: #ffffff;
   --aw-composer-border: var(--aw-color-border);
-  --aw-composer-border-focus: rgb(10 10 10 / 0.5);
-  --aw-composer-ring: rgb(10 10 10 / 0.2);
   --aw-composer-shadow: 0 10px 38px rgb(24 24 27 / 0.07), 0 2px 10px rgb(24 24 27 / 0.04);
-  --aw-composer-shadow-focus: 0 12px 42px rgb(10 10 10 / 0.1), 0 2px 10px rgb(24 24 27 / 0.06);
   --aw-composer-toolbar-bg: rgb(24 24 27 / 0.04);
   --aw-composer-send: var(--aw-color-accent);
   --aw-composer-send-hover: var(--aw-color-accent-hover);
@@ -262,8 +259,8 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 
 /* 可拖区域 3px，可见分隔仅为居中 ::before 0.4px */
 .app-sidebar-resizer {
-  width: 3px;
-  min-width: 3px;
+  width: 5px;
+  min-width: 5px;
   flex-shrink: 0;
   position: relative;
   cursor: col-resize;
@@ -299,8 +296,8 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-right-resizer {
-  width: 3px;
-  min-width: 3px;
+  width: 5px;
+  min-width: 5px;
   flex-shrink: 0;
   position: relative;
   cursor: col-resize;
@@ -313,9 +310,9 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 1px;
-  min-width: 1px;
-  max-width: 1px;
+  width: 0.1px;
+  min-width: 0.1px;
+  max-width: 0.1px;
   transform: translateX(-50%);
   background: var(--aw-color-splitter);
   transition: background-color 0.15s ease;
@@ -338,7 +335,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-sidebar-header {
-  padding: 8px 10px 6px;
+  padding: 8px 8px 6px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -349,7 +346,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 6px 8px 10px;
+  padding: 8px 4px 8px 10px;
 }
 
 .app-sidebar-footer-spacer {
@@ -379,7 +376,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-new-session-wrap {
-  padding: 4px 8px 6px;
+  padding: 4px 6px 6px 8px;
 }
 
 .app-new-session-btn {
@@ -401,7 +398,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 10px 2px 14px;
+  padding: 4px 8px 2px 14px;
   flex-shrink: 0;
 }
 
@@ -449,7 +446,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-workspace-tree-empty {
-  padding: 12px 6px 10px;
+  padding: 12px 4px 10px 6px;
   line-height: 1.5;
 }
 
@@ -468,9 +465,9 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-workspace-node-header {
-  /* 与 .app-session-item-sub 同一套悬浮条：左右 inset 8、高 32、圆角 7、透明边框 */
-  margin: 0 8px;
-  padding: 0 6px 0 3px;
+  /* 与 .app-session-item-sub 同一套悬浮条：左 inset 8 / 右 inset 6、高 32、圆角 7、透明边框 */
+  margin: 0 6px 0 8px;
+  padding: 0 4px 0 3px;
   height: 32px;
   min-height: 32px;
   max-height: 32px;
@@ -597,13 +594,13 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 
 .app-session-sublist {
   margin: 2px 0 8px;
-  padding: 0 8px;
+  padding: 0 6px 0 8px;
 }
 
 .app-session-placeholder {
   color: var(--aw-color-text-secondary);
   font-size: var(--aw-font-xs);
-  padding: 8px 8px 8px 0;
+  padding: 8px 6px 8px 0;
 }
 
 .app-session-item {
@@ -621,7 +618,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   margin: 0 0 2px;
   border-radius: 7px;
   /* 固定行高；左 27 + sublist 8 = 35，与工作区名左缘对齐 */
-  padding: 0 6px 0 27px;
+  padding: 0 4px 0 27px;
   position: relative;
   height: 32px;
   min-height: 32px;

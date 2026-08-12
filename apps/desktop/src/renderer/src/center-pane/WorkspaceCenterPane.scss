@@ -1259,9 +1259,6 @@ textarea.app-message-user-edit-input.ant-input:focus {
   border: 1px solid var(--aw-composer-border);
   border-radius: 10px;
   box-shadow: var(--aw-composer-shadow);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
 }
 
 /* 斜杠技能菜单：锚定在输入框上方（对齐 Cursor `/` 技能选择） */
@@ -1347,13 +1344,6 @@ textarea.app-message-user-edit-input.ant-input:focus {
   padding: 12px;
   font-size: var(--aw-font-caption);
   color: var(--aw-color-text-tertiary);
-}
-
-.app-composer:focus-within {
-  border-color: var(--aw-composer-border-focus);
-  box-shadow:
-    var(--aw-composer-shadow-focus),
-    0 0 0 1px var(--aw-composer-ring);
 }
 
 .app-composer-inner {

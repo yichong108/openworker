@@ -479,7 +479,8 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
       const onMove = (ev: MouseEvent) => {
         const cw = content.getBoundingClientRect().width
         if (cw <= 0) return
-        const next = clampTreeWidthPx(startTreeWidth + (ev.clientX - startX), cw)
+        // 文件树在右侧：向右拖缩小树宽，向左拖增大树宽
+        const next = clampTreeWidthPx(startTreeWidth - (ev.clientX - startX), cw)
         fileTreeWidthPxRef.current = next
         setFileTreeWidthPx(next)
       }
@@ -943,6 +944,53 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
           <div className="app-right-content" ref={rightContentRef}>
             {activePanel === 'file' ? (
               <>
+                <div className="app-right-preview-wrap">
+                  <div className="app-right-preview-header">
+                    <Text strong>{filePreviewPath || '文件内容'}</Text>
+                    {filePreviewTruncated ? <Tag color="warning">已截断</Tag> : null}
+                  </div>
+                  <div className="app-right-preview-body">
+                    {filePreviewLoading ? (
+                      <div className="app-right-preview-loading">
+                        <Spin size="small" />
+                        <Text type="secondary">正在读取文件...</Text>
+                      </div>
+                    ) : filePreviewError ? (
+                      <Text type="danger">{filePreviewError}</Text>
+                    ) : filePreviewContent ? (
+                      <div className="app-right-preview-editor">
+                        <Editor
+                          path={filePreviewPath || undefined}
+                          language={filePreviewLanguage}
+                          value={filePreviewContent}
+                          theme={GITHUB_LIGHT_THEME_NAME}
+                          options={{
+                            readOnly: true,
+                            automaticLayout: true,
+                            minimap: { enabled: false },
+                            lineNumbers: 'on',
+                            wordWrap: 'on',
+                            renderWhitespace: 'selection',
+                            scrollBeyondLastLine: false,
+                            contextmenu: false,
+                            fontSize: 12
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Text type="secondary" className="app-right-empty-tip">
+                        点击文件树中的文件即可预览内容
+                      </Text>
+                    )}
+                  </div>
+                </div>
+                <div
+                  className={`app-right-file-split-handle ${fileSplitDragging ? 'is-active' : ''}`}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="调整文件树与预览区宽度"
+                  onMouseDown={onFileSplitterMouseDown}
+                />
                 <div className="app-right-tree-panel" style={{ flex: `0 0 ${fileTreeWidthPx}px` }}>
                   <div className="app-right-tree-wrap">
                     <div className="app-right-tree-viewport" ref={treeContainerRef}>
@@ -991,53 +1039,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
                         </Text>
                       )}
                     </div>
-                  </div>
-                </div>
-                <div
-                  className={`app-right-file-split-handle ${fileSplitDragging ? 'is-active' : ''}`}
-                  role="separator"
-                  aria-orientation="vertical"
-                  aria-label="调整文件树与预览区宽度"
-                  onMouseDown={onFileSplitterMouseDown}
-                />
-                <div className="app-right-preview-wrap">
-                  <div className="app-right-preview-header">
-                    <Text strong>{filePreviewPath || '文件内容'}</Text>
-                    {filePreviewTruncated ? <Tag color="warning">已截断</Tag> : null}
-                  </div>
-                  <div className="app-right-preview-body">
-                    {filePreviewLoading ? (
-                      <div className="app-right-preview-loading">
-                        <Spin size="small" />
-                        <Text type="secondary">正在读取文件...</Text>
-                      </div>
-                    ) : filePreviewError ? (
-                      <Text type="danger">{filePreviewError}</Text>
-                    ) : filePreviewContent ? (
-                      <div className="app-right-preview-editor">
-                        <Editor
-                          path={filePreviewPath || undefined}
-                          language={filePreviewLanguage}
-                          value={filePreviewContent}
-                          theme={GITHUB_LIGHT_THEME_NAME}
-                          options={{
-                            readOnly: true,
-                            automaticLayout: true,
-                            minimap: { enabled: false },
-                            lineNumbers: 'on',
-                            wordWrap: 'on',
-                            renderWhitespace: 'selection',
-                            scrollBeyondLastLine: false,
-                            contextmenu: false,
-                            fontSize: 12
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <Text type="secondary" className="app-right-empty-tip">
-                        点击文件树中的文件即可预览内容
-                      </Text>
-                    )}
                   </div>
                 </div>
               </>
