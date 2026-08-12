@@ -399,8 +399,8 @@
 
 .app-message-card.is-user .app-message-content {
   white-space: pre-wrap;
-  font-size: var(--aw-font-lg);
-  line-height: 1.75;
+  font-size: var(--aw-font-xl);
+  line-height: 1.65;
 }
 
 .app-message-card.is-user.is-editable {
@@ -477,8 +477,8 @@ textarea.app-message-user-edit-input.ant-input {
   outline: none !important;
   box-shadow: none !important;
   background: transparent !important;
-  font-size: var(--aw-font-lg);
-  line-height: 1.75;
+  font-size: var(--aw-font-xl);
+  line-height: 1.65;
   resize: none;
   transition: none !important;
   animation: none !important;
@@ -537,8 +537,8 @@ textarea.app-message-user-edit-input.ant-input:focus {
 
 .app-message-markdown {
   color: var(--aw-color-text);
-  font-size: var(--aw-font-lg);
-  line-height: 1.75;
+  font-size: var(--aw-font-xl);
+  line-height: 1.65;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
@@ -1506,8 +1506,8 @@ textarea.app-composer-input.ant-input {
   flex: 0 1 auto;
   width: 100%;
   padding: 4px 2px 2px;
-  font-size: var(--aw-font-lg);
-  line-height: 1.75;
+  font-size: var(--aw-font-xl);
+  line-height: 1.65;
   color: var(--aw-color-text);
   background: transparent !important;
   border: none !important;
