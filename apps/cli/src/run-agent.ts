@@ -2,20 +2,26 @@
  * 创建并驱动 CLI 侧 OpenWorkerAgent：经 AG-UI 事件流式输出文本与工具事件。
  */
 
-import { resolve } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { isAbsolute, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 
 import {
   EventType,
   randomUUID,
+  type CustomEvent,
   type Message,
   type RunErrorEvent,
   type TextMessageContentEvent,
   type ToolCallResultEvent,
   type ToolCallStartEvent
 } from '@ag-ui/client'
-import { OpenWorkerAgent, type OpenWorkerAgentRunDefaults } from '@openworker/agent'
+import {
+  OPENWORKER_PLAN_CUSTOM_NAME,
+  OpenWorkerAgent,
+  type OpenWorkerAgentRunDefaults
+} from '@openworker/agent'
 import { type AgentComposerMode, type AppSettings, MAX_AGENT_LOOP_STEPS } from '@openworker/shared'
 import { resolveChatModel } from './chat-model.js'
 
@@ -78,11 +84,23 @@ function printAguiEvent(event: {
 }
 
 /**
+ * 读取计划 Markdown 文件内容。
+ *
+ * @param planFile - 绝对路径或相对 cwd 的路径
+ * @param cwd - 工作区根目录
+ * @returns 文件文本
+ */
+export async function readPlanFile(planFile: string, cwd: string): Promise<string> {
+  const abs = isAbsolute(planFile) ? planFile : resolve(cwd, planFile)
+  return (await readFile(abs, 'utf8')).trim()
+}
+
+/**
  * 发送一轮用户消息并经 AG-UI 流式打印助手回复。
  *
  * @param agent - OpenWorkerAgent 实例
  * @param userText - 用户输入
- * @param options - mode / settings
+ * @param options - mode / settings / 可选已批准计划
  */
 export async function runOnce(
   agent: OpenWorkerAgent,
@@ -90,6 +108,7 @@ export async function runOnce(
   options: {
     mode: AgentComposerMode
     settings: AppSettings
+    planMarkdown?: string
   }
 ): Promise<void> {
   const abortController = new AbortController()
@@ -110,7 +129,10 @@ export async function runOnce(
     abortController,
     tavily: { apiKey: options.settings.tavilyApiKey },
     maxSteps: MAX_AGENT_LOOP_STEPS,
-    invokeTimeoutMs: options.settings.agentRunTimeoutMs
+    invokeTimeoutMs: options.settings.agentRunTimeoutMs,
+    ...(options.mode === 'build' && options.planMarkdown?.trim()
+      ? { planMarkdown: options.planMarkdown.trim() }
+      : {})
   }
 
   try {
@@ -121,6 +143,24 @@ export async function runOnce(
         if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
           process.stdout.write((event as TextMessageContentEvent).delta)
           return
+        }
+        if (event.type === EventType.CUSTOM) {
+          const custom = event as CustomEvent
+          if (custom.name === OPENWORKER_PLAN_CUSTOM_NAME) {
+            const value =
+              custom.value && typeof custom.value === 'object'
+                ? (custom.value as { markdown?: unknown; title?: unknown })
+                : null
+            const markdown = typeof value?.markdown === 'string' ? value.markdown : ''
+            const title = typeof value?.title === 'string' ? value.title : ''
+            process.stdout.write(
+              `\n\n----- PLAN${title ? `: ${title}` : ''} -----\n${markdown}\n----- END PLAN -----\n`
+            )
+            process.stdout.write(
+              '（审阅后可用 -m build --plan-file <path> 执行；或将计划保存为文件再注入）\n'
+            )
+            return
+          }
         }
         printAguiEvent(event)
       }
@@ -154,6 +194,7 @@ export async function runRepl(
   options: {
     mode: AgentComposerMode
     settings: AppSettings
+    planMarkdown?: string
   }
 ): Promise<void> {
   const rl = createInterface({ input, output })

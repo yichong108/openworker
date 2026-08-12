@@ -8,6 +8,7 @@ import type {
 
 import { fail, ok, BadRequestError, NotFoundError } from '../http/envelope.js'
 import { createSession, listSessions } from '../services/session-service.js'
+import { writeWorkspaceTextFile } from '../services/workspace-file-service.js'
 import {
   createWorkspace,
   listWorkspaces,
@@ -23,6 +24,7 @@ import {
  * - PUT /workspaces/reorder
  * - PATCH/DELETE /workspaces/:id
  * - GET/POST /workspaces/:workspaceId/sessions
+ * - PUT /workspaces/:workspaceId/files — 写入工作区相对路径文本文件
  */
 export const workspacesRouter: ExpressRouter = Router()
 
@@ -129,5 +131,39 @@ workspacesRouter.post('/workspaces/:workspaceId/sessions', async (req, res) => {
     }
     console.error('[native] POST /workspaces/:workspaceId/sessions failed', error)
     res.status(200).json(fail(50021, error instanceof Error ? error.message : String(error)))
+  }
+})
+
+/**
+ * 写入工作区内相对路径的 UTF-8 文本文件（自动创建父目录）。
+ *
+ * Body: `{ path: string, content: string }`
+ */
+workspacesRouter.put('/workspaces/:workspaceId/files', async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as { path?: string; content?: string }
+    const relativePath = typeof body.path === 'string' ? body.path : ''
+    const content = typeof body.content === 'string' ? body.content : null
+    if (!relativePath.trim()) {
+      res.status(200).json(fail(40030, 'path is required'))
+      return
+    }
+    if (content == null) {
+      res.status(200).json(fail(40031, 'content is required'))
+      return
+    }
+    const result = await writeWorkspaceTextFile(req.params.workspaceId!, relativePath, content)
+    res.status(200).json(ok(result))
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      res.status(200).json(fail(40410, error.message))
+      return
+    }
+    if (error instanceof BadRequestError) {
+      res.status(200).json(fail(40032, error.message))
+      return
+    }
+    console.error('[native] PUT /workspaces/:workspaceId/files failed', error)
+    res.status(200).json(fail(50030, error instanceof Error ? error.message : String(error)))
   }
 })

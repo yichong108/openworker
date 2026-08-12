@@ -65,16 +65,17 @@ Desktop **Renderer** 直连本服务（HTTP + SSE）；Main 不再代理业务 I
 
 ### Agent / 工具面
 
-| Method       | Path                         | 说明                                               |
-| ------------ | ---------------------------- | -------------------------------------------------- |
-| `POST`       | `/sessions/:id/agent/run`    | Body `{ text, mode?, ... }`；**SSE** 推 AG-UI 事件 |
-| `POST`       | `/sessions/:id/agent/cancel` | 取消当前 run                                       |
-| `GET`        | `/skills`                    | 列出 `~/.openworker/skills`                        |
-| `POST`       | `/mcp/probe`                 | 探测 MCP 工具                                      |
-| `GET`/`POST` | `/mcp/warmup`                | 读/跑 MCP 池化预热                                 |
-| `POST`       | `/terminal/run`              | 右侧栏终端；**SSE** 推 stdout/stderr               |
-| `POST`       | `/terminal/cancel`           | 取消终端                                           |
-| `POST`       | `/terminal/complete`         | 路径补全                                           |
+| Method       | Path                         | 说明                                                                                                    |
+| ------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `POST`       | `/sessions/:id/agent/run`    | Body `{ text, mode?, planMarkdown?, ... }`；**SSE** 推 AG-UI 事件；`mode` 为 `build` \| `ask` \| `plan` |
+| `PUT`        | `/workspaces/:id/files`      | Body `{ path, content }`；写入工作区相对路径文本（计划「保存到工作区」等）                              |
+| `POST`       | `/sessions/:id/agent/cancel` | 取消当前 run                                                                                            |
+| `GET`        | `/skills`                    | 列出 `~/.openworker/skills`                                                                             |
+| `POST`       | `/mcp/probe`                 | 探测 MCP 工具                                                                                           |
+| `GET`/`POST` | `/mcp/warmup`                | 读/跑 MCP 池化预热                                                                                      |
+| `POST`       | `/terminal/run`              | 右侧栏终端；**SSE** 推 stdout/stderr                                                                    |
+| `POST`       | `/terminal/cancel`           | 取消终端                                                                                                |
+| `POST`       | `/terminal/complete`         | 路径补全                                                                                                |
 
 响应格式：多数 `{ code, message, data }`；settings 为 `{ data }`；health 为 `{ status, timestamp, checks }`；SSE 为 `text/event-stream`（结束帧 `event: done`）。
 

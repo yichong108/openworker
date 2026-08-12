@@ -97,6 +97,7 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
               onStopRun={p.stopRun}
               onEditResend={p.editResendUserMessage}
             />
+            {p.planCard ? <div className="app-plan-card-stack">{p.planCard}</div> : null}
             <div className="app-composer-stack">{p.composerInput}</div>
           </>
         )}

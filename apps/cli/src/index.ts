@@ -4,12 +4,12 @@
 
 import { parseArgs, printHelp } from './cli.js'
 import { loadCliEnv, settingsFromEnv } from './env.js'
-import { createCliAgent, runOnce, runRepl } from './run-agent.js'
+import { createCliAgent, readPlanFile, runOnce, runRepl } from './run-agent.js'
 
 /**
  * CLI 主流程。
  *
- * 加载环境变量 → 解析参数 → OpenWorkerAgent → 一次性 prompt 或 REPL。
+ * 加载环境变量 → 解析参数 → OpenWorkerAgent → 一次性对话或 REPL。
  */
 async function main(): Promise<void> {
   loadCliEnv()
@@ -33,16 +33,28 @@ async function main(): Promise<void> {
   const settings = settingsFromEnv()
   const agent = createCliAgent(settings, options.cwd)
 
+  let planMarkdown: string | undefined
+  if (options.planFile) {
+    planMarkdown = await readPlanFile(options.planFile, options.cwd)
+    if (!planMarkdown) {
+      console.error(`计划文件为空: ${options.planFile}`)
+      process.exitCode = 1
+      return
+    }
+  }
+
   try {
     if (options.prompt) {
       await runOnce(agent, options.prompt, {
         mode: options.mode,
-        settings
+        settings,
+        ...(planMarkdown ? { planMarkdown } : {})
       })
     } else {
       await runRepl(agent, {
         mode: options.mode,
-        settings
+        settings,
+        ...(planMarkdown ? { planMarkdown } : {})
       })
     }
   } finally {

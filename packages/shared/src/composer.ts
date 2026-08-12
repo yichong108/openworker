@@ -2,17 +2,18 @@
  * 主输入区发送模式（对齐 Cursor）：
  * - build：可写文件、终端、技能/MCP
  * - ask：只读问答
+ * - plan：只读调研并产出可审阅计划；写码需用户批准后另开 build run
  */
-export type AgentComposerMode = 'build' | 'ask'
+export type AgentComposerMode = 'build' | 'ask' | 'plan'
 
 /**
  * 规范化 composer mode，非法值回退为 build。
  *
  * @param mode - 可选模式
- * @returns build / ask
+ * @returns build / ask / plan
  */
 export function normalizeComposerMode(mode?: AgentComposerMode): AgentComposerMode {
-  if (mode === 'ask') return mode
+  if (mode === 'ask' || mode === 'plan') return mode
   return 'build'
 }
 
@@ -28,4 +29,9 @@ export type AgentSendOptions = {
    * 未设置时按普通追加发送。
    */
   editUserOrdinal?: number
+  /**
+   * 已批准的实施计划 Markdown（Build 执行阶段注入）。
+   * 通常来自 Plan 模式产出并经用户编辑确认。
+   */
+  planMarkdown?: string
 }

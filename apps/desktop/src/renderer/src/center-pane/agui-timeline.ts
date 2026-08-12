@@ -31,6 +31,9 @@ export const TEXT_DELTA_CUSTOM_NAME = 'openworker.text.delta'
  */
 export const TEXT_REVOKE_CUSTOM_NAME = 'openworker.text.revoke'
 
+/** Plan 模式计划工件 CUSTOM 事件名 */
+export const OPENWORKER_PLAN_CUSTOM_NAME = 'openworker.plan'
+
 /**
  * 判断事件是否属于时间线快照（应落盘 / 参与 UI 派生）。
  *

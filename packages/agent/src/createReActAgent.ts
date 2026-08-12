@@ -10,6 +10,7 @@ import type { PreparedTooling } from './run-types.js'
 import { mergeToolSets, type ToolObservation, type ToolOnTool } from './define-tool.js'
 import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
 import { runReactLoop } from './react-loop.js'
+import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { buildWorkspaceRunPrompt, buildWorkspaceTools } from './tools/workspace-tools.js'
 
 /**
@@ -165,6 +166,11 @@ export type AgentRunInput = {
    * 拼在工作区 system prompt 之后；空串或未传则忽略。
    */
   memorySystemSection?: string
+  /**
+   * 用户已批准的实施计划 Markdown（Build 执行阶段注入）。
+   * 拼在 system prompt 末尾；空串或未传则忽略。仅在 composerMode=build 时生效。
+   */
+  planMarkdown?: string
 }
 
 /**
@@ -292,9 +298,13 @@ export function createReActAgent(options: CreateReActAgentOptions): ReActAgent {
       provider
     })
 
+    const approvedPlan =
+      composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''
+    const runPrompt = approvedPlan ? `${tooling.runPrompt}\n\n${approvedPlan}` : tooling.runPrompt
+
     const runMessages = await runReactLoop(
       provider,
-      tooling.runPrompt,
+      runPrompt,
       inputMessages,
       tooling.tools,
       abortController,

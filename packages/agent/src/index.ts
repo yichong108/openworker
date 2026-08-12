@@ -52,9 +52,20 @@ export {
 export {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
+  isReadonlyComposerMode,
   type BuildWorkspaceToolsOptions,
   type WorkspacePromptExtras
 } from './tools/workspace-tools.js'
+
+/** Plan 工件解析 */
+export {
+  OPENWORKER_PLAN_CUSTOM_NAME,
+  OPENWORKER_PLAN_FENCE_LANG,
+  buildApprovedPlanSystemSection,
+  extractPlanTitle,
+  parsePlanArtifact,
+  type ParsedPlanArtifact
+} from './plan-artifact.js'
 
 /** 路径安全（宿主 workspace 文件 API 可复用） */
 export { ensureWorkspaceExists, resolveSafePath } from './tools/path-guard.js'

@@ -10,8 +10,13 @@ export type CliOptions = {
   prompt: string
   /** 工作区根目录 */
   cwd: string
-  /** ask | build */
+  /** ask | build | plan */
   mode: AgentComposerMode
+  /**
+   * Build 时注入的已批准计划文件路径（绝对或相对 cwd）。
+   * 对应 AgentSendOptions.planMarkdown。
+   */
+  planFile?: string
   /** 是否打印帮助后退出 */
   help: boolean
 }
@@ -27,9 +32,10 @@ export function printHelp(): void {
   pnpm --filter @openworker/cli start -- [options]
 
 选项:
-  -h, --help          显示帮助
-  -C, --cwd <path>    工作区根目录（默认 process.cwd()）
-  -m, --mode <mode>   ask | build（默认 build）
+  -h, --help              显示帮助
+  -C, --cwd <path>        工作区根目录（默认 process.cwd()）
+  -m, --mode <mode>       ask | build | plan（默认 build）
+  --plan-file <path>      Build 时注入已批准计划 Markdown 文件
 
 MCP / Skills 从用户目录 ~/.openworker/mcp.json 与 ~/.openworker/skills 自动加载。
 
@@ -42,6 +48,8 @@ MCP / Skills 从用户目录 ~/.openworker/mcp.json 与 ~/.openworker/skills 自
 示例:
   pnpm --filter @openworker/cli start -- "列出当前目录文件"
   pnpm --filter @openworker/cli start -- -m ask
+  pnpm --filter @openworker/cli start -- -m plan "设计会话压缩"
+  pnpm --filter @openworker/cli start -- -m build --plan-file .openworker/plans/foo.md "按计划执行"
 `)
 }
 
@@ -54,6 +62,7 @@ MCP / Skills 从用户目录 ~/.openworker/mcp.json 与 ~/.openworker/skills 自
 export function parseArgs(argv: string[]): CliOptions {
   let cwd = process.cwd()
   let mode: AgentComposerMode = 'build'
+  let planFile: string | undefined
   let help = false
   const promptParts: string[] = []
 
@@ -71,10 +80,16 @@ export function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === '-m' || arg === '--mode') {
       const next = argv[++i]
-      if (next !== 'ask' && next !== 'build') {
-        throw new Error(`${arg} 需要 ask 或 build`)
+      if (next !== 'ask' && next !== 'build' && next !== 'plan') {
+        throw new Error(`${arg} 需要 ask、build 或 plan`)
       }
       mode = next
+      continue
+    }
+    if (arg === '--plan-file') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要路径参数`)
+      planFile = next
       continue
     }
     if (arg.startsWith('-')) {
@@ -87,6 +102,7 @@ export function parseArgs(argv: string[]): CliOptions {
     prompt: promptParts.join(' ').trim(),
     cwd,
     mode,
+    ...(planFile ? { planFile } : {}),
     help
   }
 }

@@ -27,6 +27,7 @@ import {
 import type { McpProbeResult, McpWarmupServerResult } from './mcp/types.js'
 import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
 import { runReactLoop } from './react-loop.js'
+import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { loadSkillsFromPaths } from './skills/load-skills.js'
 import {
   buildWorkspaceRunPrompt,
@@ -124,7 +125,7 @@ function extractAssistantText(messages: CoreMessage[]): string {
 /**
  * 按 `~/.openworker` 约定加载本轮 Skills / MCP 工具与 prompt 增强片段。
  *
- * ask 模式下跳过（与历史行为一致，不暴露 skill_* / mcp_*，也不注入技能名摘要）。
+ * ask / plan 模式下跳过（不暴露 skill_* / mcp_*，也不注入技能名摘要）。
  * 目录或文件不存在时加载结果为空，不抛错。
  *
  * @param composerMode - 发送模式
@@ -135,7 +136,7 @@ async function loadSkillsAndMcpTools(
   composerMode: AgentComposerMode,
   onTool: ToolOnTool
 ): Promise<{ tools: ToolSet; promptExtras: WorkspacePromptExtras }> {
-  if (composerMode === 'ask') {
+  if (composerMode === 'ask' || composerMode === 'plan') {
     return { tools: {}, promptExtras: {} }
   }
 
@@ -223,10 +224,12 @@ export function createAgent(options: CreateAgentOptions): Agent {
     })
     const tools = mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
 
-    // 在 create-agent 内合并系统 prompt（工作区 + skills 名称摘要 + MCP 上下文 + 可选记忆段）
+    // 在 create-agent 内合并系统 prompt（工作区 + skills 名称摘要 + MCP 上下文 + 可选记忆段 + 批准计划）
     const basePrompt = buildWorkspaceRunPrompt(composerMode, root, tavilyApiKey, promptExtras)
     const memorySection = input.memorySystemSection?.trim()
-    const runPrompt = memorySection ? `${basePrompt}\n\n${memorySection}` : basePrompt
+    const approvedPlanSection =
+      composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''
+    const runPrompt = [basePrompt, memorySection, approvedPlanSection].filter(Boolean).join('\n\n')
 
     const runMessages = await runReactLoop(
       provider,

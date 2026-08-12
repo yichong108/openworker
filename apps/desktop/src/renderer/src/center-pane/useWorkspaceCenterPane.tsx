@@ -8,6 +8,7 @@ import {
 import {
   aguiEventsToToolTimeline,
   isAguiTimelineSourceEvent,
+  OPENWORKER_PLAN_CUSTOM_NAME,
   TEXT_DELTA_CUSTOM_NAME,
   TEXT_REVOKE_CUSTOM_NAME
 } from './agui-timeline'
@@ -41,7 +42,8 @@ import {
   apiListSkills,
   apiListWorkspaces,
   apiSendAgentMessage,
-  apiUpsertWorkspaceByPath
+  apiUpsertWorkspaceByPath,
+  apiWriteWorkspaceFile
 } from '@/renderer/src/api/native-api'
 import { ComposerSkillMenu } from '@/renderer/src/center-pane/ComposerSkillMenu'
 import {
@@ -111,8 +113,15 @@ export function useWorkspaceCenterPane({
     composerInputRef.current?.focus({ preventScroll: true })
   }, [composerFocusNonce])
 
-  /** Composer 模式：Build / Ask */
+  /** Composer 模式：Build / Ask / Plan */
   const [composerMode, setComposerMode] = useState<AgentComposerMode>('build')
+
+  /** 会话级可编辑计划草稿（来自 CUSTOM(openworker.plan)） */
+  const [planDrafts, setPlanDrafts] = useState<
+    Record<string, { markdown: string; title?: string }>
+  >({})
+  const [planBuilding, setPlanBuilding] = useState(false)
+  const [planSaving, setPlanSaving] = useState(false)
 
   /** 用户 skills 目录扫描结果（`/` 菜单数据源） */
   const [skills, setSkills] = useState<SkillListItem[]>([])
@@ -433,6 +442,20 @@ export function useWorkspaceCenterPane({
           })
           return
         }
+        if (custom.name === OPENWORKER_PLAN_CUSTOM_NAME) {
+          const value =
+            custom.value && typeof custom.value === 'object'
+              ? (custom.value as { markdown?: unknown; title?: unknown })
+              : null
+          const markdown = typeof value?.markdown === 'string' ? value.markdown.trim() : ''
+          if (!markdown) return
+          const title = typeof value?.title === 'string' ? value.title.trim() : undefined
+          setPlanDrafts((d) => ({
+            ...d,
+            [sessionId]: { markdown, ...(title ? { title } : {}) }
+          }))
+          return
+        }
       }
 
       if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
@@ -581,18 +604,24 @@ export function useWorkspaceCenterPane({
   )
 
   const handleComposerPlusMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(({ key }) => {
-    if (key === 'build' || key === 'ask') {
+    if (key === 'build' || key === 'ask' || key === 'plan') {
       setComposerMode(key)
     }
   }, [])
 
+  const composerModeLabel = (mode: AgentComposerMode): string => {
+    if (mode === 'ask') return '问答'
+    if (mode === 'plan') return '计划'
+    return '构建'
+  }
+
   const composerPlusMenuItems = useMemo<MenuProps['items']>(
     () =>
-      (['build', 'ask'] as const).map((mode) => ({
+      (['build', 'ask', 'plan'] as const).map((mode) => ({
         key: mode,
         label: (
           <span className="app-composer-plus-menu-title">
-            <span>{mode === 'build' ? '构建' : '问答'}</span>
+            <span>{composerModeLabel(mode)}</span>
             {composerMode === mode ? (
               <CheckOutlined className="app-composer-plus-menu-check" aria-hidden />
             ) : null}
@@ -625,7 +654,7 @@ export function useWorkspaceCenterPane({
   }, [composerSelectedWorkspaceId, workspacesWithComposerHomeStub])
 
   const sendAgentText = useCallback(
-    async (text: string, mode: AgentComposerMode) => {
+    async (text: string, mode: AgentComposerMode, sendOpts?: { planMarkdown?: string }) => {
       const t = text.trim()
       if (!t) return
       const activeWorkspace = workspacesWithComposerHomeStub.find(
@@ -690,7 +719,10 @@ export function useWorkspaceCenterPane({
           t,
           {
             mode,
-            workspacePath: activeWorkspace.path
+            workspacePath: activeWorkspace.path,
+            ...(mode === 'build' && sendOpts?.planMarkdown?.trim()
+              ? { planMarkdown: sendOpts.planMarkdown.trim() }
+              : {})
           },
           handleStream
         )
@@ -864,6 +896,99 @@ export function useWorkspaceCenterPane({
   }, [activateWorkspaceLocal, activeWorkspaceId, preloadOk])
   const isEmptyConversation = currentMessages.length === 0
 
+  const activePlanDraft = activeId ? planDrafts[activeId] : undefined
+
+  /**
+   * 用当前编辑后的计划触发 Build 执行（第二次 run）。
+   */
+  const buildApprovedPlan = useCallback(async () => {
+    if (!activeId || !activePlanDraft?.markdown.trim()) {
+      msgApi.warning('暂无计划可构建')
+      return
+    }
+    if (planBuilding || isRun) return
+    setPlanBuilding(true)
+    setComposerMode('build')
+    try {
+      await sendAgentText('请按已批准的实施计划执行。', 'build', {
+        planMarkdown: activePlanDraft.markdown
+      })
+    } finally {
+      setPlanBuilding(false)
+    }
+  }, [activeId, activePlanDraft, isRun, msgApi, planBuilding, sendAgentText])
+
+  /**
+   * 将当前计划保存到工作区 `.openworker/plans/`。
+   */
+  const savePlanToWorkspace = useCallback(async () => {
+    if (!activePlanDraft?.markdown.trim()) {
+      msgApi.warning('暂无计划可保存')
+      return
+    }
+    if (planSaving) return
+    setPlanSaving(true)
+    try {
+      const slugBase =
+        (activePlanDraft.title || 'plan')
+          .toLowerCase()
+          .replace(/[^a-z0-9\u4e00-\u9fff]+/gi, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 48) || 'plan'
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+      const relativePath = `.openworker/plans/${slugBase}-${stamp}.md`
+      const result = await apiWriteWorkspaceFile(
+        composerSelectedWorkspaceId,
+        relativePath,
+        activePlanDraft.markdown.trim() + '\n'
+      )
+      msgApi.success(`已保存到 ${result.path}`)
+    } catch (error) {
+      msgApi.error(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPlanSaving(false)
+    }
+  }, [activePlanDraft, composerSelectedWorkspaceId, msgApi, planSaving])
+
+  const planCard =
+    activeId && activePlanDraft ? (
+      <div className="app-plan-card" data-testid="plan-card">
+        <div className="app-plan-card-header">
+          <div className="app-plan-card-title">{activePlanDraft.title?.trim() || '实施计划'}</div>
+          <div className="app-plan-card-actions">
+            <Button size="small" onClick={() => void savePlanToWorkspace()} loading={planSaving}>
+              保存到工作区
+            </Button>
+            <Button
+              type="primary"
+              size="small"
+              className="app-plan-card-build-btn"
+              onClick={() => void buildApprovedPlan()}
+              loading={planBuilding}
+              disabled={Boolean(isRun)}
+            >
+              开始构建
+            </Button>
+          </div>
+        </div>
+        <TextArea
+          className="app-plan-card-editor"
+          value={activePlanDraft.markdown}
+          onChange={(e) => {
+            const markdown = e.target.value
+            setPlanDrafts((d) => ({
+              ...d,
+              [activeId]: { ...d[activeId]!, markdown }
+            }))
+          }}
+          autoSize={{ minRows: 2, maxRows: 5 }}
+        />
+        <div className="app-plan-card-hint">
+          可继续在「计划」模式追问细化，或直接编辑上文后点击「开始构建」。
+        </div>
+      </div>
+    ) : null
+
   const composerWorkspaceToolbar = (
     <div className="app-composer-toolbar">
       <Dropdown
@@ -979,7 +1104,9 @@ export function useWorkspaceCenterPane({
                 aria-label="对话模式"
               />
             </Dropdown>
-            {composerMode !== 'build' ? <span className="app-composer-mode-hint">问答</span> : null}
+            {composerMode !== 'build' ? (
+              <span className="app-composer-mode-hint">{composerModeLabel(composerMode)}</span>
+            ) : null}
           </div>
           <div className="app-composer-actions">
             {showSendButton && (
@@ -1018,6 +1145,7 @@ export function useWorkspaceCenterPane({
     currentRunStats,
     composerWorkspaceToolbar,
     composerInput,
+    planCard,
     isEmptyConversation,
     currentMessages,
     isRun,

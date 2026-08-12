@@ -95,12 +95,21 @@
     min-width: 0;
   }
 
-  &:not(.is-empty-conversation) .app-composer-stack {
+  &:not(.is-empty-conversation) .app-composer-stack,
+  &:not(.is-empty-conversation) .app-plan-card-stack {
     width: 100%;
     max-width: var(--aw-main-content-max-width);
     box-sizing: border-box;
-    margin: 0 auto 14px;
+    margin-inline: auto;
     padding-inline: var(--aw-main-column-padding-x);
+  }
+
+  &:not(.is-empty-conversation) .app-composer-stack {
+    margin-bottom: 14px;
+  }
+
+  &:not(.is-empty-conversation) .app-plan-card-stack {
+    margin-bottom: 8px;
   }
 
   &:not(.is-empty-conversation) .app-preload-alert-wrap {
@@ -1347,6 +1356,89 @@ textarea.app-message-user-edit-input.ant-input:focus {
   letter-spacing: 0.02em;
   color: var(--aw-color-text-tertiary);
   white-space: nowrap;
+}
+
+.app-plan-card-stack {
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.app-plan-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--aw-color-border);
+  border-radius: 10px;
+  background: var(--aw-color-bg-elevated, var(--aw-color-bg-canvas));
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-plan-card-title {
+  font-size: var(--aw-font-md, 14px);
+  font-weight: var(--aw-font-weight-medium);
+  color: var(--aw-color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-plan-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.app-plan-card-build-btn.ant-btn-primary {
+  color: #422006;
+  background: #fef08a;
+  border-color: #fef08a;
+}
+
+.app-plan-card-build-btn.ant-btn-primary:not(:disabled):hover {
+  color: #422006;
+  background: #fde047;
+  border-color: #fde047;
+}
+
+.app-plan-card-build-btn.ant-btn-primary:not(:disabled):active {
+  color: #422006;
+  background: #fde047;
+  border-color: #fde047;
+}
+
+.app-plan-card-editor.ant-input,
+textarea.app-plan-card-editor.ant-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  max-height: 100px !important;
+  min-height: 72px;
+  overflow-y: auto !important;
+  resize: none;
+  font-family: var(--aw-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12.5px;
+  line-height: 1.55;
+  border-radius: 8px;
+}
+
+.app-plan-card-hint {
+  font-size: var(--aw-font-caption);
+  color: var(--aw-color-text-tertiary);
 }
 
 .app-composer-input.ant-input,

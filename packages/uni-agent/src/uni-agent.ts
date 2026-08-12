@@ -47,6 +47,8 @@ export type UniAgentRunInput = {
   invokeTimeoutMs?: number
   /** 会话记忆压缩段落 */
   memorySystemSection?: string
+  /** 用户已批准的实施计划（Build 执行阶段注入） */
+  planMarkdown?: string
 }
 
 /** 创建时占位模型 */
@@ -152,7 +154,8 @@ export class UniAgent extends AbstractAgent {
       invokeTimeoutMs: input.invokeTimeoutMs,
       ...(input.memorySystemSection != null
         ? { memorySystemSection: input.memorySystemSection }
-        : {})
+        : {}),
+      ...(input.planMarkdown != null ? { planMarkdown: input.planMarkdown } : {})
     }
   }
 

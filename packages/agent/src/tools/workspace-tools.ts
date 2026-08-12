@@ -16,8 +16,24 @@ import { runCommand } from './terminal.js'
 import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
 import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '../path.js'
 
-/** Ask 模式允许的只读工具名 */
-const ASK_MODE_ALLOWED_TOOL_NAMES = new Set(['read_file', 'list_dir', 'glob', 'grep', 'web_search'])
+/** Ask / Plan 模式允许的只读工具名 */
+const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([
+  'read_file',
+  'list_dir',
+  'glob',
+  'grep',
+  'web_search'
+])
+
+/**
+ * 判断 composer 模式是否为只读（ask / plan）。
+ *
+ * @param mode - 发送模式
+ * @returns 是否只读
+ */
+export function isReadonlyComposerMode(mode?: AgentComposerMode): boolean {
+  return mode === 'ask' || mode === 'plan'
+}
 
 type ToolDefinition<T extends z.ZodTypeAny> = {
   name: string
@@ -59,7 +75,7 @@ export type BuildWorkspaceToolsOptions = {
   /** 可选第二根目录（如 Electron userData），供 glob 搜索 */
   userDataRoot?: string | null
   /**
-   * ask：仅只读工具；build（默认）：含写文件与 shell。
+   * ask / plan：仅只读工具；build（默认）：含写文件与 shell。
    * 未传则返回完整工具集。
    */
   mode?: AgentComposerMode
@@ -185,8 +201,8 @@ export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSe
     : {}
 
   const tools = mergeToolSets(baseTools, webSearchTools)
-  if (mode === 'ask') {
-    return filterToolSet(tools, (name) => ASK_MODE_ALLOWED_TOOL_NAMES.has(name))
+  if (isReadonlyComposerMode(mode)) {
+    return filterToolSet(tools, (name) => READONLY_MODE_ALLOWED_TOOL_NAMES.has(name))
   }
   return tools
 }
@@ -248,7 +264,7 @@ function buildMarkdownReplyStylePrompt(): string {
 /**
  * 根据 composer mode 组装工作区 ReAct system prompt。
  *
- * @param mode - ask / build
+ * @param mode - ask / plan / build
  * @param root - 工作区根目录
  * @param tavilyApiKey - 可选 Tavily API Key（影响 web_search 相关提示）
  * @param extras - 宿主增强片段（skills / MCP）
@@ -271,6 +287,9 @@ export function buildWorkspaceRunPrompt(
   ].join('\n')
   if (mode === 'ask') {
     return [common, buildAskSystemPrompt(root, tavilyApiKey)].filter(Boolean).join('\n\n')
+  }
+  if (mode === 'plan') {
+    return [common, buildPlanSystemPrompt(root, tavilyApiKey)].filter(Boolean).join('\n\n')
   }
   return [
     common,
@@ -356,6 +375,37 @@ function buildAskSystemPrompt(root: string, tavilyApiKey?: string): string {
 ${webRule}
 - 回复清晰可验证：下结论前先 read/list/grep 仓库内容。
 - 先理解意图 → 必要时复述目标
+
+${buildMarkdownReplyStylePrompt()}
+`
+}
+
+/**
+ * Plan 模式 system prompt：只读调研并产出可审阅实施计划。
+ *
+ * @param root - 工作区根目录（写入提示上下文）
+ * @param tavilyApiKey - 可选 Tavily Key
+ */
+function buildPlanSystemPrompt(root: string, tavilyApiKey?: string): string {
+  const web = isTavilyConfigured(tavilyApiKey)
+  const toolLine = web
+    ? 'read_file、list_dir、glob、grep、web_search（Tavily）'
+    : 'read_file、list_dir、glob、grep（未配置 Tavily 时无 web_search）'
+  const webRule = web
+    ? '- 需要外部信息时调用 **web_search**；不要编造搜索结果。'
+    : '- 未配置 Tavily：若用户需要实时信息，如实说明并建议在设置中配置 Tavily。'
+  return `你是协助软件开发的规划助手（计划模式 / Plan Mode）。
+- 禁止修改工作区文件、删除文件、执行 shell、调用 skill_* 或 mcp_*；本模式下这些工具不可用。
+- 仅只读工具：${toolLine}。路径均相对于工作区根目录（${root}）。
+- 工作流程：
+  1. 需求不清时先提出关键澄清问题（可多轮），不要急于给完整计划。
+  2. 用只读工具调研相关文件、现有模式与约束。
+  3. 准备好后产出结构化实施计划，供用户审阅；用户批准后才会在「构建」模式写代码。
+- 最终计划必须放在一个 \`\`\`openworker-plan\`\`\` fenced block 中（语言标签恰好为 openworker-plan）。围栏外可写简短说明。
+- 计划结构建议包含：标题、概述、关键文件路径、分步 todos、风险与非目标。
+- 若用户要求「直接改代码」，说明计划模式不能写文件，请其审阅计划后点击「构建计划」，或切换到构建模式。
+${webRule}
+- 下结论前先 read/list/grep；计划要具体可执行，避免空泛口号。
 
 ${buildMarkdownReplyStylePrompt()}
 `

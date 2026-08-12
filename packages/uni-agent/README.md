@@ -28,6 +28,31 @@ await agent.runAgent({ runId: 'r1', forwardedProps })
 await agent.dispose()
 ```
 
+Composer 模式（经 `composerMode`）：
+
+- `build`：可写文件 / shell / skills / MCP
+- `ask`：只读问答
+- `plan`：只读调研并产出 `CUSTOM(openworker.plan)` 计划工件；用户批准后再用 `build` + `planMarkdown` 执行
+
+```ts
+const planProps = agent.buildRunForwardedProps({
+  composerMode: 'plan',
+  abortController,
+  workspacePath: cwd,
+  provider
+})
+await agent.runAgent({ runId: 'plan-1', forwardedProps: planProps })
+
+const buildProps = agent.buildRunForwardedProps({
+  composerMode: 'build',
+  abortController,
+  workspacePath: cwd,
+  provider,
+  planMarkdown: approvedMarkdown
+})
+await agent.runAgent({ runId: 'build-1', forwardedProps: buildProps })
+```
+
 简单问答（临时 UniAgent，一轮后返回纯文本）：
 
 ```ts

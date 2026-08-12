@@ -334,7 +334,8 @@ export async function apiSendAgentMessage(
         text,
         mode: opts?.mode,
         workspacePath: opts?.workspacePath,
-        editUserOrdinal: opts?.editUserOrdinal
+        editUserOrdinal: opts?.editUserOrdinal,
+        planMarkdown: opts?.planMarkdown
       },
       {
         onData: (data) => {
@@ -424,4 +425,26 @@ export async function apiRunTerminal(
     signal
   )
   return { output }
+}
+
+/**
+ * 向工作区写入相对路径的 UTF-8 文本文件（自动创建父目录）。
+ *
+ * @param workspaceId - 工作区 id
+ * @param relativePath - 相对工作区根的路径
+ * @param content - 文件内容
+ * @returns 写入后的相对路径
+ */
+export async function apiWriteWorkspaceFile(
+  workspaceId: string,
+  relativePath: string,
+  content: string
+): Promise<{ path: string }> {
+  return unwrap(
+    await request<{ path: string }>({
+      method: 'PUT',
+      url: `/workspaces/${encodeURIComponent(workspaceId)}/files`,
+      data: { path: relativePath, content }
+    })
+  )
 }

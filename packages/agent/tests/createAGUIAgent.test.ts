@@ -457,6 +457,44 @@ describe('OpenWorkerAgent', () => {
     )
   })
 
+  it('plan 模式终稿解析并发出 CUSTOM(openworker.plan)', async () => {
+    createAgentMock.mockImplementation(() =>
+      createStubAgent({
+        send: async (userText, input = {}) => {
+          const result = `说明\n\n\`\`\`openworker-plan\n# 实施计划\n- step\n\`\`\``
+          input.onTextDelta?.(result)
+          return {
+            messages: [
+              { role: 'user' as const, content: userText },
+              { role: 'assistant' as const, content: result }
+            ],
+            result
+          }
+        }
+      })
+    )
+
+    const agent = new OpenWorkerAgent({
+      agent: { provider: stubModel, local: { cwd: '/tmp/ws' } },
+      runDefaults: { composerMode: 'plan', terminalKey: 'term:t' }
+    })
+
+    const events = await collectEvents(agent, baseInput())
+    const planEvents = events.filter(
+      (e) => e.type === EventType.CUSTOM && 'name' in e && e.name === 'openworker.plan'
+    )
+    expect(planEvents).toHaveLength(1)
+    expect(planEvents[0]).toMatchObject({
+      type: EventType.CUSTOM,
+      name: 'openworker.plan',
+      value: expect.objectContaining({
+        markdown: expect.stringContaining('# 实施计划'),
+        title: '实施计划',
+        fromFence: true
+      })
+    })
+  })
+
   it('runAgent 可携带含函数的 LanguageModel（避免 structuredClone 失败）', async () => {
     const send = vi.fn(async (userText, input = {}) => {
       input.onTextDelta?.('ok')

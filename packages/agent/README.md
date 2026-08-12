@@ -20,6 +20,18 @@ Agent 可选 MCP。
 - MCP 宿主能力经 `OpenWorkerAgent.mcp`（probe / warmup / dispose）。
 - send 的 Skills / MCP 按用户目录约定自动加载：`~/.openworker/skills` 与 `~/.openworker/mcp.json`。
 
+## Composer 模式
+
+经 `composerMode` / `forwardedProps.composerMode`：
+
+| 模式    | 工具                        | 说明                                             |
+| ------- | --------------------------- | ------------------------------------------------ |
+| `build` | 读写 / shell / skills / MCP | 可执行写码；可注入 `planMarkdown` 作为已批准计划 |
+| `ask`   | 只读                        | 问答，不写文件                                   |
+| `plan`  | 只读                        | 调研并产出 `CUSTOM(openworker.plan)`；不写文件   |
+
+Plan-then-Build：先 `plan` run → 用户审阅 → 再 `build` run（带 `planMarkdown`）。
+
 ## 反模式（本模块已出现过/严禁）
 
 - Desktop 直接依赖 `@openworker/agent`（应使用 `@openworker/uni-agent`）

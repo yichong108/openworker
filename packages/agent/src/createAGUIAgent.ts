@@ -27,6 +27,7 @@ import {
   type ToolCallStartEvent
 } from '@ag-ui/client'
 import type { CoreMessage, CoreToolMessage } from 'ai'
+import { normalizeComposerMode } from '@openworker/shared'
 import { Observable, type Subscriber } from 'rxjs'
 
 import {
@@ -37,6 +38,7 @@ import {
   type CreateAgentOptions
 } from './create-agent.js'
 import type { ToolObservation } from './define-tool.js'
+import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.js'
 
 /**
  * 每轮 createAgent.send 的默认参数（不含流式回调；回调由本适配器映射为 AG-UI 事件）。
@@ -111,6 +113,9 @@ function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
   }
   if (typeof src.memorySystemSection === 'string') {
     out.memorySystemSection = src.memorySystemSection
+  }
+  if (typeof src.planMarkdown === 'string') {
+    out.planMarkdown = src.planMarkdown
   }
 
   return out
@@ -707,6 +712,25 @@ export class OpenWorkerAgent extends AbstractAgent {
           : pendingResultText
       flushResultText(finalText)
       ensureTextEnd()
+
+      // Plan 模式：解析终稿中的计划工件并发 CUSTOM(openworker.plan)
+      const planMode = normalizeComposerMode(merged.composerMode) === 'plan'
+      if (planMode && finalText.trim()) {
+        const artifact = parsePlanArtifact(finalText)
+        if (artifact) {
+          const planEvent: CustomEvent = {
+            type: EventType.CUSTOM,
+            name: OPENWORKER_PLAN_CUSTOM_NAME,
+            value: {
+              markdown: artifact.markdown,
+              ...(artifact.title ? { title: artifact.title } : {}),
+              fromFence: artifact.fromFence
+            },
+            timestamp: Date.now()
+          }
+          emit(planEvent)
+        }
+      }
 
       const finished: RunFinishedEvent = {
         type: EventType.RUN_FINISHED,

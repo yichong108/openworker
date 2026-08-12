@@ -357,7 +357,10 @@ export async function runUserMessage(
     tavilyApiKey: settings.tavilyApiKey,
     maxSteps: MAX_AGENT_LOOP_STEPS,
     invokeTimeoutMs: settings.agentRunTimeoutMs,
-    ...(memorySystemSection ? { memorySystemSection } : {})
+    ...(memorySystemSection ? { memorySystemSection } : {}),
+    ...(composerMode === 'build' && options?.planMarkdown?.trim()
+      ? { planMarkdown: options.planMarkdown.trim() }
+      : {})
   })
 
   /**

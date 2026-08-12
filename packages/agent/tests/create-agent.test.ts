@@ -246,4 +246,32 @@ describe('createAgent', () => {
     expect(runPrompt).not.toContain('可用技能工具')
     expect(runPrompt).not.toContain('debug_workflow')
   })
+
+  it('plan 模式不加载 skills，并使用计划 prompt', async () => {
+    vi.mocked(loadSkillsFromPaths).mockResolvedValue({
+      tools: {},
+      hint: '可用技能工具（可自动调用）：\n- debug_workflow: 故障排查'
+    })
+
+    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    await agent.send('设计会话压缩', { composerMode: 'plan' })
+
+    expect(loadSkillsFromPaths).not.toHaveBeenCalled()
+    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    expect(runPrompt).toContain('计划模式')
+    expect(runPrompt).toContain('openworker-plan')
+    expect(runPrompt).not.toContain('可用技能工具')
+  })
+
+  it('build 注入 planMarkdown 到 system prompt', async () => {
+    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    await agent.send('执行', {
+      composerMode: 'build',
+      planMarkdown: '# 计划\n- 改 A'
+    })
+
+    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    expect(runPrompt).toContain('Approved plan')
+    expect(runPrompt).toContain('# 计划')
+  })
 })
