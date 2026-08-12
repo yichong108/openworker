@@ -13,7 +13,7 @@
 主进程在 `app.whenReady` 时通过 [`native-service.ts`](src/main/native-service.ts) 拉起 `@openworker/native`（默认 `http://127.0.0.1:3200`）：
 
 - 开发：系统 Node 跑 monorepo 中的 `desktop-bundle.cjs` / `dist`（无则 tsx）
-- 安装包：`resources/native/index.js` + `ELECTRON_RUN_AS_NODE=1`（`pnpm desktop:build` 会先 `native:build`）
+- 安装包：`resources/native/index.cjs` + `resources/bin/rg(.exe)` + `ELECTRON_RUN_AS_NODE=1`（`pnpm desktop:build` 会先 `native:build`）
 - `/health` 已就绪则复用，退出时只杀本进程 spawn 的实例
 
 ### Renderer → Native（直连）

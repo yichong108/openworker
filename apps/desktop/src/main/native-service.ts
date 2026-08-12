@@ -75,12 +75,14 @@ function resolveNativePackageDir(): string {
 }
 
 /**
- * 安装包内 native 入口（extraResources → resources/native/index.js）
+ * 安装包内 native 入口（extraResources → resources/native/index.cjs）
+ *
+ * 使用 `.cjs` 避免仓库/`type:module` 祖先把入口当成 ESM，导致 CJS bundle 秒退。
  *
  * @returns 打包后入口绝对路径
  */
 function resolvePackagedEntry(): string {
-  return path.join(process.resourcesPath, 'native', 'index.js')
+  return path.join(process.resourcesPath, 'native', 'index.cjs')
 }
 
 /**
@@ -212,6 +214,11 @@ function resolveSpawnSpec(): {
       return null
     }
     env.ELECTRON_RUN_AS_NODE = '1'
+    if (app.isPackaged) {
+      const rgName = process.platform === 'win32' ? 'rg.exe' : 'rg'
+      const rgPath = path.join(process.resourcesPath, 'bin', rgName)
+      if (existsSync(rgPath)) env.OPENWORKER_RG_PATH = rgPath
+    }
     return {
       command: process.execPath,
       args: [entry],

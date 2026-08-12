@@ -90,7 +90,14 @@
       },
       {
         "from": "../../services/native/dist/desktop-bundle.cjs",
-        "to": "native/index.js"
+        "to": "native/index.cjs"
+      },
+      {
+        "from": "../../services/native/dist/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
