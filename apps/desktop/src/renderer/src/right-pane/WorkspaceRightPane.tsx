@@ -720,7 +720,8 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
       cursorWidth: 1,
       fontSize: 12,
       lineHeight: 1.5,
-      fontFamily: "Consolas, 'Courier New', monospace",
+      fontFamily:
+        "Cascadia Mono, Consolas, 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans Mono CJK SC', monospace",
       scrollback: 5000,
       rightClickSelectsWord: true,
       theme: {

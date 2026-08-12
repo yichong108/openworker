@@ -267,7 +267,7 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   flex-shrink: 0;
   position: relative;
   cursor: col-resize;
-  background: transparent;
+  background: var(--aw-color-bg-elevated);
 }
 
 .app-sidebar-resizer.is-hidden {
@@ -281,9 +281,9 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 0.5px;
-  min-width: 0.5px;
-  max-width: 0.5px;
+  width: 0.1px;
+  min-width: 0.1px;
+  max-width: 0.1px;
   transform: translateX(-50%);
   background: var(--aw-color-splitter);
   transition: background-color 0.15s ease;
@@ -818,5 +818,9 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .xterm .xterm-viewport {
-  background-color: transparent;
+  background-color: transparent !important;
+}
+
+.xterm .xterm-scrollable-element {
+  background-color: transparent !important;
 }
