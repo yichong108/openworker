@@ -18,11 +18,11 @@
 
 ### 开发任务的划分
 
-- apps/admin 目前阶段暂停开发，不在目前开发计划内。
-- apps/cli 目前阶段暂停开发，不在目前开发计划内。
-- apps/phone 目前阶段暂停开发，不在目前开发计划内。
-- apps/api 目前阶段暂停开发，不在目前开发计划内。
-- apps/langfuse 目前阶段暂停开发，不在目前开发计划内。
+- apps/admin 已移除。
+- apps/cli 已移除。
+- apps/phone 已移除。
+- services/api 已移除。
+- services/langfuse-local 已移除。
 
 - apps/desktop 目前阶段正在开发。
 - apps/landing 目前阶段正在开发。

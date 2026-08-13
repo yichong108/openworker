@@ -33,12 +33,6 @@
       }
     },
     {
-      "files": ["apps/admin/**/*.{ts,tsx,js,jsx}", "apps/phone/**/*.{ts,tsx,js,jsx}"],
-      "env": {
-        "browser": true
-      }
-    },
-    {
       "files": ["apps/landing/**/*.{ts,tsx,js,jsx}"],
       "plugins": ["typescript", "import", "react", "nextjs"],
       "env": {
@@ -46,11 +40,7 @@
       }
     },
     {
-      "files": [
-        "apps/cli/**/*.{ts,tsx,js,jsx}",
-        "services/**/*.{ts,tsx,js,jsx}",
-        "packages/**/*.{ts,tsx,js,jsx}"
-      ],
+      "files": ["services/**/*.{ts,tsx,js,jsx}", "packages/**/*.{ts,tsx,js,jsx}"],
       "env": {
         "node": true
       }
