@@ -32,6 +32,6 @@
 
 - **必须为所有导出函数添加注释**，描述函数的用途、意图和实现原因
 
-### aip 数据工作区
+### ap 数据工作区
 
-- AI 需要根据 `.agents/aip-config/work-data` 目录下的约定进行处理。`aip/src/work-data` 是种子：`pnpm install` / `pnpm aip` 启动时拷贝到 `.agents/aip-config/work-data`，已存在的同名文件不覆盖。技能从 `aip/src/skills` 覆盖安装到 `.agents/skills/<skill>`，不删除 `.agents` 或其他 skill。`pnpm aip <skill>` 执行指定 skill（`aip-` 开头的也可用短名，如 `task-executor`）；`pnpm aip "<提问>"` 由 Agent 从 `.agents/skills` 中选一个执行，也可用 `--skill` 钉死 skill。`--mode` 为 Cursor SDK 对话模式（`agent` 默认 / `plan`）。
+- AI 需要根据 `.agents/ap-config/work-data` 目录下的约定进行处理。`ap/src/work-data` 是种子：`pnpm install` / `pnpm ap` 启动时拷贝到 `.agents/ap-config/work-data`，已存在的同名文件不覆盖。技能从 `ap/src/skills` 覆盖安装到 `.agents/skills/<skill>`，不删除 `.agents` 或其他 skill。`pnpm ap <skill>` 执行指定 skill（`ap-` 开头的也可用短名，如 `task-executor`）；`pnpm ap "<提问>"` 由 Agent 从 `.agents/skills` 中选一个执行，也可用 `--skill` 钉死 skill。`--mode` 为 Cursor SDK 对话模式（`agent` 默认 / `plan`）。

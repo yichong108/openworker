@@ -63,7 +63,7 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  aip:
+  ap:
     dependencies:
       '@cursor/sdk':
         specifier: 'catalog:'
