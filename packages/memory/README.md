@@ -59,15 +59,4 @@ const systemSection = composeMemorySystemSection({
 
 事实 key 命名空间：`preference.*` | `identity.*` | `project.*` | `workflow.*`。
 
-## Native 粘合层
-
-对接点：[`services/native/src/agent/memory.ts`](../../services/native/src/agent/memory.ts)
-
-- 会话：默认 **W=256k**；有新压缩内容时 **refine 默认开（T=0.7）**
-- 画像：发消息前读本地 `/me/profile` 注入；一轮成功后 LLM 抽取并写回画像
-- Cursor 路径跳过（SDK 自管上下文）
-
-## 设计边界
-
-- 做：单会话压缩、用户画像抽取/合并/格式化
-- 不做：近一周摘要、包内 Store/HTTP
+对接点：[`services/native/src/agent/memory.ts`](../../services/native/src/agent/memory.ts)。

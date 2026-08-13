@@ -64,9 +64,3 @@ const store = createRagStore({
 ```
 
 原文文件由 API 另存于 `files/`；本包只维护检索索引。
-
-## 设计边界
-
-- 做：单库 upsert / delete / query（关键词或语义）
-- 不做：跨库合并、LLM 生成回答（由 API 编排）
-- 门面：保持 `createRagStore` / `RagStore` 签名；语义能力通过 `embedding` 选项开启

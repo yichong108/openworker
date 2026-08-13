@@ -4,13 +4,12 @@ OpenWorker is your AI companion for everyday information processing, helping you
 
 ## Preview
 
-![OpenWorker main UI](assets/openworker-ui-screenshot.png)
+OpenWorker main UI
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) **18+**
 - [pnpm](https://pnpm.io/) **9**
-- [Docker](https://www.docker.com/)
 
 ## Install
 
@@ -26,15 +25,10 @@ pnpm install
 pnpm dev
 ```
 
-Starts packages that define `dev`, except `@openworker/phone`, `@openworker/admin`, `@openworker/landing`, and `@openworker/cli`. For the full set:
+### AI Coding
 
-```bash
-pnpm dev:all
-```
-
-## Contributing
-
-See [AGENTS.md](AGENTS.md) for maintainer and AI-assistant conventions (including English commit messages and PR metadata).
+See [AGENTS.md](AGENTS.md), [.ai/README.md](.ai/README.md), [skills/](.cursor/skills/) 。
+For example, running the /se-task-executor skill to quickly get started with development.
 
 ## License
 

@@ -7,9 +7,7 @@ OpenWorker 本地 Native 服务（Node.js + Express + SQLite）。
 1. **数据面**：设置、工作区/会话、本机画像（单租户，无登录）
 2. **Agent 运行时**：会话级 UniAgent、AG-UI SSE 流、skills / MCP / 终端
 
-存储为 SQLite，**无 MySQL / Redis / RAG**；本机单租户（schema v2），无用户/JWT。
-
-SQLite 使用 Node 内置 [`node:sqlite`](https://nodejs.org/api/sqlite.html)（`DatabaseSync`），无需编译原生插件；需要 Node.js ≥ 22.5。
+存储为 SQLite，**无 MySQL / Redis / RAG**；本机单租户（schema v2），无用户/JWT。SQLite 使用 Node 内置 [`node:sqlite`](https://nodejs.org/api/sqlite.html)（`DatabaseSync`），无需编译原生插件；需要 Node.js ≥ 22.5。
 
 ## 快速开始
 
@@ -22,28 +20,6 @@ pnpm native:dev
 ```
 
 默认监听 `http://127.0.0.1:3200`（仅绑定回环地址）。
-
-## 与 Desktop 的关系
-
-Desktop 主进程会在启动时自动拉起 Native（若端口上 `/health` 已 ok 则复用）：
-
-- **开发**：用系统 Node 跑本包 `dist/desktop-bundle.cjs`（或 `dist/index.js` / tsx 源码）
-- **安装包**：`extraResources` 携带 `desktop-bundle.cjs` → `resources/native/index.js`，以 `ELECTRON_RUN_AS_NODE=1` + Electron 可执行文件运行
-
-Desktop **Renderer** 直连本服务（HTTP + SSE）；Main 不再代理业务 IPC。  
-**RAG**（`POST /rag/query`）仍走 `@openworker/api`。
-
-因此日常开发不必单独开 `pnpm native:dev`；若已手动启动，Desktop 会复用且退出时不杀外部进程。
-
-## 与 api 的差异
-
-| 项           | api (`:3100`)            | native (`:3200`)           |
-| ------------ | ------------------------ | -------------------------- |
-| 数据库       | MySQL                    | SQLite                     |
-| 缓存         | Redis（settings 短缓存） | 无                         |
-| RAG / 知识库 | 有                       | **未实现**（请继续用 api） |
-| Agent 运行时 | 无                       | **有**（UniAgent + SSE）   |
-| 鉴权         | JWT 多用户               | **无**（本机单租户）       |
 
 ## HTTP 端点
 

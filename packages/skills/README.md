@@ -2,13 +2,6 @@
 
 OpenWorker 内置 Agent Skills 内容包。各技能位于 `content/` 下的独立子目录，入口文件为 `SKILL.md`。
 
-## 加载位置
-
-宿主会扫描以下目录（**不**读取当前打开的工作区目录）：
-
-- **内置**：本包 `content/`（开发时）/ 安装包 `resources/skills`（打包后）
-- **用户扩展**：应用用户数据目录下的 `skills`（可与内置同名覆盖）
-
 仅识别文件名为 `SKILL.md` 的技能文档，并读取其 frontmatter 元数据。
 
 ## 最小结构
@@ -62,11 +55,6 @@ description: 用于执行代码评审，优先发现 bug、回归风险和缺失
 - `请按 debug workflow 处理这个报错`
 - `请用 release workflow 给我一套发版检查和命令`
 - `请按 triage workflow 对这些问题排优先级`
-
-### 边界说明
-
-- Skill 可以标准化“如何调用工具”的流程与输出结构。
-- Skill 不能替代底层工具本身的执行权限和系统能力。
 
 ## 程序化路径
 
