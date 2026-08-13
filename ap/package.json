@@ -1,7 +1,7 @@
 {
   "name": "@openworker/ap",
   "version": "0.1.0",
-  "description": "ai pipeline with Cursor SDK — 用 Cursor SDK 本地 Agent 执行 .agents/skills 中的任意技能",
+  "description": "AI command pipeline with Cursor SDK",
   "keywords": [
     "ap",
     "cursor",
