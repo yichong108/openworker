@@ -1,6 +1,6 @@
 # 目录说明
 
-本目录是 work-data **种子**。`pnpm install` / `pnpm ap` 启动时拷贝到 `.agents/ap-config/work-data`；目标中已存在的同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
+本目录是 work-data **种子**。`ap` 启动时拷贝到 `.agents/ap-config/work-data`；目标中已存在的同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
 
 ```text
 .agents/ap-config/work-data/
@@ -19,12 +19,15 @@
 
 # decisions
 
-- 文件名：`ADR-<英文短名>.md`，如 `ADR-module-map.md`
+- 用 `ap decision-create [--name <文件名>]` 从模板创建
+- 未指定 `--name` 时文件名为 `decision-YYYYMMDDHHmmSS.md`
 - AI 可以阅读但不可以修改、创建、删除 Decision
 - AI 可以提出新的 Decision，但不应该擅自修改已有 Decision
 
 # tasks
 
+- 用 `ap task-create [--name <文件名>]` 从模板创建到 `active/`
+- 未指定 `--name` 时文件名为 `task-YYYYMMDDHHmmSS.md`
 - 任务名称优先使用中文，如：实现用户登录
 - 执行时按 Priority：P0 > P1 > P2 > P3；同级编号小的先做
 - 只有当前任务需要历史上下文时，才读取 archive/

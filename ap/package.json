@@ -1,17 +1,51 @@
 {
   "name": "@openworker/ap",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "ai pipeline with Cursor SDK — 用 Cursor SDK 本地 Agent 执行 .agents/skills 中的任意技能",
+  "keywords": [
+    "ap",
+    "cursor",
+    "agent",
+    "skills",
+    "cli",
+    "openworker"
+  ],
+  "homepage": "https://github.com/yichong108/openworker/tree/main/ap",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yichong108/openworker.git",
+    "directory": "ap"
+  },
+  "bugs": {
+    "url": "https://github.com/yichong108/openworker/issues"
+  },
+  "author": "Wang Zhang",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "bin": {
+    "ap": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "src/skills",
+    "src/work-data",
+    ".env.example",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
     "prepare": "tsx src/install-skills.ts",
     "start": "tsx src/index.ts",
     "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "tsc -p tsconfig.build.json",
     "start:dist": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

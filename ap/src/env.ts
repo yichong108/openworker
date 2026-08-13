@@ -8,21 +8,35 @@ import { fileURLToPath } from 'node:url'
 
 import { config as loadDotenv } from 'dotenv'
 
-const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+/**
+ * 从当前模块文件向上查找含 package.json 的包根（兼容 `src/` 开发与 `dist/` 发布）。
+ */
+function resolvePackageRoot(): string {
+  let dir = dirname(fileURLToPath(import.meta.url))
+  while (true) {
+    if (existsSync(join(dir, 'package.json'))) return dir
+    const parent = dirname(dir)
+    if (parent === dir) return join(dirname(fileURLToPath(import.meta.url)), '..')
+    dir = parent
+  }
+}
+
+const packageRoot = resolvePackageRoot()
 
 /**
- * 从当前目录向上查找含 pnpm-workspace.yaml 的仓库根。
+ * 从起始目录向上查找用户项目根。
  *
- * 从 `ap/` 子包启动时 cwd 可能不是仓库根，Agent 必须在仓库根上跑才能看到
- * `ap/src/skills` 与 `.agents/ap-config/work-data/tasks`。
+ * 优先识别 pnpm workspace 与 git 仓库，这样 `ap` 无论从子目录、npx 还是全局安装启动，
+ * 都会把 skill 装到用户项目的 `.agents/`，而不是 npm 包自己的目录。
  *
- * @param startDir - 起始目录
- * @returns 仓库根；找不到则返回 startDir
+ * @param startDir - 起始目录，默认 `process.cwd()`
+ * @returns 项目根；找不到则返回 startDir
  */
-export function findWorkspaceRoot(startDir: string): string {
+export function findWorkspaceRoot(startDir: string = process.cwd()): string {
   let dir = startDir
   while (true) {
     if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir
+    if (existsSync(join(dir, '.git'))) return dir
     const parent = dirname(dir)
     if (parent === dir) return startDir
     dir = parent
@@ -30,17 +44,17 @@ export function findWorkspaceRoot(startDir: string): string {
 }
 
 /**
- * 本 CLI 包所在目录（仓库根下的 ap/）。
+ * 本 CLI 包所在目录（源码仓库中的 `ap/`，或 npm 安装后的包根）。
  */
 export function getPackageRoot(): string {
   return packageRoot
 }
 
 /**
- * 加载包内与仓库根的 `.env` / `.env.local`（后者覆盖前者文件，但不覆盖已有 process.env）。
+ * 加载包内与项目根的 `.env` / `.env.local`（后者覆盖前者文件，但不覆盖已有 process.env）。
  */
 export function loadApEnv(): void {
-  const workspaceRoot = findWorkspaceRoot(packageRoot)
+  const workspaceRoot = findWorkspaceRoot()
   const dirs = [packageRoot, workspaceRoot]
   for (const dir of dirs) {
     for (const name of ['.env', '.env.local'] as const) {

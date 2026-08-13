@@ -43,6 +43,7 @@
     "ap:build": "pnpm --filter @openworker/ap build",
     "ap:start:dist": "pnpm --filter @openworker/ap start:dist",
     "ap:typecheck": "pnpm --filter @openworker/ap typecheck",
+    "ap:publish": "pnpm --filter @openworker/ap publish",
     "prepare": "husky"
   },
   "devDependencies": {

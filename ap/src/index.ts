@@ -1,13 +1,14 @@
+#!/usr/bin/env node
 /**
  * ap 入口：按子命令分发（指定 skill / 用户提问 / login）。
  */
 
 import { Cursor } from '@cursor/sdk'
 
-import { parseArgs, printHelp, printSkillHelp } from './cli.js'
+import { parseArgs, printCreateHelp, printHelp, printSkillHelp } from './cli.js'
+import { createWorkDataFile } from './create-work-data.js'
 import {
   findWorkspaceRoot,
-  getPackageRoot,
   loadApEnv,
   readApiKeyFromEnv,
   resolveConversationMode,
@@ -29,9 +30,7 @@ async function requireCursorAuth(): Promise<string | undefined | null> {
   const status = await Cursor.auth.status()
   if (status.status === 'logged-in') return undefined
 
-  console.error(
-    '未找到 CURSOR_API_KEY。请复制 ap/.env.example 为 .env，或先运行：\n  pnpm ap login'
-  )
+  console.error('未找到 CURSOR_API_KEY。请设置环境变量，或先运行：\n  ap login')
   return null
 }
 
@@ -49,7 +48,7 @@ async function main(): Promise<void> {
     return
   }
 
-  const workspaceRoot = findWorkspaceRoot(getPackageRoot())
+  const workspaceRoot = findWorkspaceRoot()
   const skills = listAgentsSkills(workspaceRoot)
   let command
   try {
@@ -68,6 +67,10 @@ async function main(): Promise<void> {
   }
 
   if (command.command === 'help') {
+    if (command.topic === 'task-create' || command.topic === 'decision-create') {
+      printCreateHelp(command.topic)
+      return
+    }
     if (command.topic) {
       const skill = findAgentsSkill(workspaceRoot, command.topic)
       if (!skill) {
@@ -85,6 +88,22 @@ async function main(): Promise<void> {
 
   if (command.command === 'login') {
     await loginCursorSdk()
+    return
+  }
+
+  if (command.command === 'task-create' || command.command === 'decision-create') {
+    try {
+      const dest = createWorkDataFile({
+        kind: command.command === 'task-create' ? 'task' : 'decision',
+        cwd: command.cwd,
+        ...(command.name ? { name: command.name } : {})
+      })
+      console.log(`已创建 ${dest}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(message)
+      process.exitCode = 1
+    }
     return
   }
 

@@ -8,12 +8,29 @@ import { DEFAULT_AP_MODE, parseConversationMode, type ApConversationMode } from 
 import { resolveAgentsSkill, skillShortName, type AgentsSkill } from './skills-fs.js'
 
 /** 与 skill 目录名冲突时优先的内建命令 */
-export const AP_RESERVED_COMMANDS = ['login', 'help'] as const
+export const AP_RESERVED_COMMANDS = ['login', 'help', 'task-create', 'decision-create'] as const
+
+/** 从模板创建 work-data 文件的内建命令 */
+export type ApCreateCommand = 'task-create' | 'decision-create'
 
 /** ap 子命令解析结果 */
 export type ApCliCommand =
   | { command: 'help'; topic?: string }
   | { command: 'login' }
+  | {
+      command: 'task-create'
+      /** 仓库工作区根目录 */
+      cwd: string
+      /** 文件名（可带或不带 .md）；省略则按时间戳命名 */
+      name?: string
+    }
+  | {
+      command: 'decision-create'
+      /** 仓库工作区根目录 */
+      cwd: string
+      /** 文件名（可带或不带 .md）；省略则按时间戳命名 */
+      name?: string
+    }
   | {
       command: 'skill'
       /** `.agents/skills` 下的目录名 */
@@ -58,11 +75,13 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
   console.log(`ap — 用 Cursor SDK 本地 Agent 执行 .agents/skills 中的任意技能
 
 用法:
-  pnpm ap "<提问>"
-  pnpm ap "<提问>" --skill <skill>
-  pnpm ap <skill> [options] [extra...]
-  pnpm ap login
-  pnpm ap help [skill]
+  ap "<提问>"
+  ap "<提问>" --skill <skill>
+  ap <skill> [options] [extra...]
+  ap task-create [--name <文件名>]
+  ap decision-create [--name <文件名>]
+  ap login
+  ap help [skill]
 
 第一段是已发现的 skill 名（ap- 开头的也可用短名，如 task-executor）则执行该 skill；
 否则整段当作用户提问，由 Agent 根据提问从已发现的 skill 中选一个执行。
@@ -71,24 +90,30 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
 
 内建命令:
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
+  task-create          从模板创建任务到 tasks/active/（不调用 Agent）
+  decision-create      从模板创建决策到 decisions/（不调用 Agent）
   help                 显示本帮助
 
 已发现的 skill:
 ${skillLines}
 
 示例:
-  pnpm ap "帮我执行下一个任务"
-  pnpm ap "帮我执行下一个任务" --skill task-executor
-  pnpm ap task-executor --mode plan
-  pnpm ap ap-task-executor
-  pnpm ap task-executor
-  pnpm ap ap-task-executor --task TASK-001
-  pnpm ap ap-refactor
-  pnpm ap refactor
-  pnpm ap login
+  ap "帮我执行下一个任务"
+  ap "帮我执行下一个任务" --skill task-executor
+  ap task-executor --mode plan
+  ap ap-task-executor
+  ap task-executor
+  ap ap-task-executor --task TASK-001
+  ap ap-refactor
+  ap refactor
+  ap login
+  ap task-create
+  ap task-create --name 用户登录
+  ap decision-create
+  ap decision-create --name module-map
 
 环境变量:
-  CURSOR_API_KEY       Cursor API Key（也可用 pnpm ap login）
+  CURSOR_API_KEY       Cursor API Key（也可用 ap login）
   CURSOR_MODEL         默认模型（composer-2.5）
   AP_MODE              默认 SDK 对话模式（agent 或 plan）
 `)
@@ -102,13 +127,11 @@ ${skillLines}
 export function printSkillHelp(skill: AgentsSkill): void {
   const summary = skill.summary ? `\n${skill.summary}\n` : ''
   const short = skillShortName(skill.name)
-  const aliasLine = short
-    ? `\n短名：${short}（pnpm ap ${short} 与 pnpm ap ${skill.name} 等价）\n`
-    : ''
+  const aliasLine = short ? `\n短名：${short}（ap ${short} 与 ap ${skill.name} 等价）\n` : ''
   console.log(`ap ${skill.name} — 执行 .agents/skills/${skill.name}
 ${summary}${aliasLine}
 用法:
-  pnpm ap ${skill.name} [options] [extra...]${short ? `\n  pnpm ap ${short} [options] [extra...]` : ''}
+  ap ${skill.name} [options] [extra...]${short ? `\n  ap ${short} [options] [extra...]` : ''}
 
 选项:
   -h, --help           显示帮助
@@ -120,6 +143,44 @@ ${summary}${aliasLine}
 
 其余非选项参数也会作为补充指令传给 Agent。
 skill 路径：${skill.dir}
+`)
+}
+
+/**
+ * 打印 task-create / decision-create 的用法。
+ *
+ * @param command - 创建类内建命令
+ */
+export function printCreateHelp(command: ApCreateCommand): void {
+  if (command === 'task-create') {
+    console.log(`ap task-create — 从模板创建任务文件
+
+用法:
+  ap task-create
+  ap task-create --name <文件名>
+
+选项:
+  --name <文件名>      目标文件名（可省略 .md）
+  -h, --help           显示帮助
+
+未指定 --name 时，文件名为 task-YYYYMMDDHHmmSS.md。
+写入 .agents/ap-config/work-data/tasks/active/，内容来自 task-template.md。
+`)
+    return
+  }
+
+  console.log(`ap decision-create — 从模板创建决策文件
+
+用法:
+  ap decision-create
+  ap decision-create --name <文件名>
+
+选项:
+  --name <文件名>      目标文件名（可省略 .md）
+  -h, --help           显示帮助
+
+未指定 --name 时，文件名为 decision-YYYYMMDDHHmmSS.md。
+写入 .agents/ap-config/work-data/decisions/，内容来自 decision-template.md。
 `)
 }
 
@@ -209,9 +270,53 @@ export function parseSkillArgs(
 }
 
 /**
+ * 解析 task-create / decision-create 的选项。
+ *
+ * @param argv - 子命令之后的参数
+ * @param defaults - cwd 默认值
+ * @returns 解析后的选项；help 为 true 时调用方应打印帮助并退出
+ */
+export function parseCreateArgs(
+  argv: string[],
+  defaults: { cwd: string }
+): { help: true } | { help: false; cwd: string; name?: string } {
+  let cwd = defaults.cwd
+  let name: string | undefined
+  let help = false
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg === '-h' || arg === '--help') {
+      help = true
+      continue
+    }
+    if (arg === '-C' || arg === '--cwd') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要路径参数`)
+      cwd = resolve(next)
+      continue
+    }
+    if (arg === '--name') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要文件名`)
+      name = next
+      continue
+    }
+    if (arg.startsWith('-')) {
+      throw new Error(`未知选项: ${arg}`)
+    }
+    throw new Error(`不接受额外参数: ${arg}`)
+  }
+
+  if (help) return { help: true }
+  return { help: false, cwd, ...(name ? { name } : {}) }
+}
+
+/**
  * 解析 process.argv（跳过 node / 脚本路径）为 ap 子命令。
  *
- * 第一段是 login/help 走内建命令；是已发现的 skill 名（含 ap- 短名）则执行该 skill；
+ * 第一段是 login/help/task-create/decision-create 走内建命令；
+ * 是已发现的 skill 名（含 ap- 短名）则执行该 skill；
  * 否则整段当作用户提问（ask）。提问可用 --skill 钉死 skill。
  * --mode 传给 Cursor SDK（agent | plan，默认 agent）。
  * 会丢掉单独的 `--`，兼容 pnpm 传入的参数分隔符。
@@ -244,6 +349,18 @@ export function parseArgs(
       throw new Error(`login 不接受额外参数: ${args.slice(1).join(' ')}`)
     }
     return { command: 'login' }
+  }
+
+  if (first === 'task-create' || first === 'decision-create') {
+    const parsed = parseCreateArgs(args.slice(1), { cwd: defaults.cwd })
+    if (parsed.help) {
+      return { command: 'help', topic: first }
+    }
+    return {
+      command: first,
+      cwd: parsed.cwd,
+      ...(parsed.name ? { name: parsed.name } : {})
+    }
   }
 
   const argDefaults = {
@@ -296,7 +413,7 @@ export function parseArgs(
     }
   }
   if (!parsed.extra) {
-    throw new Error('请提供提问内容，或指定 skill 名。运行 pnpm ap help 查看用法。')
+    throw new Error('请提供提问内容，或指定 skill 名。运行 ap help 查看用法。')
   }
   return {
     command: 'ask',

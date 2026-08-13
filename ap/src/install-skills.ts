@@ -55,7 +55,7 @@ function copyMissingTree(source: string, dest: string): { copied: number; skippe
  */
 export function installApSkills(): string {
   const packageRoot = getPackageRoot()
-  const workspaceRoot = findWorkspaceRoot(packageRoot)
+  const workspaceRoot = findWorkspaceRoot()
   const source = join(packageRoot, 'src', 'skills')
   const destRoot = join(workspaceRoot, '.agents', 'skills')
 
@@ -89,7 +89,7 @@ export function installApSkills(): string {
  */
 export function installApConfig(): string {
   const packageRoot = getPackageRoot()
-  const workspaceRoot = findWorkspaceRoot(packageRoot)
+  const workspaceRoot = findWorkspaceRoot()
   const source = join(packageRoot, 'src', 'work-data')
   const dest = join(workspaceRoot, '.agents', 'ap-config', 'work-data')
 
@@ -113,7 +113,7 @@ export function installApWorkspace(): void {
 }
 
 const invokedAsScript = Boolean(
-  process.argv[1] && resolve(process.argv[1]).replace(/\\/g, '/').endsWith('/install-skills.ts')
+  process.argv[1] && /\/install-skills\.(ts|js)$/.test(resolve(process.argv[1]).replace(/\\/g, '/'))
 )
 
 if (invokedAsScript) {
