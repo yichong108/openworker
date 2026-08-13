@@ -8,6 +8,7 @@ TODO
 可选状态：
 - TODO
 - ACTIVE
+- PLAN
 - BLOCKED
 - COMPLETED
 -->
@@ -32,6 +33,16 @@ P1
 填写依赖的 TASK：
 - TASK-XXX
 - TASK-XXX
+-->
+
+## Decision Needed
+
+- None
+
+<!--
+仅当 Status 为 PLAN、文件位于 .ai/tasks/plan/ 时填写。
+列出人必须拍板的问题，每条应能用一句话回答。
+澄清完成后清空本段。
 -->
 
 ## Context
