@@ -18,6 +18,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "prepare": "husky",
     "preinstall": "npx only-allow pnpm",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel --filter=!@openworker/landing",
@@ -44,7 +45,10 @@
     "ap:start:dist": "pnpm --filter @openworker/ap start:dist",
     "ap:typecheck": "pnpm --filter @openworker/ap typecheck",
     "ap:publish": "pnpm --filter @openworker/ap publish",
-    "prepare": "husky"
+    "ai-pipeline:task-create": "pnpm ap:start:dist task-create",
+    "ai-pipeline:task-executor": "pnpm ap:start:dist task-executor",
+    "ai-pipeline:task-decision": "pnpm ap:start:dist decision-create",
+    "ai-pipeline:refactor": "pnpm ap:start:dist refactor"
   },
   "devDependencies": {
     "@types/node": "catalog:",
