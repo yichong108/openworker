@@ -24,22 +24,6 @@
 # tasks
 
 - 任务名称优先使用中文，如：实现用户登录
+- 执行时按 Priority：P0 > P1 > P2 > P3；同级编号小的先做
 - 只有当前任务需要历史上下文时，才读取 archive/
-
-# 执行任务流程
-
-```mermaid
-flowchart TD
-  A[se-task-executor 扫描 active/] --> B{可执行?}
-  B -->|是| C[只执行这一件]
-  C --> D[完成]
-  D --> E[AI 归档到 archive/]
-  E --> K[git commit，不 push]
-  K --> L[停止]
-  B -->|否，需人决策| F["移到 plan/\n改名为 TASK-xxx-plan.md"]
-  F --> A
-  F --> G[你澄清需求]
-  G --> H[不自动执行]
-  H --> I[有空再执行]
-  I --> J[你手动归档到 archive/]
-```
+- 执行流程见 `.cursor/skills/se-task-executor/SKILL.md`
