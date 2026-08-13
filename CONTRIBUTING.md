@@ -2,7 +2,7 @@
 
 Thank you for your interest in **OpenWorker**. This document explains how to set up your environment, submit changes, and follow project conventions when working with maintainers.
 
-Repository-wide guidance for humans and AI assistants is in [AGENTS.md](AGENTS.md).
+Repository-wide guidance for humans and AI assistants is in [.agents/AGENTS.md](.agents/AGENTS.md).
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ For collaboration and tooling, the following must be in **English**:
 
 Use short, imperative subjects—for example: `Fix workspace pane scroll`, `Add MCP reconnect handler`.
 
-User-facing UI copy and reader-facing documentation may follow product language choices; the rule above applies to **version control and review metadata** only. See [AGENTS.md](AGENTS.md).
+User-facing UI copy and reader-facing documentation may follow product language choices; the rule above applies to **version control and review metadata** only. See [.agents/AGENTS.md](.agents/AGENTS.md).
 
 ## Code of conduct
 

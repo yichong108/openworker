@@ -66,6 +66,7 @@
     "phone:ios": "pnpm --filter @openworker/phone ios",
     "phone:web": "pnpm --filter @openworker/phone web",
     "phone:typecheck": "pnpm --filter @openworker/phone typecheck",
+    "aip": "pnpm --dir aip exec tsx src/index.ts",
     "prepare": "husky"
   },
   "devDependencies": {
