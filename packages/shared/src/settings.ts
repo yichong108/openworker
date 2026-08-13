@@ -126,7 +126,7 @@ export const MAX_AGENT_LOOP_STEPS = 24
 
 export const defaultProviderProfiles = (): Record<ModelProviderId, ProviderProfile> => ({
   deepseek: {
-    baseUrl: 'https://api.deepseek.com',
+    baseUrl: 'https://api.deepseek.com/v1',
     model: 'deepseek-chat',
     apiKey: ''
   }

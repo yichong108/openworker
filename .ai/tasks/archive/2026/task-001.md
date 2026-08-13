@@ -1,8 +1,8 @@
-# task-XXX: <任务名称>
+# 修改设置（模型与密钥）弹窗
 
 ## Status
 
-TODO
+COMPLETED
 
 <!--
 可选状态：
@@ -53,12 +53,17 @@ P1
 不要描述具体实现步骤。
 -->
 
+因为这个弹窗的UI还有一些展示，我需要调整的。
+
 ## Goal
 
 <!--
 明确这个任务最终要解决什么问题。
 应该描述结果，而不是实现过程。
 -->
+
+- 修改文案：【设置（模型与密钥）】改为【设置】
+- 修改接口地址的默认值或占位符文案：https://api.deepseek.com改成https://api.deepseek.com/v1
 
 ## Scope
 
@@ -104,10 +109,9 @@ P1
 
 ## Acceptance Criteria
 
-- [ ]
-- [ ]
-- [ ]
-- [ ]
+- [x] 设置弹窗标题为「设置」
+- [x] 接口地址占位符为 `https://api.deepseek.com/v1`
+- [x] DeepSeek 默认 `baseUrl` 为 `https://api.deepseek.com/v1`
 
 <!--
 什么条件全部满足后，任务才能算完成。
@@ -116,7 +120,7 @@ P1
 
 ## Related Decisions
 
-- None
+- ADR-overview.md（仅 Desktop / packages 当前阶段开发，改动限于设置弹窗与共享默认配置）
   <!-- 任务完成后由 AI 填写 -->
   <!--
   相关架构决策：
@@ -128,29 +132,18 @@ P1
 
 ### Implementation
 
-<!-- 任务完成后由 AI 填写 -->
-<!--
-实际实现了什么。
--->
+将设置弹窗标题从「设置（模型与密钥）」改为「设置」；接口地址 Input 占位符与 `defaultProviderProfiles.deepseek.baseUrl` 均改为 `https://api.deepseek.com/v1`。未改 `apps/cli`、`services/api` 中暂停开发的 `.env.example`。
 
 ### Tests
 
-<!-- 任务完成后由 AI 填写 -->
-<!--
-任务完成后由 AI 填写：
-运行了哪些测试，结果如何。
--->
+无针对设置弹窗的既有单测；本次为文案与默认值变更，未新增测试。
 
 ### Validation
 
-<!-- 任务完成后由 AI 填写 -->
-<!--
-lint / type check / build / 其他验证结果。
--->
+- `pnpm lint:fix`：通过
+- `pnpm --filter @openworker/shared typecheck`：通过
+- `pnpm --filter @openworker/desktop typecheck`：通过
 
 ### Notes
 
-<!-- 任务完成后由 AI 填写 -->
-<!--
-重要发现、偏差、遗留问题等。
--->
+已有用户若已持久化旧 `baseUrl`（无 `/v1`），打开弹窗仍会显示旧值；仅新建/未配置时使用新默认。

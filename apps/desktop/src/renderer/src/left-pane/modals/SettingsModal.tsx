@@ -69,7 +69,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   return (
     <Modal
-      title="设置（模型与密钥）"
+      title="设置"
       open={open}
       onOk={() => void saveSettings()}
       onCancel={onClose}
@@ -82,7 +82,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           仅支持接入兼容 OpenAI API 标准格式的模型服务。配置由 API 服务持久化。
         </Typography.Paragraph>
         <Form.Item name="baseUrl" label="接口地址" rules={[{ required: true }]}>
-          <Input placeholder="https://api.deepseek.com" />
+          <Input placeholder="https://api.deepseek.com/v1" />
         </Form.Item>
         <Form.Item name="model" label="模型" rules={[{ required: true }]}>
           <Input />
