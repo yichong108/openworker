@@ -32,6 +32,11 @@
 
 很多功能任务 AI 无法自动完成，容易卡住，仍然强依赖人。小的、决策空间明确的改动可以由 executor 直接做完。
 
+进入 `plan/` 的硬规则：
+
+- 架构/数据模型/API/核心流程改变 → 进入 plan/
+- 可能与其他任务产生根本性冲突 → 进入 plan/
+
 ```mermaid
 flowchart TD
   A[se-task-executor 扫描 active/] --> B{可执行?}
