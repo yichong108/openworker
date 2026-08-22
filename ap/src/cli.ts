@@ -83,7 +83,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
   ap login
   ap help [skill]
 
-第一段是已发现的 skill 名（ap- 开头的也可用短名，如 task-executor）则执行该 skill；
+第一段是已发现的 skill 名（ap- 开头的也可用短名，如 task-execute）则执行该 skill；
 否则整段当作用户提问，由 Agent 根据提问从已发现的 skill 中选一个执行。
 提问时可用 --skill 指定 skill（支持短名）。
 --mode 是 Cursor SDK 对话模式：agent（默认，直接改代码）或 plan（先出方案）。
@@ -99,11 +99,11 @@ ${skillLines}
 
 示例:
   ap "帮我执行下一个任务"
-  ap "帮我执行下一个任务" --skill task-executor
-  ap task-executor --mode plan
-  ap ap-task-executor
-  ap task-executor
-  ap ap-task-executor --task TASK-001
+  ap "帮我执行下一个任务" --skill task-execute
+  ap task-execute --mode plan
+  ap ap-task-execute
+  ap task-execute
+  ap ap-task-execute --task TASK-001
   ap ap-refactor
   ap refactor
   ap login

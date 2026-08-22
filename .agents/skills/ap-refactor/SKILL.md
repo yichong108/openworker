@@ -5,7 +5,7 @@ description: >
   不新增功能，不顺手修复无关缺陷，不扩大任务范围。
   当用户要求重构、整理代码、提取函数/组件、拆分文件、降低耦合、消除重复，
   或 .agents/ap-config/work-data/tasks/ 中存在重构类任务时使用。
-  纯功能实现、按需求开发任务应使用 ap-task-executor，不要用本技能代替。
+  纯功能实现、按需求开发任务应使用 ap-task-execute，不要用本技能代替。
 license: MIT
 metadata:
   version: '0.1.0'
@@ -24,9 +24,9 @@ metadata:
 
 ---
 
-## 与 ap-task-executor 的区别
+## 与 ap-task-execute 的区别
 
-|      | ap-task-executor     | ap-refactor                    |
+|      | ap-task-execute      | ap-refactor                    |
 | ---- | -------------------- | ------------------------------ |
 | 目标 | 实现任务要求的新行为 | 只改结构，行为不变             |
 | 允许 | 按需求新增/修改功能  | 抽取、移动、重命名、拆分、去重 |
@@ -148,7 +148,7 @@ Skill 激活后：
 处理 `.agents/ap-config/work-data/tasks/active/` 时：
 
 - 只领取目标为重构/结构调整、且依赖已满足的任务。
-- 功能实现类任务留给 `ap-task-executor`。
+- 功能实现类任务留给 `ap-task-execute`。
 - 架构/数据模型/API/核心流程改变 → 进入 `plan/`。
 - 可能与其他任务产生根本性冲突 → 进入 `plan/`。
 - 需要产品/架构决策、需求冲突：移到 `plan/`，改名为 `TASK-xxx-plan.md`，写入 `Decision Needed`，然后继续下一件可安全重构的任务。不要归档 `plan/` 中的文件。

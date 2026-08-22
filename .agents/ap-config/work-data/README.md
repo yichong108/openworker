@@ -28,4 +28,4 @@
 - 任务名称优先使用中文，如：实现用户登录
 - 执行时按 Priority：P0 > P1 > P2 > P3；同级编号小的先做
 - 只有当前任务需要历史上下文时，才读取 archive/
-- 执行流程见 `ap/src/skills/ap-task-executor/SKILL.md`
+- 执行流程见 `ap/src/skills/ap-task-execute/SKILL.md`

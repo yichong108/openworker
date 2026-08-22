@@ -75,7 +75,7 @@ export function listAgentsSkills(workspaceRoot: string): AgentsSkill[] {
 /**
  * 按调用名解析 skill：精确目录名，或 `ap-` 前缀的短名。
  *
- * 例如目录 `ap-task-executor` 可用 `ap-task-executor` 或 `task-executor`。
+ * 例如目录 `ap-task-execute` 可用 `ap-task-execute` 或 `task-execute`。
  * 若同时存在短名目录与 `ap-<短名>`，精确匹配优先。
  *
  * @param skills - 已发现的 skill

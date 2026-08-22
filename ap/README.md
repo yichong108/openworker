@@ -17,7 +17,7 @@ ap help
 ap login
 ap task-create
 ap task-create --name 用户登录
-ap task-executor
+ap task-execute
 ap decision-create
 ap decision-create --name module-map
 ```
@@ -36,7 +36,7 @@ npx @openworker/ap help
 pnpm ap help
 pnpm ap login
 pnpm ap task-create --name 用户登录
-pnpm ap task-executor --mode plan
+pnpm ap task-execute --mode plan
 ```
 
 鉴权：复制 `ap/.env.example` 为 `ap/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` 不需要 Key。

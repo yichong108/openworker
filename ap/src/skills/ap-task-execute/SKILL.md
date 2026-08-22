@@ -1,5 +1,5 @@
 ---
-name: ap-task-executor
+name: ap-task-execute
 description: >
   执行项目中由 .agents/ap-config/work-data/tasks/ 管理的开发任务。
   当用户要求 Agent 执行任务、连续执行多个任务、继续下一个可执行任务，
@@ -15,7 +15,7 @@ metadata:
   author: Wang Zhang
 ---
 
-# AP Task Executor
+# AP Task Execute
 
 负责执行 `.agents/ap-config/work-data/tasks/active/` 中定义的开发任务。
 
