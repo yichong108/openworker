@@ -1,20 +1,8 @@
-import path from 'node:path'
-import { config as loadEnv } from 'dotenv'
+import { bootstrapRootChannelEnv, resolveAppChannel } from '@openworker/shared/load-env'
+import { getNativeSqlitePath } from '@openworker/shared/path'
 
-import { getOpenworkerDir } from '../agent/paths.js'
-
-loadEnv()
-
-/**
- * 解析 SQLite 默认路径：`{OPENWORKER_HOME}/native/native.sqlite`
- *
- * 与 skills / mcp 共用数据根，便于 Desktop / CLI 与独立进程读写同一份库。
- *
- * @returns 绝对路径形式的默认数据库文件路径
- */
-function defaultSqlitePath(): string {
-  return path.join(getOpenworkerDir(), 'native', 'native.sqlite')
-}
+bootstrapRootChannelEnv({ defaultChannel: 'dev' })
+resolveAppChannel()
 
 /**
  * Native 服务运行时配置
@@ -28,7 +16,7 @@ export const env = {
 
   /**
    * SQLite 数据库文件绝对或相对路径。
-   * 未设置时默认为 `{OPENWORKER_HOME}/native/native.sqlite`（无 OPENWORKER_HOME 时为 `~/.openworker/...`）。
+   * 未设置时默认为 `{OPENWORKER_HOME}/native/native.sqlite`。
    */
-  sqlitePath: process.env.SQLITE_PATH?.trim() || defaultSqlitePath()
+  sqlitePath: process.env.SQLITE_PATH?.trim() || getNativeSqlitePath()
 } as const

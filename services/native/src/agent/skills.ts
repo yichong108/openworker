@@ -2,16 +2,13 @@
  * Native skills 布局：用户目录扫描 + 内置技能复制
  */
 
-import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-import { getBundledSkillsDir } from '@openworker/skills'
+import { getOpenworkerSkillsDir, resolveBundledSkillsContentDir } from '@openworker/shared/path'
 import { listSkillsFromPaths, type SkillListItem } from '@openworker/uni-agent'
 
 import { agentLog } from './agent-log.js'
-import { getOpenworkerSkillsDir } from './paths.js'
 
 export type { SkillListItem }
 
@@ -53,45 +50,21 @@ async function copyDirRecursive(src: string, dest: string): Promise<void> {
 /**
  * 解析内置技能源目录。
  *
- * 优先 `process.resourcesPath/skills`（Desktop 安装包），否则 `@openworker/skills` content。
- *
  * @returns 源目录绝对路径；找不到时为 null
  */
 export function getSkillsSourceDir(): string | null {
-  // Electron 安装包：resources/skills（Desktop extraResources）
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
-  if (typeof resourcesPath === 'string' && resourcesPath.trim()) {
-    const packaged = path.join(resourcesPath, 'skills')
-    if (existsSync(packaged)) return packaged
-  }
-
-  const envSource = process.env.OPENWORKER_SKILLS_SOURCE?.trim()
-  if (envSource && existsSync(envSource)) return envSource
-
-  // 开发：tsx/ESM 下可用包入口；desktop-bundle CJS 中 import.meta 为空，需回退
+  let moduleUrl: string | undefined
   try {
-    const fromPackage = getBundledSkillsDir()
-    if (fromPackage && existsSync(fromPackage)) return fromPackage
-  } catch {
-    // ignore
-  }
-
-  const candidates = [
-    path.resolve(process.cwd(), 'packages/skills/content'),
-    path.resolve(process.cwd(), '../../packages/skills/content'),
-    path.resolve(process.cwd(), '../packages/skills/content')
-  ]
-  try {
-    const here = path.dirname(fileURLToPath(import.meta.url))
-    candidates.push(path.resolve(here, '../../../../packages/skills/content'))
+    moduleUrl = import.meta.url
   } catch {
     // CJS bundle 下 import.meta 不可用
   }
 
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate
-  }
-  return null
+  return resolveBundledSkillsContentDir({
+    resourcesPath: typeof resourcesPath === 'string' ? resourcesPath : undefined,
+    moduleUrl
+  })
 }
 
 /**

@@ -5,7 +5,12 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./load-env": "./src/load-env.ts",
+    "./path": "./src/path.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

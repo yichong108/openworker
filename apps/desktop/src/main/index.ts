@@ -237,6 +237,9 @@ function createWindow(): void {
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow?.maximize()
     mainWindow?.show()
+    if (isDev) {
+      mainWindow?.webContents.openDevTools({ mode: 'bottom' })
+    }
   })
   mainWindow.on('close', (e) => {
     if (applicationIsQuitting) return

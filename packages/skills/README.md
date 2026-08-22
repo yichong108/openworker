@@ -15,8 +15,6 @@ packages/skills/
       SKILL.md
     feature-implement/
       SKILL.md
-  src/
-    index.ts
 ```
 
 ## Frontmatter 示例
@@ -56,10 +54,9 @@ description: 用于执行代码评审，优先发现 bug、回归风险和缺失
 - `请用 release workflow 给我一套发版检查和命令`
 - `请按 triage workflow 对这些问题排优先级`
 
-## 程序化路径
+## 宿主如何定位内容
 
-```ts
-import { getBundledSkillsDir } from '@openworker/skills'
+- **开发 / monorepo**：`packages/skills/content`
+- **Desktop 安装包**：`process.resourcesPath/skills`（由 electron-builder `extraResources` 从 `content/` 复制）
 
-const root = getBundledSkillsDir() // .../packages/skills/content
-```
+Native 服务在 `@openworker/shared` 的 `resolveBundledSkillsContentDir()` 中按上述顺序解析；用户 skills 目录见 `getOpenworkerSkillsDir()`。

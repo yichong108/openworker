@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "tsx watch src/index.ts",
+    "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json && node esbuild.config.mjs",
     "bundle": "node esbuild.config.mjs",
     "start": "node dist/index.js",
@@ -19,7 +19,6 @@
     "@ag-ui/client": "catalog:",
     "@openworker/memory": "workspace:*",
     "@openworker/shared": "workspace:*",
-    "@openworker/skills": "workspace:*",
     "@openworker/uni-agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",

@@ -9,7 +9,7 @@ import {
   type WindowChromeAction,
   type WorkspaceFileContentResult,
   type WorkspaceFileTreePayload
-} from '@/shared/ipc'
+} from '@/shared/ipc-shell'
 
 installElectronLogBridge()
 

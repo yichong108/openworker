@@ -2,12 +2,12 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 
 import { defaultSettings, normalizeSettings, type AppSettings } from '@openworker/shared'
 
-import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '../agent/paths.js'
+import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/path'
 import { onMcpServersChanged } from '../agent/mcp-warmup.js'
 import { getDb } from '../db/sqlite.js'
 
 /**
- * 将 settings.mcpServers 同步写入 ~/.openworker/mcp.json
+ * 将 settings.mcpServers 同步写入 `{OPENWORKER_HOME}/mcp.json`
  *
  * @param settings - 当前应用设置
  */

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { app } from 'electron'
 
 import { mainLog } from '@/main/logger'
-import { getChannelConfig, getOpenworkerHome, resolveChannel } from '@/shared/app-channels'
+import { getChannelConfig, resolveAppChannel } from '@openworker/shared/load-env'
 
 /** 启动后等待 /health 的最长时间（毫秒） */
 const HEALTH_TIMEOUT_MS = 10_000
@@ -33,7 +33,7 @@ export function getNativePort(): number {
     const n = Number(raw)
     if (Number.isFinite(n) && n > 0) return Math.floor(n)
   }
-  return getChannelConfig(resolveChannel()).nativePort
+  return getChannelConfig(resolveAppChannel()).nativePort
 }
 
 /**
@@ -162,6 +162,29 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * 开发态是否仅复用外部 Native（如 turbo 并行的 `native:dev`），不由 Desktop spawn。
+ */
+function useExternalNativeDev(): boolean {
+  if (app.isPackaged) return false
+  const flag = process.env.OPENWORKER_NATIVE_EXTERNAL?.trim().toLowerCase()
+  return flag === '1' || flag === 'true'
+}
+
+/**
+ * 轮询 `/health` 直至 deadline 或成功。
+ *
+ * @returns 是否在 deadline 前探活成功
+ */
+async function waitForHealthyNative(baseUrl: string, deadlineMs: number): Promise<boolean> {
+  const deadline = Date.now() + deadlineMs
+  while (Date.now() < deadline) {
+    if (await probeHealth(baseUrl)) return true
+    await sleep(HEALTH_INTERVAL_MS)
+  }
+  return false
+}
+
+/**
  * 将子进程 stdout/stderr 接到主进程日志
  *
  * @param proc - native 子进程
@@ -203,13 +226,12 @@ function resolveSpawnSpec(): {
   env: NodeJS.ProcessEnv
 } | null {
   const port = String(getNativePort())
-  const openworkerHome =
-    process.env.OPENWORKER_HOME?.trim() || getOpenworkerHome(getChannelConfig(resolveChannel()))
+  const channel = resolveAppChannel()
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    APP_CHANNEL: channel,
     PORT: port,
-    OPENWORKER_NATIVE_PORT: port,
-    OPENWORKER_HOME: openworkerHome
+    OPENWORKER_NATIVE_PORT: port
   }
 
   if (useElectronNode()) {
@@ -235,6 +257,9 @@ function resolveSpawnSpec(): {
   const nativeDir = resolveNativePackageDir()
   const script = resolveDevScriptEntry()
   if (script) {
+    const rgName = process.platform === 'win32' ? 'rg.exe' : 'rg'
+    const rgPath = path.join(nativeDir, 'dist', 'bin', rgName)
+    if (existsSync(rgPath)) env.OPENWORKER_RG_PATH = rgPath
     return {
       command: resolveSystemNodeBinary(),
       args: [script],
@@ -273,6 +298,29 @@ export async function startNativeService(): Promise<void> {
     mainLog.info(`[native] already healthy at ${baseUrl}, reuse existing`)
     spawnedByUs = false
     return
+  }
+
+  if (useExternalNativeDev()) {
+    const ready = await waitForHealthyNative(baseUrl, 30_000)
+    if (ready) {
+      mainLog.info(`[native] reuse external dev at ${baseUrl}`)
+      spawnedByUs = false
+      return
+    }
+    mainLog.warn(
+      `[native] external native not ready at ${baseUrl}; ensure pnpm dev / native:dev is running`
+    )
+    return
+  }
+
+  // 未打包且非 external：短时等待后仍可由 Desktop 自行 spawn（仅跑 desktop:dev 时）
+  if (!app.isPackaged) {
+    const ready = await waitForHealthyNative(baseUrl, 8_000)
+    if (ready) {
+      mainLog.info(`[native] already healthy at ${baseUrl}, reuse existing`)
+      spawnedByUs = false
+      return
+    }
   }
 
   const spec = resolveSpawnSpec()

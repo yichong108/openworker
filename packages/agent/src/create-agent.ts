@@ -1,6 +1,6 @@
 /**
  * createAgent 是包内底层工厂，由 OpenWorkerAgent 委托；宿主勿直接调用。
- * 基于 createReActAgent 的运行约定，在 send 时按 ~/.openworker 加载 Skills / MCP，
+ * 基于 createReActAgent 的运行约定，在 send 时按 `OPENWORKER_HOME` 加载 Skills / MCP，
  * 并在本文件内合并系统 prompt（技能名摘要 / MCP 上下文）。
  */
 
@@ -9,6 +9,7 @@ import {
   type McpServerEntry,
   normalizeComposerMode
 } from '@openworker/shared'
+import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/path'
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
 import {
@@ -34,10 +35,8 @@ import {
   buildWorkspaceTools,
   type WorkspacePromptExtras
 } from './tools/workspace-tools.js'
-import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from './path.js'
-
 export type { AgentRunResult, AgentRunTavilyOptions } from './createReActAgent.js'
-export { getOpenworkerDir, getOpenworkerMcpConfigPath } from './path.js'
+export { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/path'
 
 /**
  * createAgent 本地运行环境配置。

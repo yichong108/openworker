@@ -5,16 +5,21 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
-import { getChannelConfig, resolveChannelKey } from './src/shared/app-channels-data'
+import {
+  bootstrapRootChannelEnv,
+  getChannelConfig,
+  resolveAppChannel
+} from '@openworker/shared/load-env'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
-const buildChannel = resolveChannelKey({
-  appChannel: process.env.APP_CHANNEL,
-  isPackaged: false
-})
+bootstrapRootChannelEnv({ defaultChannel: 'dev', startDir: rootDir })
+const buildChannel = resolveAppChannel()
 const channelConfig = getChannelConfig(buildChannel)
-const nativeBaseUrl = `http://127.0.0.1:${channelConfig.nativePort}`
+const nativeBaseUrl =
+  process.env.OPENWORKER_NATIVE_BASE_URL?.trim() ||
+  process.env.VITE_OPENWORKER_NATIVE_BASE_URL?.trim() ||
+  `http://127.0.0.1:${channelConfig.nativePort}`
 
 if (!process.env.VITE_API_URL?.trim()) {
   process.env.VITE_API_URL = nativeBaseUrl
@@ -42,6 +47,8 @@ function readGitShortHash(cwd: string): string {
 
 const aliasSrc = resolve(rootDir, 'src')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
+const aliasSharedLoadEnv = resolve(rootDir, '../../packages/shared/src/load-env.ts')
+const aliasSharedPath = resolve(rootDir, '../../packages/shared/src/path.ts')
 const aliasUi = resolve(rootDir, '../../packages/ui/src/index.ts')
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
 const monacoGithubLightThemeJson = resolve(
@@ -53,18 +60,19 @@ export default defineConfig({
   main: {
     define: {
       __OPENWORKERER_GIT_COMMIT__: JSON.stringify(readGitShortHash(rootDir)),
-      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString()),
-      __APP_CHANNEL__: JSON.stringify(buildChannel)
+      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString())
     },
     resolve: {
       alias: {
         '@': aliasSrc,
+        '@openworker/shared/load-env': aliasSharedLoadEnv,
+        '@openworker/shared/path': aliasSharedPath,
         '@openworker/shared': aliasShared
       }
     },
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@openworker/shared']
+        exclude: ['@openworker/shared', '@openworker/shared/load-env', '@openworker/shared/path']
       })
     ],
     build: {
@@ -78,15 +86,10 @@ export default defineConfig({
   preload: {
     resolve: {
       alias: {
-        '@': aliasSrc,
-        '@openworker/shared': aliasShared
+        '@': aliasSrc
       }
     },
-    plugins: [
-      externalizeDepsPlugin({
-        exclude: ['@openworker/shared']
-      })
-    ],
+    plugins: [externalizeDepsPlugin()],
     build: {
       // 沙箱内 preload 以非 ES 模块方式执行，需输出 CJS
       lib: {

@@ -11,10 +11,14 @@ import { fileURLToPath } from 'node:url'
 
 const binName = process.platform === 'win32' ? 'rg.exe' : 'rg'
 
+function getModuleDir(): string {
+  return path.dirname(fileURLToPath(import.meta.url))
+}
+
 /**
  * 解析可用的 ripgrep 可执行文件绝对路径
  *
- * 优先级：`OPENWORKER_RG_PATH` → Electron `resources/bin` → 开发态真实 `@vscode/ripgrep`。
+ * 优先级：`OPENWORKER_RG_PATH` → Electron `resources/bin` → bundle 旁 `dist/bin` → 平台 optional 包。
  *
  * @returns rg 可执行文件绝对路径
  * @throws {Error} 当所有候选均不存在时抛出
@@ -29,18 +33,17 @@ function resolveRgPath(): string {
     if (existsSync(packaged)) return packaged
   }
 
-  // 开发 / 非打包：回退到真实包（ESM，import.meta.url 可用）
+  const bundleBin = path.join(getModuleDir(), 'bin', binName)
+  if (existsSync(bundleBin)) return bundleBin
+
   try {
     const require = createRequire(fileURLToPath(import.meta.url))
-    const pkgJson = require.resolve('@vscode/ripgrep/package.json')
-    const requireFromPkg = createRequire(pkgJson)
-    // 动态加载平台包路径：与上游 lib/index.js 一致
     const platformPkg = `@vscode/ripgrep-${process.platform}-${process.env.npm_config_arch || process.arch}`
-    return requireFromPkg.resolve(`${platformPkg}/bin/${binName}`)
+    return require.resolve(`${platformPkg}/bin/${binName}`)
   } catch (error) {
     throw new Error(
       `Could not resolve ripgrep binary (${binName}). ` +
-        `Set OPENWORKER_RG_PATH or ensure resources/bin/${binName} is packaged. ` +
+        `Set OPENWORKER_RG_PATH or ensure dist/bin/${binName} exists (run pnpm native:build). ` +
         `${error instanceof Error ? error.message : String(error)}`
     )
   }

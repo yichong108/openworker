@@ -8,10 +8,10 @@
   "type": "module",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "cross-env APP_CHANNEL=dev electron-vite dev",
-    "dev:debug": "cross-env APP_CHANNEL=dev electron-vite dev --inspect=9229 --remoteDebuggingPort=9222 --sourcemap",
-    "build": "pnpm --filter @openworker/native build && cross-env APP_CHANNEL=prod electron-vite build && cross-env APP_CHANNEL=prod electron-builder --config scripts/electron-builder.config.mjs",
-    "build:test": "pnpm --filter @openworker/native build && cross-env APP_CHANNEL=test electron-vite build && cross-env APP_CHANNEL=test electron-builder --config scripts/electron-builder.config.mjs",
+    "dev": "node ../../scripts/with-env.mjs dev electron-vite dev",
+    "dev:debug": "node ../../scripts/with-env.mjs dev electron-vite dev --inspect=9229 --remoteDebuggingPort=9222 --sourcemap",
+    "build": "pnpm --filter @openworker/native build && node ../../scripts/with-env.mjs prod electron-vite build && node ../../scripts/with-env.mjs prod electron-builder --config scripts/electron-builder.config.mjs",
+    "build:test": "pnpm --filter @openworker/native build && node ../../scripts/with-env.mjs test electron-vite build && node ../../scripts/with-env.mjs test electron-builder --config scripts/electron-builder.config.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
@@ -56,6 +56,7 @@
     "simplebar-core": "^1.3.2",
     "simplebar-react": "^3.3.2",
     "strip-json-comments": "^3.1.1",
+    "tsx": "^4.19.4",
     "typescript": "catalog:",
     "vite": "^6.2.6",
     "zod": "catalog:",

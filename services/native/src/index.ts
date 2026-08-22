@@ -35,7 +35,40 @@ function main() {
     console.log('[native] health check: GET /health')
   })
 
-  server.on('error', (error) => {
+  /**
+   * 探测同端口是否已有健康的 Native 实例（tsx watch 重启竞态时常见）。
+   */
+  async function isPeerHealthy(port: number): Promise<boolean> {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(1500)
+      })
+      if (!res.ok) return false
+      const body = (await res.json()) as { status?: string }
+      return body.status === 'ok'
+    } catch {
+      return false
+    }
+  }
+
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      void isPeerHealthy(env.port).then((healthy) => {
+        if (healthy) {
+          console.log(
+            `[native] port ${env.port} already served by healthy peer, skip duplicate dev instance`
+          )
+          closeDb()
+          process.exit(0)
+          return
+        }
+        console.error('[native] listen failed', error)
+        closeDb()
+        process.exit(1)
+      })
+      return
+    }
+
     console.error('[native] listen failed', error)
     closeDb()
     process.exit(1)
