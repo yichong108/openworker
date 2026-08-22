@@ -30,6 +30,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,mjs,cjs,js,jsx,json,md,scss,css}\"",
     "desktop:dev": "pnpm --filter @openworker/desktop dev",
     "desktop:build": "pnpm --filter @openworker/desktop build",
+    "desktop:build:test": "pnpm --filter @openworker/desktop build:test",
     "landing:dev": "pnpm --filter @openworker/landing dev",
     "landing:build": "pnpm --filter @openworker/landing build",
     "native:dev": "pnpm --filter @openworker/native dev",

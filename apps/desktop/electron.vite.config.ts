@@ -5,7 +5,23 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
+import { getChannelConfig, resolveChannelKey } from './src/shared/app-channels-data'
+
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
+
+const buildChannel = resolveChannelKey({
+  appChannel: process.env.APP_CHANNEL,
+  isPackaged: false
+})
+const channelConfig = getChannelConfig(buildChannel)
+const nativeBaseUrl = `http://127.0.0.1:${channelConfig.nativePort}`
+
+if (!process.env.VITE_API_URL?.trim()) {
+  process.env.VITE_API_URL = nativeBaseUrl
+}
+if (!process.env.VITE_OPENWORKER_NATIVE_BASE_URL?.trim()) {
+  process.env.VITE_OPENWORKER_NATIVE_BASE_URL = nativeBaseUrl
+}
 
 /**
  * 读取当前仓库短 SHA（构建「关于」信息）
@@ -36,7 +52,8 @@ export default defineConfig({
   main: {
     define: {
       __OPENWORKERER_GIT_COMMIT__: JSON.stringify(readGitShortHash(rootDir)),
-      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString())
+      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString()),
+      __APP_CHANNEL__: JSON.stringify(buildChannel)
     },
     resolve: {
       alias: {
@@ -85,6 +102,10 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    server: {
+      port: channelConfig.rendererPort,
+      strictPort: true
+    },
     resolve: {
       /**
        * 强制渲染进程只使用同一份 React，避免 antd App.useApp 与 Provider

@@ -6,9 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { app } from 'electron'
 
 import { mainLog } from '@/main/logger'
-
-/** Native 默认监听端口 */
-const DEFAULT_PORT = 3200
+import { getChannelConfig, getOpenworkerHome, resolveChannel } from '@/shared/app-channels'
 
 /** 启动后等待 /health 的最长时间（毫秒） */
 const HEALTH_TIMEOUT_MS = 10_000
@@ -25,14 +23,17 @@ let spawnedByUs = false
 /**
  * 解析 Native HTTP 监听端口
  *
- * 优先 `OPENWORKER_NATIVE_PORT`，其次 `PORT`，非法值回退默认 3200。
+ * 优先 `OPENWORKER_NATIVE_PORT`，其次 `PORT`，否则按当前渠道默认端口。
  *
  * @returns 正整型端口号
  */
 export function getNativePort(): number {
   const raw = process.env.OPENWORKER_NATIVE_PORT || process.env.PORT
-  const n = Number(raw ?? DEFAULT_PORT)
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_PORT
+  if (raw?.trim()) {
+    const n = Number(raw)
+    if (Number.isFinite(n) && n > 0) return Math.floor(n)
+  }
+  return getChannelConfig(resolveChannel()).nativePort
 }
 
 /**
@@ -202,9 +203,13 @@ function resolveSpawnSpec(): {
   env: NodeJS.ProcessEnv
 } | null {
   const port = String(getNativePort())
+  const openworkerHome =
+    process.env.OPENWORKER_HOME?.trim() || getOpenworkerHome(getChannelConfig(resolveChannel()))
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    PORT: port
+    PORT: port,
+    OPENWORKER_NATIVE_PORT: port,
+    OPENWORKER_HOME: openworkerHome
   }
 
   if (useElectronNode()) {
