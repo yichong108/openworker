@@ -1,0 +1,114 @@
+/* 编辑文件展开：jsdiff unified（单列行号 | +/- | 语法高亮） */
+.ow-file-diff {
+  min-width: 0;
+  max-height: 320px;
+  margin: 4px 0 8px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  overflow: auto;
+  background: transparent;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: var(--aw-font-lg);
+  line-height: 1.5;
+}
+
+.ow-file-diff-empty {
+  padding: 0;
+  color: var(--aw-color-text-secondary);
+}
+
+.ow-file-diff-line {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* 3px 色块外沿留白 + 3px 竖线，保证增删/上下文对齐 */
+  padding: 0 0 0 6px;
+  min-height: 1.5em;
+}
+
+.ow-file-diff-line:first-child {
+  padding-top: 6px;
+}
+
+.ow-file-diff-line:last-child {
+  padding-bottom: 6px;
+}
+
+.ow-file-diff-lineno {
+  flex: 0 0 2.5em;
+  width: 2.5em;
+  padding: 0 0.4em 0 0;
+  text-align: right;
+  user-select: none;
+  color: #8b949e;
+}
+
+.ow-file-diff-sign {
+  flex: 0 0 1.1em;
+  width: 1.1em;
+  text-align: center;
+  user-select: none;
+  font-weight: 700;
+  color: #8b949e;
+}
+
+.ow-file-diff-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent !important;
+}
+
+/* 竖线用 ::before 画在色块内侧（左缘先留 3px 底色，再画 3px 条） */
+.ow-file-diff-line.is-add::before,
+.ow-file-diff-line.is-del::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  pointer-events: none;
+}
+
+.ow-file-diff-line.is-add {
+  background: #e6ffed;
+}
+
+.ow-file-diff-line.is-add::before {
+  background: #2da44e;
+}
+
+.ow-file-diff-line.is-add .ow-file-diff-sign {
+  color: #1a7f37;
+  font-weight: 700;
+}
+
+.ow-file-diff-line.is-del {
+  background: #ffebe9;
+}
+
+.ow-file-diff-line.is-del::before {
+  background: #cf222e;
+}
+
+.ow-file-diff-line.is-del .ow-file-diff-sign {
+  color: #cf222e;
+  font-weight: 700;
+}
+
+.ow-file-diff-line.is-ctx {
+  background: transparent;
+  color: var(--aw-color-text);
+}
+
+.ow-file-diff-line.is-ctx .ow-file-diff-sign {
+  color: transparent;
+  font-weight: 400;
+}
