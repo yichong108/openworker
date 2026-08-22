@@ -1,5 +1,4 @@
 import 'simplebar-react/dist/simplebar.min.css'
-import 'highlight.js/styles/github.css'
 import '@/renderer/src/center-pane/WorkspaceCenterPane.scss'
 import {
   useWorkspaceCenterPane,

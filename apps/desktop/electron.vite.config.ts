@@ -42,6 +42,7 @@ function readGitShortHash(cwd: string): string {
 
 const aliasSrc = resolve(rootDir, 'src')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
+const aliasUi = resolve(rootDir, '../../packages/ui/src/index.ts')
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
 const monacoGithubLightThemeJson = resolve(
   rootDir,
@@ -114,6 +115,8 @@ export default defineConfig({
       dedupe: ['react', 'react-dom'],
       alias: {
         '@': aliasSrc,
+        '@openworker/shared': aliasShared,
+        '@openworker/ui': aliasUi,
         '@monaco-themes/github-light': monacoGithubLightThemeJson,
         react: resolve(rootDir, 'node_modules/react'),
         'react-dom': resolve(rootDir, 'node_modules/react-dom')

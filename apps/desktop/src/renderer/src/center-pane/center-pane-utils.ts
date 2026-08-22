@@ -1,5 +1,3 @@
-import { findAndReplace } from 'mdast-util-find-and-replace'
-
 import { aguiEventsToToolTimeline } from '@/renderer/src/center-pane/agui-timeline'
 import type { ChatMessage, SessionInfo, ToolTimelineEvent } from '@/shared/ipc'
 
@@ -139,35 +137,6 @@ export function appendAssistantText(
   }
   next.push({ id: randomId(), role: 'assistant', content: text })
   return next
-}
-
-export function remarkLinkifyBareUrls() {
-  return (tree: Parameters<typeof findAndReplace>[0]) => {
-    findAndReplace(
-      tree,
-      [
-        [
-          /https?:\/\/[^\s<>()]+/g,
-          (rawUrl: string) => {
-            const match = rawUrl.match(/^(.*?)([),.;!?，。！？、；：]+)?$/)
-            const pureUrl = match?.[1] ?? rawUrl
-            const trailing = match?.[2] ?? ''
-            const linkNode = {
-              type: 'link' as const,
-              url: pureUrl,
-              title: null,
-              children: [{ type: 'text' as const, value: pureUrl }]
-            }
-            if (!trailing) return linkNode
-            return [linkNode, { type: 'text' as const, value: trailing }]
-          }
-        ]
-      ],
-      {
-        ignore: ['link', 'linkReference', 'code', 'inlineCode']
-      }
-    )
-  }
 }
 
 /** 会话运行时序信息（供 Worked 时间线耗时等使用；不再在顶栏展示调用统计） */
