@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url'
 import { app } from 'electron'
 
 import { mainLog } from '@/main/logger'
-import { getChannelConfig, resolveAppChannel } from '@openworker/shared/load-env'
 
 /** 启动后等待 /health 的最长时间（毫秒） */
 const HEALTH_TIMEOUT_MS = 10_000
@@ -23,7 +22,7 @@ let spawnedByUs = false
 /**
  * 解析 Native HTTP 监听端口
  *
- * 优先 `OPENWORKER_NATIVE_PORT`，其次 `PORT`，否则按当前渠道默认端口。
+ * 优先 `OPENWORKER_NATIVE_PORT`，其次 `PORT`。
  *
  * @returns 正整型端口号
  */
@@ -33,7 +32,7 @@ export function getNativePort(): number {
     const n = Number(raw)
     if (Number.isFinite(n) && n > 0) return Math.floor(n)
   }
-  return getChannelConfig(resolveAppChannel()).nativePort
+  throw new Error('未设置 OPENWORKER_NATIVE_PORT 或 PORT，请检查渠道环境文件')
 }
 
 /**
@@ -226,7 +225,10 @@ function resolveSpawnSpec(): {
   env: NodeJS.ProcessEnv
 } | null {
   const port = String(getNativePort())
-  const channel = resolveAppChannel()
+  const channel = process.env.APP_CHANNEL?.trim()
+  if (!channel) {
+    throw new Error('未设置 APP_CHANNEL，请检查渠道环境文件')
+  }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     APP_CHANNEL: channel,

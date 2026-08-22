@@ -5,21 +5,23 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
-import {
-  bootstrapRootChannelEnv,
-  getChannelConfig,
-  resolveAppChannel
-} from '@openworker/shared/load-env'
+import { bootstrapRootChannelEnv } from '@openworker/shared/load-env'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
 bootstrapRootChannelEnv({ defaultChannel: 'dev', startDir: rootDir })
-const buildChannel = resolveAppChannel()
-const channelConfig = getChannelConfig(buildChannel)
+
+const rendererPort = Number(process.env.OPENWORKER_RENDERER_PORT)
+const nativePort = Number(process.env.OPENWORKER_NATIVE_PORT)
+
+if (!Number.isFinite(rendererPort) || rendererPort <= 0) {
+  throw new Error('未设置有效的 OPENWORKER_RENDERER_PORT，请检查渠道环境文件')
+}
+
 const nativeBaseUrl =
   process.env.OPENWORKER_NATIVE_BASE_URL?.trim() ||
   process.env.VITE_OPENWORKER_NATIVE_BASE_URL?.trim() ||
-  `http://127.0.0.1:${channelConfig.nativePort}`
+  (Number.isFinite(nativePort) && nativePort > 0 ? `http://127.0.0.1:${nativePort}` : '')
 
 if (!process.env.VITE_API_URL?.trim()) {
   process.env.VITE_API_URL = nativeBaseUrl
@@ -107,7 +109,7 @@ export default defineConfig({
   renderer: {
     root: 'src/renderer',
     server: {
-      port: channelConfig.rendererPort,
+      port: rendererPort,
       strictPort: true
     },
     resolve: {

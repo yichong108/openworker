@@ -1,8 +1,7 @@
-import { bootstrapRootChannelEnv, resolveAppChannel } from '@openworker/shared/load-env'
+import { bootstrapRootChannelEnv } from '@openworker/shared/load-env'
 import { getNativeSqlitePath } from '@openworker/shared/path'
 
 bootstrapRootChannelEnv({ defaultChannel: 'dev' })
-resolveAppChannel()
 
 /**
  * Native 服务运行时配置

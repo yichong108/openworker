@@ -8,25 +8,32 @@ import { fileURLToPath } from 'node:url'
 
 import {
   bootstrapRootChannelEnv,
-  getChannelConfig,
   getRootEnvFilePath,
-  PACKAGED_CHANNEL_ENV_FILE,
-  resolveAppChannel
+  PACKAGED_CHANNEL_ENV_FILE
 } from '@openworker/shared/load-env'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const desktopPkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'))
 
-bootstrapRootChannelEnv({ startDir: join(__dirname, '..') })
-const channel = resolveAppChannel()
-const channelConfig = getChannelConfig(channel)
+const channel = bootstrapRootChannelEnv({ startDir: join(__dirname, '..') })
+
+const appId = process.env.OPENWORKER_APP_ID?.trim()
+const productName = process.env.OPENWORKER_PRODUCT_NAME?.trim()
+const icon = process.env.OPENWORKER_APP_ICON?.trim()
+
+if (!appId || !productName || !icon) {
+  throw new Error(
+    '打包缺少 OPENWORKER_APP_ID / OPENWORKER_PRODUCT_NAME / OPENWORKER_APP_ICON，请检查渠道环境文件'
+  )
+}
+
 const baseBuild = desktopPkg.build ?? {}
 
 /** @type {import('electron-builder').Configuration} */
 export default {
   ...baseBuild,
-  appId: channelConfig.appId,
-  productName: channelConfig.productName,
+  appId,
+  productName,
   directories: {
     ...baseBuild.directories,
     output: `release/${channel}`
@@ -40,14 +47,14 @@ export default {
   ],
   win: {
     ...baseBuild.win,
-    icon: channelConfig.icon
+    icon
   },
   mac: {
     ...baseBuild.mac,
-    icon: channelConfig.icon
+    icon
   },
   linux: {
     ...baseBuild.linux,
-    icon: channelConfig.icon
+    icon
   }
 }

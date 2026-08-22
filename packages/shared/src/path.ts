@@ -10,8 +10,6 @@ import { fileURLToPath } from 'node:url'
 
 import { homedir } from 'node:os'
 
-import { getChannelConfig, resolveAppChannel } from './load-env.js'
-
 const OPENWORKER_HOME_ENV = 'OPENWORKER_HOME'
 
 /**
@@ -22,8 +20,13 @@ const OPENWORKER_HOME_ENV = 'OPENWORKER_HOME'
 export function getOpenworkerDir(): string {
   const explicit = process.env[OPENWORKER_HOME_ENV]?.trim()
   if (explicit) return explicit
-  const channel = resolveAppChannel()
-  return path.join(homedir(), getChannelConfig(channel).dataDirName)
+
+  const dataDirName = process.env.OPENWORKER_DATA_DIR_NAME?.trim()
+  if (!dataDirName) {
+    throw new Error('未设置 OPENWORKER_DATA_DIR_NAME，请检查渠道环境文件')
+  }
+
+  return path.join(homedir(), dataDirName)
 }
 
 /**
