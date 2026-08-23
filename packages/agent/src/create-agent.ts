@@ -10,6 +10,7 @@ import {
   normalizeComposerMode
 } from '@openworker/shared'
 import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/load-env'
+import { loadSkillsFromPaths } from '@openworker/skills'
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
 import {
@@ -27,9 +28,8 @@ import {
 } from './mcp/mcp-runtime.js'
 import type { McpProbeResult, McpWarmupServerResult } from './mcp/types.js'
 import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
-import { runReactLoop } from './react-loop.js'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { loadSkillsFromPaths } from './skills/load-skills.js'
+import { runReactLoop } from './react-loop.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,

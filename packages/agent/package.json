@@ -18,6 +18,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openworker/llm": "workspace:*",
     "@openworker/shared": "workspace:*",
+    "@openworker/skills": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "ai": "catalog:",
     "rxjs": "catalog:",

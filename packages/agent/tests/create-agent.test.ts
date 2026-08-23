@@ -12,7 +12,7 @@ vi.mock('../src/react-loop.js', () => ({
   ])
 }))
 
-vi.mock('../src/skills/load-skills.js', () => ({
+vi.mock('@openworker/skills', () => ({
   loadSkillsFromPaths: vi.fn(async () => ({ tools: {}, hint: '' }))
 }))
 
@@ -28,9 +28,10 @@ vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
   }
 })
 
+import { loadSkillsFromPaths } from '@openworker/skills'
+
 import { createAgent } from '../src/create-agent.js'
 import { runReactLoop } from '../src/react-loop.js'
-import { loadSkillsFromPaths } from '../src/skills/load-skills.js'
 
 function createCallbacks() {
   return {

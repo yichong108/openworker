@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { listSkillsFromPaths, loadSkillsFromPaths } from '../src/skills/load-skills.js'
+import { listSkillsFromPaths, loadSkillsFromPaths } from '../src/load-skills.js'
 
 const tempDirs: string[] = []
 

@@ -1,6 +1,6 @@
 # @openworker/skills
 
-OpenWorker 内置 Agent Skills 内容包。各技能位于 `content/` 下的独立子目录，入口文件为 `SKILL.md`。
+OpenWorker 内置 Agent Skills：`content/` 内容包 + `src/` 加载器（扫描 `SKILL.md`、列表与 ToolSet）。
 
 仅识别文件名为 `SKILL.md` 的技能文档，并读取其 frontmatter 元数据。
 
@@ -8,6 +8,8 @@ OpenWorker 内置 Agent Skills 内容包。各技能位于 `content/` 下的独�
 
 ```text
 packages/skills/
+  src/
+    load-skills.ts   # listSkillsFromPaths / loadSkillsFromPaths
   content/
     bug-fix/
       SKILL.md

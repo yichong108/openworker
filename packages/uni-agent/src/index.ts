@@ -26,7 +26,7 @@ export {
   sanitizeSkillToolName,
   type LoadedSkillsBundle,
   type SkillListItem
-} from '@openworker/agent'
+} from '@openworker/skills'
 
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/agent'
 

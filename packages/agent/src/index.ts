@@ -46,7 +46,7 @@ export {
   sanitizeSkillToolName,
   type LoadedSkillsBundle,
   type SkillListItem
-} from './skills/load-skills.js'
+} from '@openworker/skills'
 
 /** 工作区工具组装 */
 export {

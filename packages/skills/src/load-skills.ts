@@ -1,7 +1,7 @@
 /**
  * 从配置的目录路径加载基础 Skills（扫描 SKILL.md）。
  *
- * 这是 agent 内建的可选能力：宿主只需传入 paths，即可获得 skill_* 工具与 prompt 提示。
+ * 这是 skills 包的核心能力：宿主只需传入 paths，即可获得 skill_* 工具与 prompt 提示。
  * 意图筛选、Electron 路径解析等增强由宿主自行实现。
  */
 
@@ -9,11 +9,10 @@ import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import type { ToolSet } from 'ai'
+import { tool, type Tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
-import { defineTool, mergeToolSets, type ToolOnTool } from '../define-tool.js'
-import { agentLog } from '../logger.js'
+import { skillsLog } from './logger.js'
 
 /** 单次 run 最多加载的技能数 */
 const MAX_LOADED_SKILLS = 96
@@ -32,6 +31,21 @@ type SkillDefinition = {
   source: string
   body: string
 }
+
+/**
+ * 工具生命周期观察回调（与 `@openworker/agent` 的 ToolOnTool 结构兼容）。
+ *
+ * AI SDK 的 ToolExecutionOptions 不含 onTool，故由宿主/工作流注入。
+ */
+export type SkillToolOnTool = (e: {
+  id: string
+  name: string
+  status: 'start' | 'end'
+  args?: string
+  result?: string
+  timestampMs?: number
+  durationMs?: number
+}) => void
 
 /**
  * 从路径加载 skills 的结果。
@@ -212,6 +226,75 @@ async function resolveSkillDefinitions(paths: string[]): Promise<SkillDefinition
 }
 
 /**
+ * 将技能定义包装为单键 AI SDK ToolSet（含生命周期观察上报）。
+ *
+ * 行为与 `@openworker/agent` 的 defineTool 对齐，避免 skills → agent 环依赖。
+ *
+ * @param def - 技能定义
+ * @param onTool - 工具生命周期观察回调
+ * @returns 仅含该技能一项的 ToolSet
+ */
+function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet {
+  const name = def.name
+  const parameters = z.object({ question: z.string().optional() })
+  const truncateTo = 8_000
+
+  const wrapped: Tool = tool({
+    description: def.description,
+    parameters,
+    execute: async (input) => {
+      const parsed = input as { question?: string }
+      const id = `${name}-${Date.now()}`
+      const startedAt = Date.now()
+      let args: string
+      try {
+        args = JSON.stringify(parsed ?? {})
+      } catch {
+        args = String(parsed)
+      }
+
+      onTool({
+        id,
+        name,
+        status: 'start',
+        args,
+        timestampMs: startedAt
+      })
+
+      const question = typeof parsed.question === 'string' ? parsed.question.trim() : ''
+      const result = !question
+        ? def.body
+        : `User question: ${question}\n\nSkill document content:\n${def.body}`
+      const resultStr = typeof result === 'string' ? result : String(result)
+      const truncated = resultStr.slice(0, truncateTo)
+
+      onTool({
+        id,
+        name,
+        status: 'end',
+        result: truncated,
+        timestampMs: Date.now(),
+        durationMs: Date.now() - startedAt
+      })
+
+      return result
+    }
+  })
+
+  return { [name]: wrapped }
+}
+
+/**
+ * 合并多个 AI SDK ToolSet（同名后者覆盖前者）。
+ *
+ * @param sets - 待合并的 ToolSet
+ * @returns 合并后的 ToolSet
+ */
+function mergeToolSets(...sets: ToolSet[]): ToolSet {
+  return Object.assign({}, ...sets) as ToolSet
+}
+
+/**
  * 列出技能元数据（不含正文），供宿主斜杠菜单等 UI 使用。
  *
  * 扫描与去重规则与 `loadSkillsFromPaths` 一致，保证菜单中的名称与实际注册工具名对齐。
@@ -236,7 +319,7 @@ export async function listSkillsFromPaths(paths: string[]): Promise<SkillListIte
  */
 export async function loadSkillsFromPaths(
   paths: string[],
-  onTool: ToolOnTool
+  onTool: SkillToolOnTool
 ): Promise<LoadedSkillsBundle> {
   const cleaned = paths.map((p) => p.trim()).filter(Boolean)
   if (!cleaned.length) {
@@ -244,26 +327,9 @@ export async function loadSkillsFromPaths(
   }
 
   const merged = await resolveSkillDefinitions(cleaned)
-  agentLog.info(`[loadSkillsFromPaths] loaded=${merged.length} from ${cleaned.length} path(s)`)
+  skillsLog.info(`[loadSkillsFromPaths] loaded=${merged.length} from ${cleaned.length} path(s)`)
 
-  const tools = mergeToolSets(
-    ...merged.map((def) =>
-      defineTool(
-        {
-          name: def.name,
-          description: def.description,
-          parameters: z.object({ question: z.string().optional() }),
-          execute: async (args) => {
-            const question = typeof args.question === 'string' ? args.question.trim() : ''
-            if (!question) return def.body
-            return `User question: ${question}\n\nSkill document content:\n${def.body}`
-          },
-          truncateTo: 8_000
-        },
-        onTool
-      )
-    )
-  )
+  const tools = mergeToolSets(...merged.map((def) => defineSkillTool(def, onTool)))
 
   return {
     tools,
