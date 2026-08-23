@@ -1,7 +1,7 @@
 /**
  * 在其它主进程模块之前执行：加载渠道环境变量到 `process.env`。
  *
- * - 未打包：按 `CHANNEL`（缺省 `dev`）从 shared `load-env` 表注入
+ * - 未打包：按 `CHANNEL` 从 shared `load-env` 表注入
  * - 已打包：先用构建期 `__OPENWORKER_CHANNEL__` 设 `CHANNEL`，再 bootstrap
  *
  * 合并完成后关闭第三方 LLM 内置追踪（不使用 LangSmith）。
@@ -18,6 +18,6 @@ if (app.isPackaged) {
   process.env.CHANNEL = __OPENWORKER_CHANNEL__
 }
 
-bootstrapChannelEnv({ defaultChannel: 'dev' })
+bootstrapChannelEnv()
 
 disableThirdPartyLlmTracing()

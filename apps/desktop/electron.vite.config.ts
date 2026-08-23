@@ -9,7 +9,7 @@ import { bootstrapChannelEnv } from '@openworker/shared/load-env'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
-const channel = bootstrapChannelEnv({ defaultChannel: 'dev' })
+const channel = bootstrapChannelEnv()
 
 const rendererPort = Number(process.env.OPENWORKER_RENDERER_PORT)
 const nativePort = Number(process.env.OPENWORKER_NATIVE_PORT)

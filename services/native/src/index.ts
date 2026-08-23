@@ -4,7 +4,7 @@ import { disposeMcpHostAgent } from './agent/agent-instance.js'
 import { startMcpWarmup } from './agent/mcp-warmup.js'
 import { ensureUserSkillsLayout } from './agent/skills.js'
 import { createApp } from './app.js'
-import { env } from './config/env.js'
+import './config/env.js'
 import { closeDb, ensureSchema } from './db/sqlite.js'
 import { getAppSettings } from './services/settings-service.js'
 
@@ -15,8 +15,11 @@ import { getAppSettings } from './services/settings-service.js'
  * 注册 SIGTERM/SIGINT 以关闭 HTTP、MCP 宿主与 SQLite；listen 失败（如端口占用）以非零退出码结束。
  */
 function main() {
+  const port = Number(process.env.PORT ?? process.env.OPENWORKER_NATIVE_PORT)
+  const sqlitePath = process.env.SQLITE_PATH!
+
   ensureSchema()
-  console.log(`[native] sqlite ready: ${env.sqlitePath}`)
+  console.log(`[native] sqlite ready: ${sqlitePath}`)
 
   // 同步 mcp.json 种子 + 复制内置 skills；MCP 预热异步不阻塞 listen
   void getAppSettings()
@@ -30,17 +33,17 @@ function main() {
     })
 
   const app = createApp()
-  const server: Server = app.listen(env.port, '127.0.0.1', () => {
-    console.log(`[native] listening on http://127.0.0.1:${env.port}`)
+  const server: Server = app.listen(port, '127.0.0.1', () => {
+    console.log(`[native] listening on http://127.0.0.1:${port}`)
     console.log('[native] health check: GET /health')
   })
 
   /**
    * 探测同端口是否已有健康的 Native 实例（tsx watch 重启竞态时常见）。
    */
-  async function isPeerHealthy(port: number): Promise<boolean> {
+  async function isPeerHealthy(listenPort: number): Promise<boolean> {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/health`, {
+      const res = await fetch(`http://127.0.0.1:${listenPort}/health`, {
         signal: AbortSignal.timeout(1500)
       })
       if (!res.ok) return false
@@ -53,10 +56,10 @@ function main() {
 
   server.on('error', (error: NodeJS.ErrnoException) => {
     if (error.code === 'EADDRINUSE') {
-      void isPeerHealthy(env.port).then((healthy) => {
+      void isPeerHealthy(port).then((healthy) => {
         if (healthy) {
           console.log(
-            `[native] port ${env.port} already served by healthy peer, skip duplicate dev instance`
+            `[native] port ${port} already served by healthy peer, skip duplicate dev instance`
           )
           closeDb()
           process.exit(0)

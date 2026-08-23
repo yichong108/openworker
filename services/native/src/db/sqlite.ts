@@ -1,7 +1,8 @@
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { env } from '../config/env.js'
+
+import '../config/env.js'
 
 /** 进程内单例数据库连接 */
 let db: DatabaseSync | null = null
@@ -26,7 +27,7 @@ export function getDb(): DatabaseSync {
     return db
   }
 
-  const sqlitePath = path.resolve(env.sqlitePath)
+  const sqlitePath = path.resolve(process.env.SQLITE_PATH!)
   mkdirSync(path.dirname(sqlitePath), { recursive: true })
 
   db = new DatabaseSync(sqlitePath)
