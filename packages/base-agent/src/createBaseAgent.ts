@@ -5,10 +5,15 @@
 
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
-import { mergeToolSets, type ToolObservation, type ToolOnTool } from './define-tool.js'
+import {
+  buildShellRunPrompt,
+  buildShellTool,
+  mergeToolSets,
+  type ToolObservation,
+  type ToolOnTool
+} from '@openworker/tools'
 import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
 import { runReactLoop } from './react-loop.js'
-import { buildShellRunPrompt, buildShellTool } from './tools/shell-tool.js'
 
 /**
  * 从 messages 提取最后一条助手文本。

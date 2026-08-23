@@ -2,7 +2,7 @@ import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
 import type { ToolSet } from 'ai'
 import { z } from 'zod'
 
-import { defineTool, type ToolOnTool } from '../define-tool.js'
+import { defineTool, type ToolOnTool } from './define-tool.js'
 import { runCommand } from './terminal.js'
 
 /**

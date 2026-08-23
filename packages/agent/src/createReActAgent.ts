@@ -17,7 +17,7 @@ import {
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { buildWorkspaceRunPrompt, buildWorkspaceTools } from './tools/workspace-tools.js'
+import { buildWorkspaceRunPrompt, buildWorkspaceTools } from '@openworker/tools'
 
 /**
  * 从 messages 提取最后一条助手文本。

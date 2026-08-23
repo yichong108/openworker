@@ -1,7 +1,7 @@
 {
-  "name": "@openworker/agent",
+  "name": "@openworker/tools",
   "version": "0.0.0",
-  "description": "OpenWorker agent core — ReAct loop, messages, pipeline",
+  "description": "OpenWorker agent tools — defineTool, workspace fs/grep/shell/web, path-guard, terminal",
   "type": "module",
   "private": true,
   "exports": {
@@ -13,16 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ag-ui/client": "catalog:",
-    "@ag-ui/core": "catalog:",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@openworker/base-agent": "workspace:*",
-    "@openworker/llm": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
-    "@openworker/tools": "workspace:*",
+    "@vscode/ripgrep": "^1.18.0",
     "ai": "catalog:",
-    "rxjs": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

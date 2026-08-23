@@ -1,14 +1,10 @@
 import { type AgentComposerMode } from '@openworker/shared'
-import {
-  buildShellTool,
-  defineTool,
-  filterToolSet,
-  mergeToolSets,
-  type ToolOnTool
-} from '@openworker/base-agent'
+import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
+import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
 import type { ToolSet } from 'ai'
 import path from 'node:path'
 import { z } from 'zod'
+import { defineTool, filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
 import {
   deleteFileTool,
   globFilesTool,
@@ -18,9 +14,8 @@ import {
   type WriteFileToolResult
 } from './fs-tools.js'
 import { GREP_TOOL_DESCRIPTION, grepWorkspace } from './grep.js'
+import { buildShellTool } from './shell-tool.js'
 import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
-import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
-import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([

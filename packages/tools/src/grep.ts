@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { rgPath } from '@vscode/ripgrep'
 
-import { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
+import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
 
 /** 输出行数硬上限（响应速度） */
 export const GREP_MAX_OUTPUT_LINES = 2000

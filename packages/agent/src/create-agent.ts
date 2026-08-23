@@ -40,7 +40,7 @@ import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
   type WorkspacePromptExtras
-} from './tools/workspace-tools.js'
+} from '@openworker/tools'
 export type { AgentRunResult, AgentRunTavilyOptions } from './createReActAgent.js'
 export { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 

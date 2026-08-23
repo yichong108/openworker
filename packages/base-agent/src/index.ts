@@ -19,7 +19,7 @@ export {
   type ToolOnTool,
   type Tool,
   type ToolSet
-} from './define-tool.js'
+} from '@openworker/tools'
 
 export {
   assistantMessage,
@@ -34,17 +34,13 @@ export {
 
 export { runReactLoop } from './react-loop.js'
 
-export {
-  buildShellRunPrompt,
-  buildShellTool,
-  type BuildShellToolOptions
-} from './tools/shell-tool.js'
+export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from '@openworker/tools'
 
-export { ensureWorkspaceExists, resolveSafePath } from './tools/path-guard.js'
+export { ensureWorkspaceExists, resolveSafePath } from '@openworker/tools'
 
 export {
   completeCommandInWorkspace,
   killCommand,
   runCommand,
   type RunCommandHandlers
-} from './tools/terminal.js'
+} from '@openworker/tools'

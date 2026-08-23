@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildShellTool } from '../src/tools/shell-tool.js'
+import { buildShellTool } from '../src/shell-tool.js'
 
 describe('buildShellTool', () => {
   it('registers only the shell tool', () => {

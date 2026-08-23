@@ -62,7 +62,7 @@ export {
   isReadonlyComposerMode,
   type BuildWorkspaceToolsOptions,
   type WorkspacePromptExtras
-} from './tools/workspace-tools.js'
+} from '@openworker/tools'
 
 /** Plan 工件解析 */
 export {
