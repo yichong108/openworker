@@ -5,7 +5,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { getOpenworkerSkillsDir, resolveBundledSkillsContentDir } from '@openworker/shared/path'
+import { getOpenworkerSkillsDir, resolveBundledSkillsContentDir } from '@openworker/shared/load-env'
 import { listSkillsFromPaths, type SkillListItem } from '@openworker/uni-agent'
 
 import { agentLog } from './agent-log.js'

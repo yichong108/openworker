@@ -6,8 +6,7 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./load-env": "./src/load-env.ts",
-    "./path": "./src/path.ts"
+    "./load-env": "./src/load-env.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

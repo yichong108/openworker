@@ -14,7 +14,7 @@ import {
 import { GREP_TOOL_DESCRIPTION, grepWorkspace } from './grep.js'
 import { runCommand } from './terminal.js'
 import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
-import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/path'
+import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/load-env'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([

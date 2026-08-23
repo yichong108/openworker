@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 
 import { defaultSettings, normalizeSettings, type AppSettings } from '@openworker/shared'
 
-import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/path'
+import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import { onMcpServersChanged } from '../agent/mcp-warmup.js'
 import { getDb } from '../db/sqlite.js'
 

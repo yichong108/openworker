@@ -9,7 +9,7 @@ import {
   type McpServerEntry,
   normalizeComposerMode
 } from '@openworker/shared'
-import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/path'
+import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/load-env'
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
 import {
@@ -36,7 +36,7 @@ import {
   type WorkspacePromptExtras
 } from './tools/workspace-tools.js'
 export type { AgentRunResult, AgentRunTavilyOptions } from './createReActAgent.js'
-export { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/path'
+export { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 
 /**
  * createAgent 本地运行环境配置。

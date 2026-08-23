@@ -50,7 +50,6 @@ function readGitShortHash(cwd: string): string {
 const aliasSrc = resolve(rootDir, 'src')
 const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
 const aliasSharedLoadEnv = resolve(rootDir, '../../packages/shared/src/load-env.ts')
-const aliasSharedPath = resolve(rootDir, '../../packages/shared/src/path.ts')
 const aliasUi = resolve(rootDir, '../../packages/ui/src/index.ts')
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
 const monacoGithubLightThemeJson = resolve(
@@ -69,13 +68,12 @@ export default defineConfig({
       alias: {
         '@': aliasSrc,
         '@openworker/shared/load-env': aliasSharedLoadEnv,
-        '@openworker/shared/path': aliasSharedPath,
         '@openworker/shared': aliasShared
       }
     },
     plugins: [
       externalizeDepsPlugin({
-        exclude: ['@openworker/shared', '@openworker/shared/load-env', '@openworker/shared/path']
+        exclude: ['@openworker/shared', '@openworker/shared/load-env']
       })
     ],
     build: {

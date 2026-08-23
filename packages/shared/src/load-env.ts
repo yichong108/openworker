@@ -1,15 +1,17 @@
 /**
- * 渠道环境：表内联于本模块，经 `bootstrapChannelEnv` 写入 `process.env`。
- * Desktop / Native 共用同一份表；由 `CHANNEL`（cross-env 或打包 define）选渠道。
+ * 渠道环境与 OpenWorker 路径约定。
  *
+ * 渠道表内联于本模块，经 `bootstrapChannelEnv` 写入 `process.env`；
+ * Desktop / Native 共用同一份表；由 `CHANNEL`（cross-env 或打包 define）选渠道。
  * 合并顺序：`BASE_ENVS` ← `CHANNEL_ENVS[channel]`（渠道覆盖基线）。
+ *
+ * 用户数据根：`OPENWORKER_HOME` 显式覆盖，否则按渠道 `OPENWORKER_DATA_DIR_NAME` → `~/${dataDirName}`。
  */
 
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
-
-import { getNativeSqlitePath } from './path.js'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /** 发行渠道键 */
 export const CHANNEL_VALUES = ['dev', 'test', 'prod'] as const
@@ -115,7 +117,85 @@ export function bootstrapChannelEnv(): AppChannel {
   return channel
 }
 
-/** @returns `~/${dataDirName}` 绝对路径 */
-export function resolveOpenworkerHomeDir(dataDirName: string): string {
+/**
+ * 解析 OpenWorker 用户数据根绝对路径。
+ *
+ * @returns 绝对路径
+ */
+export function getOpenworkerDir(): string {
+  const dataDirName = process.env.OPENWORKER_DATA_DIR_NAME?.trim()
+  if (!dataDirName) {
+    throw new Error(
+      '未设置 OPENWORKER_DATA_DIR_NAME，请检查渠道环境（load-env / bootstrapChannelEnv）'
+    )
+  }
+
   return join(homedir(), dataDirName)
+}
+
+/**
+ * @returns `{OPENWORKER_HOME}/skills` 绝对路径
+ */
+export function getOpenworkerSkillsDir(): string {
+  return join(getOpenworkerDir(), 'skills')
+}
+
+/**
+ * @returns `{OPENWORKER_HOME}/mcp.json` 绝对路径
+ */
+export function getOpenworkerMcpConfigPath(): string {
+  return join(getOpenworkerDir(), 'mcp.json')
+}
+
+/**
+ * @returns `{OPENWORKER_HOME}/native/native.sqlite` 绝对路径
+ */
+export function getNativeSqlitePath(): string {
+  return join(getOpenworkerDir(), 'native', 'native.sqlite')
+}
+
+export type ResolveBundledSkillsContentDirOptions = {
+  /** Electron `process.resourcesPath` */
+  resourcesPath?: string
+  /** 当前模块 `import.meta.url`（ESM）；CJS bundle 可能不可用 */
+  moduleUrl?: string
+  /** 进程 cwd，默认 `process.cwd()` */
+  cwd?: string
+}
+
+/**
+ * 解析内置 skills 内容源目录（`packages/skills/content` 或安装包 `resources/skills`）。
+ *
+ * @returns 存在的目录绝对路径；找不到时为 null
+ */
+export function resolveBundledSkillsContentDir(
+  options: ResolveBundledSkillsContentDirOptions = {}
+): string | null {
+  const resourcesPath = options.resourcesPath?.trim()
+  if (resourcesPath) {
+    const packaged = join(resourcesPath, 'skills')
+    if (existsSync(packaged)) return packaged
+  }
+
+  const cwd = options.cwd ?? process.cwd()
+  const candidates = [
+    resolve(cwd, 'packages/skills/content'),
+    resolve(cwd, '../../packages/skills/content'),
+    resolve(cwd, '../packages/skills/content')
+  ]
+
+  const moduleUrl = options.moduleUrl?.trim()
+  if (moduleUrl) {
+    try {
+      const here = dirname(fileURLToPath(moduleUrl))
+      candidates.push(resolve(here, '../../../../packages/skills/content'))
+    } catch {
+      // ignore invalid moduleUrl
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate
+  }
+  return null
 }
