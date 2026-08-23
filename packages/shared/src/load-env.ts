@@ -133,11 +133,8 @@ export function getOpenworkerDir(): string {
   return join(homedir(), dataDirName)
 }
 
-/**
- * @returns `{OPENWORKER_HOME}/skills` 绝对路径
- */
 export function getOpenworkerSkillsDir(): string {
-  return join(getOpenworkerDir(), 'skills')
+  return join(getOpenworkerDir(), 'openworker-skills')
 }
 
 /**
@@ -164,7 +161,7 @@ export type ResolveBundledSkillsContentDirOptions = {
 }
 
 /**
- * 解析内置 skills 内容源目录（`packages/skills/content` 或安装包 `resources/skills`）。
+ * 解析内置 skills 内容源目录（`packages/skills/openworker-skills` 或安装包 `resources/skills`）。
  *
  * @returns 存在的目录绝对路径；找不到时为 null
  */
@@ -179,16 +176,16 @@ export function resolveBundledSkillsContentDir(
 
   const cwd = options.cwd ?? process.cwd()
   const candidates = [
-    resolve(cwd, 'packages/skills/content'),
-    resolve(cwd, '../../packages/skills/content'),
-    resolve(cwd, '../packages/skills/content')
+    resolve(cwd, 'packages/skills/openworker-skills'),
+    resolve(cwd, '../../packages/skills/openworker-skills'),
+    resolve(cwd, '../packages/skills/openworker-skills')
   ]
 
   const moduleUrl = options.moduleUrl?.trim()
   if (moduleUrl) {
     try {
       const here = dirname(fileURLToPath(moduleUrl))
-      candidates.push(resolve(here, '../../../../packages/skills/content'))
+      candidates.push(resolve(here, '../../../../packages/skills/openworker-skills'))
     } catch {
       // ignore invalid moduleUrl
     }

@@ -14,7 +14,7 @@
     "**/.next/**",
     "**/.turbo/**",
     "apps/desktop/src/extensions/**",
-    "packages/skills/content/**"
+    "packages/skills/openworker-skills/**"
   ],
   "settings": {
     "next": {

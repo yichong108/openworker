@@ -10,5 +10,5 @@
 pnpm-lock.yaml
 pnpm-workspace.yaml
 **/public/**
-packages/skills/content/**
+packages/skills/openworker-skills/**
 apps/desktop/src/extensions/**

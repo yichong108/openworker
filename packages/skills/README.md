@@ -1,6 +1,6 @@
 # @openworker/skills
 
-OpenWorker 内置 Agent Skills：`content/` 内容包 + `src/` 加载器（扫描 `SKILL.md`、列表与 ToolSet）。
+OpenWorker 内置 Agent Skills：`openworker-skills/` 内容包 + `src/` 加载器（扫描 `SKILL.md`、列表与 ToolSet）。
 
 仅识别文件名为 `SKILL.md` 的技能文档，并读取其 frontmatter 元数据。
 
@@ -10,7 +10,7 @@ OpenWorker 内置 Agent Skills：`content/` 内容包 + `src/` 加载器（扫�
 packages/skills/
   src/
     load-skills.ts   # listSkillsFromPaths / loadSkillsFromPaths
-  content/
+  openworker-skills/
     bug-fix/
       SKILL.md
     code-review/
@@ -32,9 +32,9 @@ description: 用于执行代码评审，优先发现 bug、回归风险和缺失
 
 ## 快速验证
 
-1. 在 `content/` 下新建一个技能目录并写入 `SKILL.md`
+1. 在 `openworker-skills/` 下新建一个技能目录并写入 `SKILL.md`
 2. 启动应用并向 Agent 提问（例如：`请按 code review 方式审查这次改动`）
-3. 在时间线中确认是否出现对应 `skill_*` 工具调用
+3. 在时间线中确认是否出现 `readSkillFile` 工具调用
 
 ## 示例提问
 
@@ -46,9 +46,9 @@ description: 用于执行代码评审，优先发现 bug、回归风险和缺失
 
 本仓库已提供以下模板：
 
-- `content/debug-workflow/SKILL.md`：故障修复流程（复现 -> 定位 -> 修复 -> 验证）
-- `content/release-workflow/SKILL.md`：发布流程（变更确认 -> 门禁 -> 发布 -> 回滚）
-- `content/triage-workflow/SKILL.md`：分诊流程（收集 -> 评估 -> 排序 -> 执行清单）
+- `openworker-skills/debug-workflow/SKILL.md`：故障修复流程（复现 -> 定位 -> 修复 -> 验证）
+- `openworker-skills/release-workflow/SKILL.md`：发布流程（变更确认 -> 门禁 -> 发布 -> 回滚）
+- `openworker-skills/triage-workflow/SKILL.md`：分诊流程（收集 -> 评估 -> 排序 -> 执行清单）
 
 ### 典型触发语句
 
@@ -58,7 +58,7 @@ description: 用于执行代码评审，优先发现 bug、回归风险和缺失
 
 ## 宿主如何定位内容
 
-- **开发 / monorepo**：`packages/skills/content`
-- **Desktop 安装包**：`process.resourcesPath/skills`（由 electron-builder `extraResources` 从 `content/` 复制）
+- **开发 / monorepo**：`packages/skills/openworker-skills`
+- **Desktop 安装包**：`process.resourcesPath/skills`（由 electron-builder `extraResources` 从 `openworker-skills/` 复制）
 
 Native 服务在 `@openworker/shared` 的 `resolveBundledSkillsContentDir()` 中按上述顺序解析；用户 skills 目录见 `getOpenworkerSkillsDir()`。

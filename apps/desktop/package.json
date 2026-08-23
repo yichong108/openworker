@@ -77,7 +77,7 @@
         "to": "app-icon.png"
       },
       {
-        "from": "../../packages/skills/content",
+        "from": "../../packages/skills/openworker-skills",
         "to": "skills",
         "filter": [
           "**/*"
