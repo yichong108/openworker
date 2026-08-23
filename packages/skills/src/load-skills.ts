@@ -15,22 +15,32 @@ import { z } from 'zod'
 import { skillsLog } from './logger.js'
 
 /** 单次 run 最多加载的技能数 */
-const MAX_LOADED_SKILLS = 96
+export const MAX_LOADED_SKILLS = 96
 
 /** 单个 SKILL.md 最大字节数 */
-const MAX_SKILL_MD_SIZE_BYTES = 10 * 1024 * 1024
+export const MAX_SKILL_MD_SIZE_BYTES = 10 * 1024 * 1024
 
 type SkillMdMeta = {
   name?: string
   description?: string
 }
 
-type SkillDefinition = {
+/**
+ * 扫描得到的技能元数据（不含正文），供 SkillManager 等渐进加载场景使用。
+ */
+export type ScannedSkill = {
   name: string
   description: string
+  /** 扫描时使用的技能根目录绝对路径 */
+  skillRootDir: string
+  /** 含 SKILL.md 的技能目录绝对路径 */
+  skillDirPath: string
+  skillFilePath: string
+  /** 相对 skillRootDir 的 SKILL.md 路径 */
   source: string
-  body: string
 }
+
+type ParsedSkillFile = ScannedSkill & { body: string }
 
 /**
  * 工具生命周期观察回调（与 `@openworker/agent` 的 ToolOnTool 结构兼容）。
@@ -174,37 +184,66 @@ function makeSkillHint(defs: SkillDefinition[]): string {
 }
 
 /**
- * 从单个根目录解析技能定义。
+ * 从单个 SKILL.md 解析元数据与正文。
  *
  * @param absRoot - 技能根目录绝对路径
- * @param defs - 累积写入的定义列表
+ * @param absPath - SKILL.md 绝对路径
+ * @returns 解析结果；无效或超大文件时为 null
  */
-async function appendDefsFromRoot(absRoot: string, defs: SkillDefinition[]): Promise<void> {
-  const mdFiles = await collectSkillMarkdownFiles(absRoot)
-  for (const absPath of mdFiles) {
-    if (defs.length >= MAX_LOADED_SKILLS) return
-    try {
-      const st = await fs.stat(absPath)
-      if (st.size > MAX_SKILL_MD_SIZE_BYTES) continue
-      const rawMd = await fs.readFile(absPath, 'utf8')
-      const parsed = parseSkillFrontmatter(rawMd)
-      if (!parsed) continue
-      const folderName = path.basename(path.dirname(absPath))
-      const skillName = sanitizeSkillToolName(parsed.meta.name || folderName)
-      const rel = path.relative(absRoot, absPath).replaceAll('\\', '/')
-      const description =
-        parsed.meta.description ||
-        `Skill document: ${rel}. Follow skill instructions and call tools when necessary.`
-      defs.push({
-        name: skillName,
-        description,
-        source: rel,
-        body: parsed.body
-      })
-    } catch {
-      continue
+async function readParsedSkillFile(
+  absRoot: string,
+  absPath: string
+): Promise<ParsedSkillFile | null> {
+  try {
+    const st = await fs.stat(absPath)
+    if (st.size > MAX_SKILL_MD_SIZE_BYTES) return null
+    const rawMd = await fs.readFile(absPath, 'utf8')
+    const parsed = parseSkillFrontmatter(rawMd)
+    if (!parsed) return null
+    const folderName = path.basename(path.dirname(absPath))
+    const skillName = sanitizeSkillToolName(parsed.meta.name || folderName)
+    const rel = path.relative(absRoot, absPath).replaceAll('\\', '/')
+    const description =
+      parsed.meta.description ||
+      `Skill document: ${rel}. Follow skill instructions and call tools when necessary.`
+    return {
+      name: skillName,
+      description,
+      skillRootDir: absRoot,
+      skillDirPath: path.dirname(absPath),
+      skillFilePath: absPath,
+      source: rel,
+      body: parsed.body
     }
+  } catch {
+    return null
   }
+}
+
+/**
+ * 扫描单个技能根目录下的全部 SKILL.md 元数据（不含正文）。
+ *
+ * @param absRoot - 技能根目录绝对路径
+ * @returns 元数据列表；目录不存在或无 SKILL.md 时返回空数组
+ */
+export async function scanSkillsFromRoot(absRoot: string): Promise<ScannedSkill[]> {
+  const mdFiles = await collectSkillMarkdownFiles(absRoot)
+  const out: ScannedSkill[] = []
+  for (const absPath of mdFiles) {
+    if (out.length >= MAX_LOADED_SKILLS) break
+    const parsed = await readParsedSkillFile(absRoot, absPath)
+    if (!parsed) continue
+    const { body: _body, ...meta } = parsed
+    out.push(meta)
+  }
+  return out
+}
+
+type SkillDefinition = {
+  name: string
+  description: string
+  source: string
+  body: string
 }
 
 /**
@@ -334,5 +373,26 @@ export async function loadSkillsFromPaths(
   return {
     tools,
     hint: makeSkillHint(merged)
+  }
+}
+
+/**
+ * 从单个根目录解析技能定义。
+ *
+ * @param absRoot - 技能根目录绝对路径
+ * @param defs - 累积写入的定义列表
+ */
+async function appendDefsFromRoot(absRoot: string, defs: SkillDefinition[]): Promise<void> {
+  const mdFiles = await collectSkillMarkdownFiles(absRoot)
+  for (const absPath of mdFiles) {
+    if (defs.length >= MAX_LOADED_SKILLS) return
+    const parsed = await readParsedSkillFile(absRoot, absPath)
+    if (!parsed) continue
+    defs.push({
+      name: parsed.name,
+      description: parsed.description,
+      source: parsed.source,
+      body: parsed.body
+    })
   }
 }
