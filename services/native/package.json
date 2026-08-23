@@ -6,10 +6,9 @@
   "private": true,
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "cross-env CHANNEL=dev node scripts/dev.mjs",
+    "dev": "cross-env CHANNEL=dev tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json && node esbuild.config.mjs",
-    "bundle": "node esbuild.config.mjs",
-    "start": "node dist/index.js",
+    "build:test": "cross-env CHANNEL=test tsc -p tsconfig.build.json && node esbuild.config.mjs",
     "typecheck": "tsc --noEmit"
   },
   "engines": {
