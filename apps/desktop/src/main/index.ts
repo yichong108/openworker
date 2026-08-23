@@ -9,7 +9,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import '@/main/env-bootstrap'
-import '@/main/app-identity'
 import { app, BrowserWindow, dialog, ipcMain, Menu, session, shell } from 'electron'
 
 import { mainLog } from '@/main/logger'
