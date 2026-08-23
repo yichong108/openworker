@@ -97,7 +97,6 @@
     ],
     "win": {
       "target": [
-        "nsis",
         "msi"
       ],
       "icon": "resources/app-icon.png"
