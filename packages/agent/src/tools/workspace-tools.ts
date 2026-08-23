@@ -1,9 +1,14 @@
-import { type AgentComposerMode, MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
+import { type AgentComposerMode } from '@openworker/shared'
+import {
+  buildShellTool,
+  defineTool,
+  filterToolSet,
+  mergeToolSets,
+  type ToolOnTool
+} from '@openworker/base-agent'
 import type { ToolSet } from 'ai'
 import path from 'node:path'
 import { z } from 'zod'
-
-import { defineTool, filterToolSet, mergeToolSets, type ToolOnTool } from '../define-tool.js'
 import {
   deleteFileTool,
   globFilesTool,
@@ -13,7 +18,6 @@ import {
   type WriteFileToolResult
 } from './fs-tools.js'
 import { GREP_TOOL_DESCRIPTION, grepWorkspace } from './grep.js'
-import { runCommand } from './terminal.js'
 import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
 import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
 import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
@@ -170,18 +174,13 @@ export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSe
       execute: ({ pattern, max_results }) =>
         globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot }),
       truncateTo: 12_000
-    },
-    {
-      name: 'shell',
-      description:
-        '在工作区根目录执行 shell 命令并等待结束，返回合并的 stdout/stderr（过长会截断）。用于安装依赖、构建、测试、git 等。',
-      parameters: z.object({ command: z.string() }),
-      execute: ({ command }) => runCommand(termKey, root, command, MAX_TERMINAL_OUTPUT_CHARS),
-      truncateTo: 4_000
     }
   ]
 
-  const baseTools = mergeToolSets(...baseToolDefs.map((def) => defineTool(def, onTool)))
+  const baseTools = mergeToolSets(
+    ...baseToolDefs.map((def) => defineTool(def, onTool)),
+    buildShellTool({ terminalKey: termKey, root, onTool })
+  )
 
   const webSearchTools: ToolSet = isTavilyConfigured(tavilyApiKey)
     ? defineTool(

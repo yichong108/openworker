@@ -7,9 +7,15 @@ import { type AgentComposerMode, normalizeComposerMode } from '@openworker/share
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
 import type { PreparedTooling } from './run-types.js'
-import { mergeToolSets, type ToolObservation, type ToolOnTool } from './define-tool.js'
-import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
-import { runReactLoop } from './react-loop.js'
+import {
+  contentToText,
+  findLastAssistantMessage,
+  mergeToolSets,
+  runReactLoop,
+  type ToolObservation,
+  type ToolOnTool,
+  userMessage
+} from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { buildWorkspaceRunPrompt, buildWorkspaceTools } from './tools/workspace-tools.js'
 

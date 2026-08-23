@@ -16,7 +16,7 @@ vi.mock('../src/create-agent.js', () => ({
 }))
 
 import type { Agent, AgentRunResult } from '../src/create-agent.js'
-import type { CoreMessage } from '../src/messages.js'
+import type { CoreMessage } from '@openworker/base-agent'
 import {
   aguiMessagesToCore,
   coreMessagesToAgui,

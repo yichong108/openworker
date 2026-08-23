@@ -4,14 +4,14 @@
  * 公共 API 见 `@openworker/agent` 根导出；勿在此 barrel 再导出实现细节。
  */
 
-export { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
+export { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
 
 export {
   completeCommandInWorkspace,
   killCommand,
   runCommand,
   type RunCommandHandlers
-} from './terminal.js'
+} from '@openworker/base-agent'
 
 export {
   buildWorkspaceRunPrompt,

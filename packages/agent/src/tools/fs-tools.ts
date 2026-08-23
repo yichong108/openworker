@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
+import { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
 
 const MAX_READ = 500_000
 

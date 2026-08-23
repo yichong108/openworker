@@ -21,7 +21,7 @@ import {
   type CreateReActAgentLocalOptions,
   type CreateReActAgentOptions
 } from './createReActAgent.js'
-import { mergeToolSets, type ToolOnTool } from './define-tool.js'
+import { mergeToolSets, type ToolOnTool } from '@openworker/base-agent'
 import {
   buildMcpToolsFromConfig,
   disposeMcpConnectionPool,
@@ -29,9 +29,13 @@ import {
   warmupMcpServersFromConfig
 } from './mcp/mcp-runtime.js'
 import type { McpProbeResult, McpWarmupServerResult } from './mcp/types.js'
-import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
+import {
+  contentToText,
+  findLastAssistantMessage,
+  runReactLoop,
+  userMessage
+} from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { runReactLoop } from './react-loop.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,

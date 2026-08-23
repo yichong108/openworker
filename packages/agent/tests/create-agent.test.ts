@@ -5,12 +5,16 @@
 import type { LanguageModel } from 'ai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../src/react-loop.js', () => ({
-  runReactLoop: vi.fn(async (_model, _prompt, messages) => [
-    ...messages,
-    { role: 'assistant' as const, content: 'hello' }
-  ])
-}))
+vi.mock('@openworker/base-agent', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@openworker/base-agent')>()
+  return {
+    ...actual,
+    runReactLoop: vi.fn(async (_model, _prompt, messages) => [
+      ...messages,
+      { role: 'assistant' as const, content: 'hello' }
+    ])
+  }
+})
 
 const skillManagerMock = {
   init: vi.fn(async () => undefined),
@@ -37,7 +41,7 @@ vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
 import { getSingleSkillManager } from '../src/single-skill-manager.js'
 
 import { createAgent } from '../src/create-agent.js'
-import { runReactLoop } from '../src/react-loop.js'
+import { runReactLoop } from '@openworker/base-agent'
 
 function createCallbacks() {
   return {

@@ -4,7 +4,7 @@ import type { z } from 'zod'
 /**
  * 工具执行生命周期观察（start / end）。
  *
- * 供宿主映射为产品侧时间线（如 ToolTimelineEvent）；agent 包本身不依赖 UI/IPC 类型。
+ * 供宿主映射为产品侧时间线（如 ToolTimelineEvent）；base-agent 包本身不依赖 UI/IPC 类型。
  * runId / traceId 由宿主在 onTool 回调中自行附加，不在此结构中携带。
  */
 export type ToolObservation = {

@@ -37,7 +37,7 @@ import {
   type AgentRunInput,
   type CreateAgentOptions
 } from './create-agent.js'
-import type { ToolObservation } from './define-tool.js'
+import type { ToolObservation } from '@openworker/base-agent'
 import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.js'
 
 /**

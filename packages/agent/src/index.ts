@@ -29,7 +29,7 @@ export {
   mergeToolSets,
   type ToolObservation,
   type ToolOnTool
-} from './define-tool.js'
+} from '@openworker/base-agent'
 
 export {
   assistantMessage,
@@ -37,7 +37,7 @@ export {
   findLastAiMessage,
   findLastAssistantMessage,
   userMessage
-} from './messages.js'
+} from '@openworker/base-agent'
 
 export { disposeSingleSkillManager, getSingleSkillManager } from './single-skill-manager.js'
 
@@ -75,7 +75,7 @@ export {
 } from './plan-artifact.js'
 
 /** 路径安全（宿主 workspace 文件 API 可复用） */
-export { ensureWorkspaceExists, resolveSafePath } from './tools/path-guard.js'
+export { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
 
 /** 终端进程控制（宿主 IPC / 取消 run 用） */
 export {
@@ -83,4 +83,4 @@ export {
   killCommand,
   runCommand,
   type RunCommandHandlers
-} from './tools/terminal.js'
+} from '@openworker/base-agent'
