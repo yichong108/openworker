@@ -1,6 +1,6 @@
 {
   "name": "openworker",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0",
   "description": "OpenWorker — AI Agent 套件 (桌面应用 + 落地页 + 本地服务)",
   "keywords": [
     "openworker",
@@ -20,11 +20,11 @@
   "scripts": {
     "prepare": "husky",
     "preinstall": "npx only-allow pnpm",
-    "dev": "cross-env CHANNEL=dev turbo run dev --parallel",
+    "dev": "turbo run dev --parallel",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "build": "turbo run build",
-    "build:test": "cross-env CHANNEL=test turbo run build",
+    "build:test": "turbo run build",
     "landing:dev": "pnpm --filter @openworker/landing dev",
     "landing:build": "pnpm --filter @openworker/landing build",
     "ap": "pnpm --dir ap exec tsx src/index.ts",

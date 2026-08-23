@@ -7,7 +7,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "cross-env CHANNEL=dev tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json && node esbuild.config.mjs",
+    "build": "cross-env CHANNEL=prod tsc -p tsconfig.build.json && node esbuild.config.mjs",
     "build:test": "cross-env CHANNEL=test tsc -p tsconfig.build.json && node esbuild.config.mjs",
     "typecheck": "tsc --noEmit"
   },
