@@ -36,12 +36,9 @@ export type SkillWatchEvent = {
   pathKey: string
 }
 
-export type SkillManagerOptions = {
-  onTool?: SkillToolOnTool
-}
-
 const WATCH_DEBOUNCE_MS = 1000
 const TOOL_RESULT_TRUNCATE = 8_000
+const GLOBAL_PATH_KEY = 'global'
 
 /**
  * 全局 skills 约定根目录（`~/.agents/skills`），供宿主填入 skillRootDirs。
@@ -86,25 +83,34 @@ function resolveSkillRelativePath(skillDirPath: string, relativePath: string): s
  * 按 pathKey 管理 skills 根目录，提供元数据缓存、渐进加载工具与目录监听。
  */
 export class SkillManager {
-  private readonly skillRootDirs: SkillRootDirs
-  private readonly skillRootDirKeys: string[]
+  private skillRootDirs: SkillRootDirs = {}
+  private skillRootDirKeys: string[] = []
   private byName = new Map<string, ManagedSkill>()
   private onTool?: SkillToolOnTool
   private onChange?: (event: SkillWatchEvent) => void
-  private watchers: fs.FSWatcher[] = []
+  private watchers = new Map<string, fs.FSWatcher>()
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private watching = false
   private disposed = false
+  private initialized = false
 
   /**
-   * @param skillRootDirs - pathKey → 技能根目录绝对路径
-   * @param options - 可选工具生命周期回调
+   * 空构造；根目录经 addSkillRootDir / setSkillRootDirs 动态挂载。
    */
-  constructor(skillRootDirs: SkillRootDirs, options?: SkillManagerOptions) {
-    this.skillRootDirs = skillRootDirs
-    this.skillRootDirKeys = Object.keys(skillRootDirs)
-    this.onTool = options?.onTool
-    void this.refresh()
+  constructor() {}
+
+  /**
+   * 注入 onTool；首次调用时挂 global 根并 startWatch。
+   *
+   * @param onTool - 工具生命周期观察回调
+   */
+  async init(onTool?: SkillToolOnTool): Promise<void> {
+    if (this.disposed) return
+    this.onTool = onTool
+    if (this.initialized) return
+    this.initialized = true
+    await this.addSkillRootDir(GLOBAL_PATH_KEY, getDefaultGlobalAgentsSkillsDir())
+    this.startWatch()
   }
 
   /**
@@ -118,6 +124,85 @@ export class SkillManager {
     const all = [...this.byName.values()]
     if (!pathKey) return all
     return all.filter((item) => item.pathKey === pathKey)
+  }
+
+  /**
+   * 新增或更新 pathKey → 技能根目录；已 watching 时为该 key 挂 watcher。
+   *
+   * @param pathKey - 逻辑名
+   * @param absDir - 技能根目录绝对路径
+   */
+  async addSkillRootDir(pathKey: string, absDir: string): Promise<void> {
+    if (this.disposed) return
+    const trimmedKey = pathKey.trim()
+    const trimmedDir = absDir.trim()
+    if (!trimmedKey || !trimmedDir) return
+
+    const existing = this.skillRootDirs[trimmedKey]?.trim()
+    if (existing === trimmedDir) return
+
+    if (existing) {
+      this.unwatchPathKey(trimmedKey)
+    }
+
+    if (!(trimmedKey in this.skillRootDirs)) {
+      this.skillRootDirKeys.push(trimmedKey)
+    }
+    this.skillRootDirs[trimmedKey] = trimmedDir
+
+    if (this.watching) {
+      this.watchPathKey(trimmedKey)
+    }
+
+    await this.refresh()
+  }
+
+  /**
+   * 移除 pathKey：停 watch、从映射删除并 refresh。
+   *
+   * @param pathKey - 要移除的逻辑名
+   */
+  async removeSkillRootDir(pathKey: string): Promise<void> {
+    if (this.disposed) return
+    const trimmedKey = pathKey.trim()
+    if (!trimmedKey || !(trimmedKey in this.skillRootDirs)) return
+
+    this.unwatchPathKey(trimmedKey)
+    delete this.skillRootDirs[trimmedKey]
+    this.skillRootDirKeys = this.skillRootDirKeys.filter((key) => key !== trimmedKey)
+
+    await this.refresh()
+  }
+
+  /**
+   * 一次性同步多根（diff 后 add/remove）；顺序以 next 的 key 插入序为准。
+   *
+   * @param next - 目标 pathKey → 绝对路径映射
+   */
+  async setSkillRootDirs(next: SkillRootDirs): Promise<void> {
+    if (this.disposed) return
+
+    const nextKeys = Object.keys(next)
+    for (const key of [...this.skillRootDirKeys]) {
+      if (!(key in next)) {
+        await this.removeSkillRootDir(key)
+      }
+    }
+
+    for (const key of nextKeys) {
+      const absDir = next[key]?.trim()
+      if (!absDir) continue
+      await this.addSkillRootDir(key, absDir)
+    }
+
+    const ordered: string[] = []
+    for (const key of nextKeys) {
+      if (key in this.skillRootDirs && !ordered.includes(key)) {
+        ordered.push(key)
+      }
+    }
+    this.skillRootDirKeys = ordered
+    await this.refresh()
   }
 
   /**
@@ -181,20 +266,7 @@ export class SkillManager {
     this.watching = true
 
     for (const pathKey of this.skillRootDirKeys) {
-      const absRoot = this.skillRootDirs[pathKey]?.trim()
-      if (!absRoot) continue
-
-      try {
-        const watcher = fs.watch(absRoot, { recursive: true }, () => {
-          this.scheduleRefresh(pathKey)
-        })
-        watcher.on('error', (err) => {
-          skillsLog.warn(`[SkillManager] watch error pathKey=${pathKey}:`, err)
-        })
-        this.watchers.push(watcher)
-      } catch (err) {
-        skillsLog.warn(`[SkillManager] failed to watch pathKey=${pathKey}:`, err)
-      }
+      this.watchPathKey(pathKey)
     }
   }
 
@@ -202,10 +274,10 @@ export class SkillManager {
    * 停止目录监听，保留缓存与配置。
    */
   stopWatch(): void {
-    for (const watcher of this.watchers) {
+    for (const watcher of this.watchers.values()) {
       watcher.close()
     }
-    this.watchers = []
+    this.watchers.clear()
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer)
     }
@@ -221,8 +293,42 @@ export class SkillManager {
     if (this.disposed) return
     this.stopWatch()
     this.byName.clear()
+    this.skillRootDirs = {}
+    this.skillRootDirKeys = []
     this.onTool = undefined
+    this.initialized = false
     this.disposed = true
+  }
+
+  private watchPathKey(pathKey: string): void {
+    if (this.disposed || this.watchers.has(pathKey)) return
+    const absRoot = this.skillRootDirs[pathKey]?.trim()
+    if (!absRoot) return
+
+    try {
+      const watcher = fs.watch(absRoot, { recursive: true }, () => {
+        this.scheduleRefresh(pathKey)
+      })
+      watcher.on('error', (err) => {
+        skillsLog.warn(`[SkillManager] watch error pathKey=${pathKey}:`, err)
+      })
+      this.watchers.set(pathKey, watcher)
+    } catch (err) {
+      skillsLog.warn(`[SkillManager] failed to watch pathKey=${pathKey}:`, err)
+    }
+  }
+
+  private unwatchPathKey(pathKey: string): void {
+    const watcher = this.watchers.get(pathKey)
+    if (watcher) {
+      watcher.close()
+      this.watchers.delete(pathKey)
+    }
+    const timer = this.debounceTimers.get(pathKey)
+    if (timer) {
+      clearTimeout(timer)
+      this.debounceTimers.delete(pathKey)
+    }
   }
 
   private snapshotByPathKey(pathKey: string): Map<string, ManagedSkill> {

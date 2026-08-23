@@ -18,7 +18,6 @@ export {
   getDefaultGlobalAgentsSkillsDir,
   SkillManager,
   type ManagedSkill,
-  type SkillManagerOptions,
   type SkillRootDirs,
   type SkillWatchEvent
 } from './skill-manager.js'

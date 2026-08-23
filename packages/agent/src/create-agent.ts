@@ -4,13 +4,15 @@
  * 并在本文件内合并系统 prompt（技能名摘要 / MCP 上下文）。
  */
 
+import path from 'node:path'
+
 import {
   type AgentComposerMode,
   type McpServerEntry,
   normalizeComposerMode
 } from '@openworker/shared'
-import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/load-env'
-import { loadSkillsFromPaths } from '@openworker/skills'
+import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
+import { getSingleSkillManager } from './single-skill-manager.js'
 import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
 
 import {
@@ -84,7 +86,7 @@ export type CreateAgentOptions = CreateReActAgentOptions
  *
  * 调用形态：`send(userText, options?)`。
  * 会话历史由 createAgent / agent.messages 持有；send 内部追加 userText 并写回。
- * Skills / MCP 由 send 内部从 `~/.openworker/skills` 与 `~/.openworker/mcp.json` 加载；
+ * Skills / MCP 由 send 内部从 `~/.agents/skills`、工作区 `.agents/skills` 与 `~/.openworker/mcp.json` 加载；
  * 可经 `tools` 传入宿主额外工具，与 skills / MCP / 工作区工具合并（同名时 tools 覆盖）。
  */
 export type AgentRunInput = ReActAgentRunInput
@@ -122,24 +124,29 @@ function extractAssistantText(messages: CoreMessage[]): string {
 }
 
 /**
- * 按 `~/.openworker` 约定加载本轮 Skills / MCP 工具与 prompt 增强片段。
+ * 按约定加载本轮 Skills / MCP 工具与 prompt 增强片段。
  *
- * ask / plan 模式下跳过（不暴露 skill_* / mcp_*，也不注入技能名摘要）。
+ * ask / plan 模式下跳过（不暴露 readSkill* / mcp_*，也不注入技能名摘要）。
  * 目录或文件不存在时加载结果为空，不抛错。
  *
  * @param composerMode - 发送模式
+ * @param workspaceRoot - 工作区根目录（用于 project skills 路径）
  * @param onTool - 工具生命周期观察回调
  * @returns 合并后的额外 ToolSet 与注入 system prompt 的 extras
  */
 async function loadSkillsAndMcpTools(
   composerMode: AgentComposerMode,
+  workspaceRoot: string,
   onTool: ToolOnTool
 ): Promise<{ tools: ToolSet; promptExtras: WorkspacePromptExtras }> {
   if (composerMode === 'ask' || composerMode === 'plan') {
     return { tools: {}, promptExtras: {} }
   }
 
-  const skillBundle = await loadSkillsFromPaths([getOpenworkerSkillsDir()], onTool)
+  const skillManager = getSingleSkillManager()
+  await skillManager.init(onTool)
+  await skillManager.addSkillRootDir('project', path.join(workspaceRoot, '.agents', 'skills'))
+  const skillBundle = skillManager.toPromptAndTools()
   const mcpResult = await buildMcpToolsFromConfig(getOpenworkerMcpConfigPath(), onTool)
 
   const promptExtras: WorkspacePromptExtras = {
@@ -212,7 +219,11 @@ export function createAgent(options: CreateAgentOptions): Agent {
     const terminalKey = input.terminalKey?.trim() || 'term:default'
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
-    const { tools: extraTools, promptExtras } = await loadSkillsAndMcpTools(composerMode, onTool)
+    const { tools: extraTools, promptExtras } = await loadSkillsAndMcpTools(
+      composerMode,
+      root,
+      onTool
+    )
 
     const workspaceTools = buildWorkspaceTools({
       terminalKey,

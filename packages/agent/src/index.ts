@@ -39,13 +39,20 @@ export {
   userMessage
 } from './messages.js'
 
+export { disposeSingleSkillManager, getSingleSkillManager } from './single-skill-manager.js'
+
 export {
+  getDefaultGlobalAgentsSkillsDir,
   listSkillsFromPaths,
   loadSkillsFromPaths,
   parseSkillFrontmatter,
   sanitizeSkillToolName,
+  SkillManager,
   type LoadedSkillsBundle,
-  type SkillListItem
+  type ManagedSkill,
+  type SkillListItem,
+  type SkillRootDirs,
+  type SkillWatchEvent
 } from '@openworker/skills'
 
 /** 工作区工具组装 */

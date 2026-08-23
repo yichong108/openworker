@@ -1,5 +1,6 @@
 import { type AgentComposerMode, MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
 import type { ToolSet } from 'ai'
+import path from 'node:path'
 import { z } from 'zod'
 
 import { defineTool, filterToolSet, mergeToolSets, type ToolOnTool } from '../define-tool.js'
@@ -14,7 +15,8 @@ import {
 import { GREP_TOOL_DESCRIPTION, grepWorkspace } from './grep.js'
 import { runCommand } from './terminal.js'
 import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
-import { getOpenworkerMcpConfigPath, getOpenworkerSkillsDir } from '@openworker/shared/load-env'
+import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
+import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([
@@ -278,10 +280,12 @@ export function buildWorkspaceRunPrompt(
 ): string {
   // Node 侧无浏览器地理定位；用系统时区作为本地上下文
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'
-  const skillsPath = getOpenworkerSkillsDir()
+  const globalSkillsPath = getDefaultGlobalAgentsSkillsDir()
+  const projectSkillsPath = path.join(root, '.agents', 'skills')
   const common = [
     `当前日期时间：${new Date().toLocaleString()}；时区：${timeZone}；`,
-    `内置 skills 文件夹路径：${skillsPath}；`,
+    `全局 skills 目录：${globalSkillsPath}；`,
+    `工作区 skills 目录：${projectSkillsPath}；`,
     `mcp 配置文件路径：${getOpenworkerMcpConfigPath()}；`,
     `工作区根目录：${root}；`
   ].join('\n')
@@ -337,7 +341,7 @@ function buildBuildSystemPrompt(
     ? 'read_file、list_dir、grep、shell、mcp_*'
     : 'read_file、list_dir、grep、shell'
   const skillRule =
-    '- **优先 skill_***：用户意图明显匹配某 skill 工具描述时，必须先调用该 skill 获取流程/约束/输出，再按需使用 ' +
+    '- **优先 readSkillFile**：用户意图明显匹配某 skill 描述时，必须先调用 readSkillFile 获取完整指令，再按需 readSkillRelativeFile 读取附属文件，然后使用 ' +
     followTools +
     '；不要跳过匹配的技能而用泛化工具猜测。'
 
@@ -347,7 +351,7 @@ function buildBuildSystemPrompt(
 
   return `你是协助办公与软件开发的智能体。
 - 工具中使用**相对于工作区根目录**的路径（如 src/index.ts）；不要用 ../ 逃出工作区。
-- 可用工具：${toolLine}，以及各类 skill_* 工具。${mcpNote}
+- 可用工具：${toolLine}，以及 readSkillFile、readSkillRelativeFile（渐进加载 skills）。${mcpNote}
 ${skillRule}
 - shell 在工作区根目录沙箱中执行命令并等待结束，返回 stdout/stderr；Windows 使用 cmd 风格。
 - 用户要「查看/读取工作区文件」或「列目录」时，优先 read_file/list_dir 再回答。
@@ -369,7 +373,7 @@ function buildAskSystemPrompt(root: string, tavilyApiKey?: string): string {
     ? '- 需要外部信息时调用 **web_search**；不要编造搜索结果。'
     : '- 未配置 Tavily：若用户需要实时信息，如实说明并建议在设置中配置 Tavily。'
   return `你是帮助理解代码、架构与命令的助手（问答模式）。
-- 禁止修改工作区文件、删除文件、执行 shell、调用 skill_* 或 mcp_*；本模式下这些工具不可用。
+- 禁止修改工作区文件、删除文件、执行 shell、调用 readSkillFile / readSkillRelativeFile 或 mcp_*；本模式下这些工具不可用。
 - 仅只读工具：${toolLine}。路径均相对于工作区根目录。
 - 若用户要求「直接改代码 / 跑命令 / 打补丁」，说明问答模式不能自动执行，给出可复制片段或步骤；要自动应用请切换到构建模式。
 ${webRule}
@@ -395,7 +399,7 @@ function buildPlanSystemPrompt(root: string, tavilyApiKey?: string): string {
     ? '- 需要外部信息时调用 **web_search**；不要编造搜索结果。'
     : '- 未配置 Tavily：若用户需要实时信息，如实说明并建议在设置中配置 Tavily。'
   return `你是协助软件开发的规划助手（计划模式 / Plan Mode）。
-- 禁止修改工作区文件、删除文件、执行 shell、调用 skill_* 或 mcp_*；本模式下这些工具不可用。
+- 禁止修改工作区文件、删除文件、执行 shell、调用 readSkillFile / readSkillRelativeFile 或 mcp_*；本模式下这些工具不可用。
 - 仅只读工具：${toolLine}。路径均相对于工作区根目录（${root}）。
 - 工作流程：
   1. 需求不清时先提出关键澄清问题（可多轮），不要急于给完整计划。

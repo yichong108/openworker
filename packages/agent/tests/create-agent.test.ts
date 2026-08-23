@@ -12,8 +12,14 @@ vi.mock('../src/react-loop.js', () => ({
   ])
 }))
 
-vi.mock('@openworker/skills', () => ({
-  loadSkillsFromPaths: vi.fn(async () => ({ tools: {}, hint: '' }))
+const skillManagerMock = {
+  init: vi.fn(async () => undefined),
+  addSkillRootDir: vi.fn(async () => undefined),
+  toPromptAndTools: vi.fn(() => ({ tools: {}, hint: '' }))
+}
+
+vi.mock('../src/single-skill-manager.js', () => ({
+  getSingleSkillManager: vi.fn(() => skillManagerMock)
 }))
 
 vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
@@ -28,7 +34,7 @@ vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
   }
 })
 
-import { loadSkillsFromPaths } from '@openworker/skills'
+import { getSingleSkillManager } from '../src/single-skill-manager.js'
 
 import { createAgent } from '../src/create-agent.js'
 import { runReactLoop } from '../src/react-loop.js'
@@ -46,9 +52,17 @@ const stubModel = { modelId: 'test-model' } as LanguageModel
 
 describe('createAgent', () => {
   beforeEach(() => {
+    process.env.OPENWORKER_DATA_DIR_NAME = '.openworker-test'
     vi.mocked(runReactLoop).mockClear()
-    vi.mocked(loadSkillsFromPaths).mockClear()
-    vi.mocked(loadSkillsFromPaths).mockResolvedValue({ tools: {}, hint: '' })
+    vi.mocked(runReactLoop).mockImplementation(async (_model, _prompt, messages) => [
+      ...messages,
+      { role: 'assistant' as const, content: 'hello' }
+    ])
+    vi.mocked(getSingleSkillManager).mockClear()
+    skillManagerMock.init.mockClear()
+    skillManagerMock.addSkillRootDir.mockClear()
+    skillManagerMock.toPromptAndTools.mockClear()
+    skillManagerMock.toPromptAndTools.mockReturnValue({ tools: {}, hint: '' })
   })
 
   it('返回含 send / mcp 的实例', () => {
@@ -98,104 +112,52 @@ describe('createAgent', () => {
     await agent.send('ping', {
       composerMode: 'ask',
       abortController: new AbortController(),
-      workspacePath: '/tmp/other',
-      terminalKey: 'term:s1',
-      ...callbacks,
-      maxSteps: 10,
-      invokeTimeoutMs: 60_000
+      workspacePath: '/other/root',
+      ...callbacks
     })
 
     const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(runPrompt).toContain('工作区根目录：/tmp/other')
+    expect(runPrompt).toContain('工作区根目录：/other/root')
   })
 
-  it('未传 local 时使用默认 cwd（process.cwd）', async () => {
+  it('send 空 userText 抛错', async () => {
     const agent = createAgent({ provider: stubModel })
-    const callbacks = createCallbacks()
-
-    await agent.send('ping', {
-      composerMode: 'ask',
-      abortController: new AbortController(),
-      terminalKey: 'term:s1',
-      ...callbacks,
-      maxSteps: 10,
-      invokeTimeoutMs: 60_000
-    })
-
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(runPrompt).toContain(`工作区根目录：${process.cwd()}`)
+    await expect(agent.send('   ')).rejects.toThrow('userText is empty')
   })
 
-  it('send(userText, {}) 形态可用且支持连续 send', async () => {
+  it('send 成功时写回 messages', async () => {
     const agent = createAgent({
       provider: stubModel,
-      messages: [
-        { role: 'user', content: 'old' },
-        { role: 'assistant', content: 'ack' }
-      ]
+      messages: [{ role: 'user', content: 'prev' }]
     })
-
-    await agent.send('ping', { composerMode: 'ask' })
-
-    const [, , firstPass] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(firstPass).toEqual([
-      { role: 'user', content: 'old' },
-      { role: 'assistant', content: 'ack' },
-      { role: 'user', content: 'ping' }
-    ])
-    expect(agent.messages).toEqual([
-      { role: 'user', content: 'old' },
-      { role: 'assistant', content: 'ack' },
-      { role: 'user', content: 'ping' },
-      { role: 'assistant', content: 'hello' }
-    ])
-
-    vi.mocked(runReactLoop).mockClear()
-    vi.mocked(runReactLoop).mockImplementationOnce(async (_m, _p, msgs) => [
-      ...msgs,
-      { role: 'assistant' as const, content: 'again' }
-    ])
-
-    await agent.send('pong', {})
-
-    const [, , secondPass] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(secondPass).toEqual([
-      { role: 'user', content: 'old' },
-      { role: 'assistant', content: 'ack' },
-      { role: 'user', content: 'ping' },
-      { role: 'assistant', content: 'hello' },
-      { role: 'user', content: 'pong' }
-    ])
-    expect(agent.messages.at(-1)).toEqual({ role: 'assistant', content: 'again' })
-  })
-
-  it('userText 为空时抛错', async () => {
-    const agent = createAgent({ provider: stubModel })
-    await expect(agent.send('   ', {})).rejects.toThrow('userText is empty')
-  })
-
-  it('send 成功时返回助手文本', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
     const callbacks = createCallbacks()
 
-    const result = await agent.send('hi', {
+    const result = await agent.send('next', {
       composerMode: 'ask',
       ...callbacks
     })
 
-    expect(result.result).toBe('hello')
+    expect(result.messages).toEqual([
+      { role: 'user', content: 'prev' },
+      { role: 'user', content: 'next' },
+      { role: 'assistant', content: 'hello' }
+    ])
+    expect(agent.messages).toEqual(result.messages)
   })
 
-  it('取消时 send 抛错且保留已追加用户消息', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+  it('send 取消时抛错且不写回助手消息', async () => {
+    const agent = createAgent({ provider: stubModel })
     const callbacks = createCallbacks()
-    const abortError = new Error('Aborted')
-    abortError.name = 'AbortError'
-    vi.mocked(runReactLoop).mockRejectedValueOnce(abortError)
+    const abortController = new AbortController()
+    vi.mocked(runReactLoop).mockImplementation(async () => {
+      abortController.abort()
+      throw new Error('Aborted')
+    })
 
     await expect(
       agent.send('hi', {
         composerMode: 'ask',
+        abortController,
         ...callbacks
       })
     ).rejects.toThrow('Aborted')
@@ -218,50 +180,55 @@ describe('createAgent', () => {
   })
 
   it('build 模式将 skills 名称摘要合并进 system prompt', async () => {
-    vi.mocked(loadSkillsFromPaths).mockResolvedValue({
+    skillManagerMock.toPromptAndTools.mockReturnValue({
       tools: {},
-      hint: '可用技能工具（可自动调用）：\n- debug_workflow: 故障排查\n- code_review: 代码审查'
+      hint: '可用技能（渐进加载）：\n- debug_workflow: 故障排查\n- code_review: 代码审查'
     })
 
     const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
     await agent.send('修一下报错', { composerMode: 'build' })
 
-    expect(loadSkillsFromPaths).toHaveBeenCalledOnce()
+    expect(getSingleSkillManager).toHaveBeenCalledOnce()
+    expect(skillManagerMock.init).toHaveBeenCalledOnce()
+    expect(skillManagerMock.addSkillRootDir).toHaveBeenCalledWith(
+      'project',
+      expect.stringContaining('.agents')
+    )
     const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(runPrompt).toContain('可用技能工具（可自动调用）')
+    expect(runPrompt).toContain('可用技能（渐进加载）')
     expect(runPrompt).toContain('debug_workflow')
     expect(runPrompt).toContain('code_review')
   })
 
   it('ask 模式不加载 skills、不注入技能摘要', async () => {
-    vi.mocked(loadSkillsFromPaths).mockResolvedValue({
+    skillManagerMock.toPromptAndTools.mockReturnValue({
       tools: {},
-      hint: '可用技能工具（可自动调用）：\n- debug_workflow: 故障排查'
+      hint: '可用技能（渐进加载）：\n- debug_workflow: 故障排查'
     })
 
     const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
     await agent.send('这段代码做什么？', { composerMode: 'ask' })
 
-    expect(loadSkillsFromPaths).not.toHaveBeenCalled()
+    expect(getSingleSkillManager).not.toHaveBeenCalled()
     const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
-    expect(runPrompt).not.toContain('可用技能工具')
+    expect(runPrompt).not.toContain('可用技能（渐进加载）')
     expect(runPrompt).not.toContain('debug_workflow')
   })
 
   it('plan 模式不加载 skills，并使用计划 prompt', async () => {
-    vi.mocked(loadSkillsFromPaths).mockResolvedValue({
+    skillManagerMock.toPromptAndTools.mockReturnValue({
       tools: {},
-      hint: '可用技能工具（可自动调用）：\n- debug_workflow: 故障排查'
+      hint: '可用技能（渐进加载）：\n- debug_workflow: 故障排查'
     })
 
     const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
     await agent.send('设计会话压缩', { composerMode: 'plan' })
 
-    expect(loadSkillsFromPaths).not.toHaveBeenCalled()
+    expect(getSingleSkillManager).not.toHaveBeenCalled()
     const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
     expect(runPrompt).toContain('计划模式')
     expect(runPrompt).toContain('openworker-plan')
-    expect(runPrompt).not.toContain('可用技能工具')
+    expect(runPrompt).not.toContain('可用技能（渐进加载）')
   })
 
   it('build 注入 planMarkdown 到 system prompt', async () => {

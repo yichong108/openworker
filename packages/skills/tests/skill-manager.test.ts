@@ -53,8 +53,9 @@ describe('SkillManager', () => {
       { folder: 'p-only', name: 'project_only', description: 'project' }
     ])
 
-    const manager = new SkillManager({ global, project })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', global)
+    await manager.addSkillRootDir('project', project)
 
     expect(
       manager
@@ -87,8 +88,8 @@ describe('SkillManager', () => {
       }
     ])
 
-    const manager = new SkillManager({ global: root })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', root)
     const bundle = manager.toPromptAndTools()
 
     expect(bundle.hint).toContain('readSkillFile')
@@ -106,8 +107,8 @@ describe('SkillManager', () => {
       }
     ])
 
-    const manager = new SkillManager({ global: root })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', root)
     const { tools } = manager.toPromptAndTools()
     const readSkillFile = tools.readSkillFile
     expect(readSkillFile).toBeDefined()
@@ -126,8 +127,8 @@ describe('SkillManager', () => {
       }
     ])
 
-    const manager = new SkillManager({ global: root })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', root)
     const { tools } = manager.toPromptAndTools()
 
     const ok = await tools.readSkillRelativeFile!.execute!(
@@ -143,12 +144,60 @@ describe('SkillManager', () => {
     expect(String(bad)).toContain('Invalid relative path')
   })
 
+  it('removeSkillRootDir drops skills from that pathKey', async () => {
+    const global = await makeSkillRoot([{ folder: 'g', name: 'g_skill', description: 'G' }])
+    const project = await makeSkillRoot([{ folder: 'p', name: 'p_skill', description: 'P' }])
+
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', global)
+    await manager.addSkillRootDir('project', project)
+    expect(
+      manager
+        .getSkills()
+        .map((x) => x.name)
+        .sort()
+    ).toEqual(['g_skill', 'p_skill'])
+
+    await manager.removeSkillRootDir('project')
+    expect(manager.getSkills().map((x) => x.name)).toEqual(['g_skill'])
+  })
+
+  it('setSkillRootDirs syncs roots', async () => {
+    const a = await makeSkillRoot([{ folder: 'x', name: 'skill_a', description: 'A' }])
+    const b = await makeSkillRoot([{ folder: 'y', name: 'skill_b', description: 'B' }])
+
+    const manager = new SkillManager()
+    await manager.setSkillRootDirs({ first: a, second: b })
+    expect(
+      manager
+        .getSkills()
+        .map((x) => x.name)
+        .sort()
+    ).toEqual(['skill_a', 'skill_b'])
+
+    await manager.setSkillRootDirs({ second: b })
+    expect(manager.getSkills().map((x) => x.name)).toEqual(['skill_b'])
+  })
+
+  it('init attaches global on first call and is idempotent for roots', async () => {
+    const manager = new SkillManager()
+    const onTool1 = vi.fn()
+    const onTool2 = vi.fn()
+
+    await manager.init(onTool1)
+    const rootsAfterFirst = manager.getSkills('global')
+    await manager.init(onTool2)
+
+    expect(rootsAfterFirst).toEqual(manager.getSkills('global'))
+    manager.dispose()
+  })
+
   it('dispose becomes no-op', async () => {
     const root = await makeSkillRoot([
       { folder: 'x', name: 'demo', description: 'Demo', body: 'Body' }
     ])
-    const manager = new SkillManager({ global: root })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', root)
 
     manager.dispose()
     manager.dispose()
@@ -162,8 +211,8 @@ describe('SkillManager', () => {
 
   it('watch refreshes skills after directory change', async () => {
     const root = await makeSkillRoot([])
-    const manager = new SkillManager({ global: root })
-    await manager.refresh()
+    const manager = new SkillManager()
+    await manager.addSkillRootDir('global', root)
     expect(manager.getSkills()).toEqual([])
 
     const onChange = vi.fn()

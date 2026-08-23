@@ -102,9 +102,16 @@ describe('plan mode tools & prompt', () => {
   })
 
   it('plan prompt 要求 openworker-plan 围栏', () => {
-    const prompt = buildWorkspaceRunPrompt('plan', '/tmp/ws')
-    expect(prompt).toContain('计划模式')
-    expect(prompt).toContain('openworker-plan')
-    expect(prompt).toContain('禁止修改工作区文件')
+    const prev = process.env.OPENWORKER_DATA_DIR_NAME
+    process.env.OPENWORKER_DATA_DIR_NAME = '.openworker-test'
+    try {
+      const prompt = buildWorkspaceRunPrompt('plan', '/tmp/ws')
+      expect(prompt).toContain('计划模式')
+      expect(prompt).toContain('openworker-plan')
+      expect(prompt).toContain('禁止修改工作区文件')
+    } finally {
+      if (prev === undefined) delete process.env.OPENWORKER_DATA_DIR_NAME
+      else process.env.OPENWORKER_DATA_DIR_NAME = prev
+    }
   })
 })
