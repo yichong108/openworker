@@ -96,7 +96,63 @@ export function sanitizeSkillToolName(input: string): string {
 }
 
 /**
+ * 判断 frontmatter 行是否为块标量指示符（`>` / `|` 及其 chomping 变体）。
+ *
+ * @param value - 冒号后的原始片段
+ * @returns 块类型；非块标量时为 null
+ */
+function parseBlockScalarIndicator(value: string): 'folded' | 'literal' | null {
+  const trimmed = value.trim()
+  if (trimmed === '>' || trimmed.startsWith('>-')) return 'folded'
+  if (trimmed === '|' || trimmed.startsWith('|-')) return 'literal'
+  return null
+}
+
+/**
+ * 读取 YAML frontmatter 块标量（`>` / `|`）的缩进正文。
+ *
+ * @param lines - frontmatter 按行拆分
+ * @param startIndex - 块标量指示符下一行的下标
+ * @param mode - folded 折叠为空格；literal 保留换行
+ * @returns 解析值与消费后的行下标
+ */
+function readFrontmatterBlockScalar(
+  lines: string[],
+  startIndex: number,
+  mode: 'folded' | 'literal'
+): { value: string; nextIndex: number } {
+  const blockLines: string[] = []
+  let i = startIndex
+  while (i < lines.length) {
+    const line = lines[i]!
+    if (line.trim() === '') {
+      blockLines.push('')
+      i++
+      continue
+    }
+    const indentMatch = line.match(/^(\s+)/)
+    if (!indentMatch) break
+    blockLines.push(line.slice(indentMatch[1]!.length))
+    i++
+  }
+
+  if (mode === 'literal') {
+    return { value: blockLines.join('\n').trim(), nextIndex: i }
+  }
+
+  const folded = blockLines
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return { value: folded, nextIndex: i }
+}
+
+/**
  * 解析 SKILL.md 的 YAML frontmatter（仅 name / description）。
+ *
+ * 支持单行值、引号值，以及 `>` / `|` 块标量（Cursor/Agent Skills 常见写法）。
  *
  * @param markdown - 完整 markdown 文本
  * @returns meta 与正文；无合法 frontmatter 时返回 null
@@ -111,14 +167,27 @@ export function parseSkillFrontmatter(
   const header = normalized.slice(4, end)
   const body = normalized.slice(end + 5).trim()
   const meta: SkillMdMeta = {}
-  for (const line of header.split('\n')) {
+  const lines = header.split('\n')
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]!
     const idx = line.indexOf(':')
-    if (idx <= 0) continue
+    if (idx <= 0) {
+      i++
+      continue
+    }
     const key = line.slice(0, idx).trim().toLowerCase()
-    const value = line
-      .slice(idx + 1)
-      .trim()
-      .replace(/^['"]|['"]$/g, '')
+    const rawValue = line.slice(idx + 1)
+    const blockMode = parseBlockScalarIndicator(rawValue)
+    let value: string
+    if (blockMode) {
+      const block = readFrontmatterBlockScalar(lines, i + 1, blockMode)
+      value = block.value
+      i = block.nextIndex
+    } else {
+      value = rawValue.trim().replace(/^['"]|['"]$/g, '')
+      i++
+    }
     if (key === 'name') meta.name = value
     if (key === 'description') meta.description = value
   }

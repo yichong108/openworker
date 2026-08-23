@@ -20,6 +20,7 @@ export { type AgentMcp } from '@openworker/agent'
 export { getChatModel, type OpenAiChatModelOptions } from '@openworker/llm'
 
 export {
+  getDefaultGlobalAgentsSkillsDir,
   listSkillsFromPaths,
   loadSkillsFromPaths,
   parseSkillFrontmatter,

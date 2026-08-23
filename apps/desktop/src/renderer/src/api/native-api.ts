@@ -259,10 +259,18 @@ export async function apiSetSettings(patch: Partial<AppSettings>): Promise<AppSe
 }
 
 /**
- * 列出用户 skills。
+ * 列出可用 skills（openworker + global + 当前工作区）。
+ *
+ * @param workspaceId - 可选工作区 id，用于附带工作区 `.agents/skills`
  */
-export async function apiListSkills(): Promise<SkillListItem[]> {
-  const data = unwrap(await request<{ skills: SkillListItem[] }>({ method: 'GET', url: '/skills' }))
+export async function apiListSkills(workspaceId?: string): Promise<SkillListItem[]> {
+  const data = unwrap(
+    await request<{ skills: SkillListItem[] }>({
+      method: 'GET',
+      url: '/skills',
+      params: workspaceId ? { workspaceId } : undefined
+    })
+  )
   return data?.skills ?? []
 }
 

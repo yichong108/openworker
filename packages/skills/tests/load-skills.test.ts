@@ -4,7 +4,11 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { listSkillsFromPaths, loadSkillsFromPaths } from '../src/load-skills.js'
+import {
+  listSkillsFromPaths,
+  loadSkillsFromPaths,
+  parseSkillFrontmatter
+} from '../src/load-skills.js'
 
 const tempDirs: string[] = []
 
@@ -27,6 +31,38 @@ async function makeSkillRoot(
 
 afterEach(async () => {
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
+})
+
+describe('parseSkillFrontmatter', () => {
+  it('parses folded block scalar description (>)', () => {
+    const md = `---
+name: choice
+description: >
+  在涉及利害关系的决策中，先以对话方式逐个探询并确认背景，再列出可选方案及其得失与坑点。
+  当行动可能损害用户利益（资金、数据、权限、声誉、不可逆操作、合规/安全等）时必须使用；
+  也适用于用户在取舍、风险、是否继续、方案对比中犹豫时。
+license: MIT
+---
+
+# Choice
+`
+    const parsed = parseSkillFrontmatter(md)
+    expect(parsed?.meta.name).toBe('choice')
+    expect(parsed?.meta.description).toContain('在涉及利害关系的决策中')
+    expect(parsed?.meta.description).not.toBe('>')
+  })
+
+  it('parses inline description', () => {
+    const md = `---
+name: demo
+description: Short inline text
+---
+
+# Demo
+`
+    const parsed = parseSkillFrontmatter(md)
+    expect(parsed?.meta.description).toBe('Short inline text')
+  })
 })
 
 describe('listSkillsFromPaths', () => {

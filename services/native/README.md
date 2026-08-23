@@ -46,7 +46,7 @@ pnpm native:dev
 | `POST`       | `/sessions/:id/agent/run`    | Body `{ text, mode?, planMarkdown?, ... }`；**SSE** 推 AG-UI 事件；`mode` 为 `build` \| `ask` \| `plan` |
 | `PUT`        | `/workspaces/:id/files`      | Body `{ path, content }`；写入工作区相对路径文本（计划「保存到工作区」等）                              |
 | `POST`       | `/sessions/:id/agent/cancel` | 取消当前 run                                                                                            |
-| `GET`        | `/skills`                    | 列出 `~/.openworker/skills`                                                                             |
+| `GET`        | `/skills`                    | 列出 openworker-skills + `~/.agents/skills` + 工作区 `.agents/skills`；可选 query `workspaceId`         |
 | `POST`       | `/mcp/probe`                 | 探测 MCP 工具                                                                                           |
 | `GET`/`POST` | `/mcp/warmup`                | 读/跑 MCP 池化预热                                                                                      |
 | `POST`       | `/terminal/run`              | 右侧栏终端；**SSE** 推 stdout/stderr                                                                    |

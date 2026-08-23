@@ -6,25 +6,86 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { getOpenworkerSkillsDir, resolveBundledSkillsContentDir } from '@openworker/shared/load-env'
-import { listSkillsFromPaths, type SkillListItem } from '@openworker/uni-agent'
+import {
+  getDefaultGlobalAgentsSkillsDir,
+  listSkillsFromPaths,
+  type SkillListItem
+} from '@openworker/uni-agent'
 
+import { NotFoundError } from '../http/envelope.js'
+import { getWorkspace } from '../services/workspace-service.js'
 import { agentLog } from './agent-log.js'
 
 export type { SkillListItem }
 
+type SkillSourceTag = 'openworker' | 'global' | 'project'
+
 /**
- * 列出用户 skills 目录下的可用技能（供输入框 `/` 斜杠菜单）。
+ * 从单个技能根目录列出技能，并将 `source` 标为逻辑来源。
  *
- * @returns 技能列表；目录为空或不存在时返回空数组
+ * @param absRoot - 技能根目录绝对路径
+ * @param source - 来源标签（openworker / global / project）
+ * @returns 技能列表；目录不存在或扫描失败时为空数组
  */
-export async function listUserSkills(): Promise<SkillListItem[]> {
-  const skillsDir = getOpenworkerSkillsDir()
+async function listSkillsFromRootTagged(
+  absRoot: string,
+  source: SkillSourceTag
+): Promise<SkillListItem[]> {
   try {
-    return await listSkillsFromPaths([skillsDir])
+    const items = await listSkillsFromPaths([absRoot])
+    return items.map((item) => ({ ...item, source }))
   } catch (err) {
-    agentLog.warn('[skills] 列出技能失败:', err)
+    agentLog.warn(`[skills] 列出技能失败 (${source}):`, absRoot, err)
     return []
   }
+}
+
+/**
+ * 列出可用技能（供输入框 `/` 斜杠菜单）。
+ *
+ * 扫描顺序（同名先出现者保留）：
+ * 1. `openworker-skills`（原有用户目录）
+ * 2. `~/.agents/skills`（global）
+ * 3. `{workspace}/.agents/skills`（当前工作区；需有效 path）
+ *
+ * @param workspaceId - 可选工作区 id；无效或不存在 path 时跳过第 3 路
+ * @returns 技能列表（name / description / source）
+ */
+export async function listUserSkills(workspaceId?: string): Promise<SkillListItem[]> {
+  const roots: Array<{ dir: string; source: SkillSourceTag }> = [
+    { dir: getOpenworkerSkillsDir(), source: 'openworker' },
+    { dir: getDefaultGlobalAgentsSkillsDir(), source: 'global' }
+  ]
+
+  const trimmedId = workspaceId?.trim()
+  if (trimmedId) {
+    try {
+      const ws = await getWorkspace(trimmedId)
+      const wsPath = ws.path?.trim()
+      if (wsPath) {
+        roots.push({
+          dir: path.join(wsPath, '.agents', 'skills'),
+          source: 'project'
+        })
+      }
+    } catch (err) {
+      if (!(err instanceof NotFoundError)) {
+        agentLog.warn('[skills] 解析工作区失败:', trimmedId, err)
+      }
+    }
+  }
+
+  const seen = new Set<string>()
+  const out: SkillListItem[] = []
+  for (const { dir, source } of roots) {
+    const items = await listSkillsFromRootTagged(dir, source)
+    for (const item of items) {
+      if (seen.has(item.name)) continue
+      seen.add(item.name)
+      out.push(item)
+    }
+  }
+  return out
 }
 
 /**

@@ -133,23 +133,61 @@ export function useWorkspaceCenterPane({
   /** 当前活跃的 `/` token；null 表示菜单关闭 */
   const [slashToken, setSlashToken] = useState<SlashSkillToken | null>(null)
   const [skillMenuActiveIndex, setSkillMenuActiveIndex] = useState(0)
-  const skillsLoadedRef = useRef(false)
+  /** 本轮菜单已成功拉取的 workspaceId；关闭菜单后清空以便下次 `/` 重新请求 */
+  const skillsLoadedForWorkspaceRef = useRef<string | null>(null)
+  /** 进行中的请求对应的 workspaceId（同 workspace 并发合并） */
+  const skillsInFlightWorkspaceRef = useRef<string | null>(null)
+  const skillsFetchGenRef = useRef(0)
+
+  /** 顶栏工作区下拉始终含 Home；侧栏移除 Home 后主进程同步列表可能不含该项 */
+  const workspacesWithComposerHomeStub = useMemo(() => {
+    if (workspaces.some((w) => w.id === HOME_WORKSPACE_ID)) return workspaces
+    const stub: WorkspaceInfo = {
+      id: HOME_WORKSPACE_ID,
+      name: '主目录',
+      path: null,
+      createdAt: 0,
+      updatedAt: 0
+    }
+    return [stub, ...workspaces]
+  }, [workspaces])
+
+  /** 顶栏当前工作区：与主进程一致；仅 null 时视为 Home（避免列表尚未合并时误当作无效选中） */
+  const composerSelectedWorkspaceId = useMemo(
+    () => activeWorkspaceId ?? HOME_WORKSPACE_ID,
+    [activeWorkspaceId]
+  )
 
   /**
-   * 拉取可用技能列表（惰性：首次打开 `/` 菜单时加载，之后复用缓存）。
+   * 按当前工作区拉取可用技能列表（打开 `/` 菜单时调用；切换工作区会重新拉取）。
+   *
+   * @param workspaceId - 当前 composer 工作区 id
    */
-  const ensureSkillsLoaded = useCallback(async () => {
-    if (skillsLoadedRef.current) return
-    skillsLoadedRef.current = true
+  const ensureSkillsLoaded = useCallback(async (workspaceId: string) => {
+    if (
+      skillsLoadedForWorkspaceRef.current === workspaceId ||
+      skillsInFlightWorkspaceRef.current === workspaceId
+    ) {
+      return
+    }
+    const gen = ++skillsFetchGenRef.current
+    skillsInFlightWorkspaceRef.current = workspaceId
     setSkillsLoading(true)
     try {
-      const list = await apiListSkills()
+      const list = await apiListSkills(workspaceId)
+      if (gen !== skillsFetchGenRef.current) return
       setSkills(Array.isArray(list) ? list : [])
+      skillsLoadedForWorkspaceRef.current = workspaceId
     } catch {
-      skillsLoadedRef.current = false
+      if (gen !== skillsFetchGenRef.current) return
       setSkills([])
     } finally {
-      setSkillsLoading(false)
+      if (skillsInFlightWorkspaceRef.current === workspaceId) {
+        skillsInFlightWorkspaceRef.current = null
+      }
+      if (gen === skillsFetchGenRef.current) {
+        setSkillsLoading(false)
+      }
     }
   }, [])
 
@@ -159,9 +197,18 @@ export function useWorkspaceCenterPane({
   )
 
   useEffect(() => {
-    if (!slashToken) return
+    if (!slashToken) {
+      skillsLoadedForWorkspaceRef.current = null
+      return
+    }
     setSkillMenuActiveIndex(0)
   }, [slashToken?.query, slashToken])
+
+  /** 斜杠菜单打开期间切换工作区时重新拉取技能列表 */
+  useEffect(() => {
+    if (!slashToken) return
+    void ensureSkillsLoaded(composerSelectedWorkspaceId)
+  }, [slashToken, composerSelectedWorkspaceId, ensureSkillsLoaded])
 
   useEffect(() => {
     if (skillMenuActiveIndex < filteredSkills.length) return
@@ -180,9 +227,9 @@ export function useWorkspaceCenterPane({
       const pos = cursor ?? textarea?.selectionStart ?? text.length
       const token = findActiveSlashSkillToken(text, pos)
       setSlashToken(token)
-      if (token) void ensureSkillsLoaded()
+      if (token) void ensureSkillsLoaded(composerSelectedWorkspaceId)
     },
-    [ensureSkillsLoaded]
+    [composerSelectedWorkspaceId, ensureSkillsLoaded]
   )
 
   /**
@@ -204,25 +251,6 @@ export function useWorkspaceCenterPane({
       })
     },
     [input, setInput, slashToken]
-  )
-
-  /** 顶栏工作区下拉始终含 Home；侧栏移除 Home 后主进程同步列表可能不含该项 */
-  const workspacesWithComposerHomeStub = useMemo(() => {
-    if (workspaces.some((w) => w.id === HOME_WORKSPACE_ID)) return workspaces
-    const stub: WorkspaceInfo = {
-      id: HOME_WORKSPACE_ID,
-      name: '主目录',
-      path: null,
-      createdAt: 0,
-      updatedAt: 0
-    }
-    return [stub, ...workspaces]
-  }, [workspaces])
-
-  /** 顶栏当前工作区：与主进程一致；仅 null 时视为 Home（避免列表尚未合并时误当作无效选中） */
-  const composerSelectedWorkspaceId = useMemo(
-    () => activeWorkspaceId ?? HOME_WORKSPACE_ID,
-    [activeWorkspaceId]
   )
 
   /** 避免首屏 load 完成前把「无选中」误判为需要强制回到 Home */
