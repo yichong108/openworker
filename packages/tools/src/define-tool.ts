@@ -9,7 +9,7 @@ import type { z } from 'zod'
  */
 export type ToolObservation = {
   id: string
-  name: string
+  toolCallId: string
   status: 'start' | 'end'
   args?: string
   result?: string
@@ -25,13 +25,7 @@ export type ToolObservation = {
  */
 export type ToolOnTool = (e: ToolObservation) => void
 
-type ToolDefinition<T extends z.ZodTypeAny> = {
-  name: string
-  description: string
-  /** Zod schema，对应 AI SDK Tool.parameters */
-  parameters: T
-  execute: (input: z.infer<T>) => Promise<unknown>
-}
+type ToolDefinition<T extends z.ZodTypeAny> = Tool<T, unknown> & { id: string }
 
 /**
  * 将工具参数规范为 JSON 字符串，供时间线解析（如 path / content）。
@@ -100,31 +94,30 @@ export function defineTool<T extends z.ZodTypeAny>(
   def: ToolDefinition<T>,
   onTool: ToolOnTool
 ): ToolSet {
-  const { name, description, parameters, execute } = def
+  const { id, description, parameters, execute } = def
 
   const wrapped: Tool = tool({
     description,
     parameters,
-    execute: async (input) => {
+    execute: async (input, options) => {
       const parsed = input as z.infer<T>
-      const id = `${name}-${Date.now()}`
       const startedAt = Date.now()
       const args = toolArgsToObservation(parsed)
 
       onTool({
         id,
-        name,
+        toolCallId: options.toolCallId,
         status: 'start',
         args,
         timestampMs: startedAt
       })
 
-      const result = await execute(parsed)
+      const result = await execute?.(parsed, options)
       const resultStr = toolResultToObservation(result)
 
       onTool({
         id,
-        name,
+        toolCallId: options.toolCallId,
         status: 'end',
         result: resultStr,
         timestampMs: Date.now(),
@@ -135,7 +128,7 @@ export function defineTool<T extends z.ZodTypeAny>(
     }
   })
 
-  return { [name]: wrapped }
+  return { [id]: wrapped }
 }
 
 export type { Tool, ToolSet }

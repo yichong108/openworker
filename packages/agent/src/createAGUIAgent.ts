@@ -660,8 +660,8 @@ export class OpenWorkerAgent extends AbstractAgent {
           if (observation.status === 'start') {
             const start: ToolCallStartEvent = {
               type: EventType.TOOL_CALL_START,
-              toolCallId: observation.id,
-              toolCallName: observation.name,
+              toolCallId: observation.toolCallId,
+              toolCallName: observation.id,
               parentMessageId: messageId,
               timestamp: observation.timestampMs ?? Date.now()
             }
@@ -669,7 +669,7 @@ export class OpenWorkerAgent extends AbstractAgent {
 
             const args: ToolCallArgsEvent = {
               type: EventType.TOOL_CALL_ARGS,
-              toolCallId: observation.id,
+              toolCallId: observation.toolCallId,
               delta: toolArgsToJsonDelta(observation.args),
               timestamp: observation.timestampMs ?? Date.now()
             }
@@ -677,7 +677,7 @@ export class OpenWorkerAgent extends AbstractAgent {
 
             const end: ToolCallEndEvent = {
               type: EventType.TOOL_CALL_END,
-              toolCallId: observation.id,
+              toolCallId: observation.toolCallId,
               timestamp: observation.timestampMs ?? Date.now()
             }
             emit(end)
@@ -687,7 +687,7 @@ export class OpenWorkerAgent extends AbstractAgent {
           const result: ToolCallResultEvent = {
             type: EventType.TOOL_CALL_RESULT,
             messageId: randomUUID(),
-            toolCallId: observation.id,
+            toolCallId: observation.toolCallId,
             content: observation.result ?? '',
             role: 'tool',
             timestamp: observation.timestampMs ?? Date.now()

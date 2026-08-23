@@ -382,9 +382,9 @@ export class SkillManager {
       parameters: z.object({
         skillName: z.string().describe('Normalized skill name, e.g. code_review')
       }),
-      execute: async (input) => {
+      execute: async (input, options) => {
         const skillName = sanitizeSkillNameInput(input.skillName)
-        return this.runTool('readSkillFile', { skillName }, async () => {
+        return this.runTool('readSkillFile', { skillName }, options.toolCallId, async () => {
           const skill = this.byName.get(skillName)
           if (!skill) {
             return `Skill not found: ${skillName}. Available: ${[...this.byName.keys()].join(', ') || '(none)'}`
@@ -414,29 +414,34 @@ export class SkillManager {
           .string()
           .describe('Path relative to the skill directory, e.g. references/guide.md')
       }),
-      execute: async (input) => {
+      execute: async (input, options) => {
         const skillName = sanitizeSkillNameInput(input.skillName)
         const relativePath = input.relativePath.trim()
-        return this.runTool('readSkillRelativeFile', { skillName, relativePath }, async () => {
-          const skill = this.byName.get(skillName)
-          if (!skill) {
-            return `Skill not found: ${skillName}. Available: ${[...this.byName.keys()].join(', ') || '(none)'}`
-          }
-          const absPath = resolveSkillRelativePath(skill.skillDirPath, relativePath)
-          if (!absPath) {
-            return `Invalid relative path (must stay within skill directory): ${relativePath}`
-          }
-          try {
-            const st = await fsPromises.stat(absPath)
-            if (!st.isFile()) return `Not a file: ${relativePath}`
-            if (st.size > MAX_SKILL_MD_SIZE_BYTES) {
-              return `File too large: ${relativePath}`
+        return this.runTool(
+          'readSkillRelativeFile',
+          { skillName, relativePath },
+          options.toolCallId,
+          async () => {
+            const skill = this.byName.get(skillName)
+            if (!skill) {
+              return `Skill not found: ${skillName}. Available: ${[...this.byName.keys()].join(', ') || '(none)'}`
             }
-            return await fsPromises.readFile(absPath, 'utf8')
-          } catch (err) {
-            return `Failed to read file: ${String(err)}`
+            const absPath = resolveSkillRelativePath(skill.skillDirPath, relativePath)
+            if (!absPath) {
+              return `Invalid relative path (must stay within skill directory): ${relativePath}`
+            }
+            try {
+              const st = await fsPromises.stat(absPath)
+              if (!st.isFile()) return `Not a file: ${relativePath}`
+              if (st.size > MAX_SKILL_MD_SIZE_BYTES) {
+                return `File too large: ${relativePath}`
+              }
+              return await fsPromises.readFile(absPath, 'utf8')
+            } catch (err) {
+              return `Failed to read file: ${String(err)}`
+            }
           }
-        })
+        )
       }
     })
 
@@ -444,8 +449,9 @@ export class SkillManager {
   }
 
   private async runTool<T>(
-    name: string,
+    id: string,
     args: Record<string, string>,
+    toolCallId: string,
     fn: () => Promise<T>
   ): Promise<T> {
     if (this.disposed) {
@@ -453,7 +459,6 @@ export class SkillManager {
     }
 
     const onTool = this.onTool
-    const id = `${name}-${Date.now()}`
     const startedAt = Date.now()
     let argsStr: string
     try {
@@ -464,7 +469,7 @@ export class SkillManager {
 
     onTool?.({
       id,
-      name,
+      toolCallId,
       status: 'start',
       args: argsStr,
       timestampMs: startedAt
@@ -476,7 +481,7 @@ export class SkillManager {
 
     onTool?.({
       id,
-      name,
+      toolCallId,
       status: 'end',
       result: truncated,
       timestampMs: Date.now(),

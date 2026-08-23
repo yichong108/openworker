@@ -283,7 +283,7 @@ export function buildGrepTool(options: BuildGrepToolOptions): ToolSet {
 
   return defineTool(
     {
-      name: 'grep',
+      id: 'grep',
       description: GREP_TOOL_DESCRIPTION,
       parameters: z
         .object({

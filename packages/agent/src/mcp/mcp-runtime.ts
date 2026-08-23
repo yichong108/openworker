@@ -494,17 +494,17 @@ export async function buildMcpTools(
           out[lcName] = tool({
             description: descParts.join('\n'),
             parameters: z.object({}).passthrough(),
-            execute: async (input) => {
+            execute: async (input, options) => {
               const args = (typeof input === 'object' && input !== null ? input : {}) as Record<
                 string,
                 unknown
               >
-              const id = `mcp-${Date.now()}`
+              const toolCallId = options.toolCallId
               const startedAt = Date.now()
               const argStr = JSON.stringify(args).slice(0, 2_000)
               onTool({
-                id,
-                name: lcName,
+                id: lcName,
+                toolCallId,
                 status: 'start',
                 args: argStr,
                 timestampMs: startedAt
@@ -518,8 +518,8 @@ export async function buildMcpTools(
                 })
                 const text = formatCallToolResult(result)
                 onTool({
-                  id,
-                  name: lcName,
+                  id: lcName,
+                  toolCallId,
                   status: 'end',
                   result: text.slice(0, 12_000),
                   timestampMs: Date.now(),
@@ -529,8 +529,8 @@ export async function buildMcpTools(
               } catch (err) {
                 const message = err instanceof Error ? err.message : String(err)
                 onTool({
-                  id,
-                  name: lcName,
+                  id: lcName,
+                  toolCallId,
                   status: 'end',
                   result: message,
                   timestampMs: Date.now(),

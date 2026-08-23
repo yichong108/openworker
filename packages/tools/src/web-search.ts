@@ -146,7 +146,7 @@ export function buildWebSearchTool(options: BuildWebSearchToolOptions): ToolSet 
 
   return defineTool(
     {
-      name: 'web_search',
+      id: 'web_search',
       description:
         '用 Tavily 搜索公开网页（天气、新闻、文档等）。工作区内代码搜索请用 grep；需要外部信息时调用本工具。',
       parameters: z.object({

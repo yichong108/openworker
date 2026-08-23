@@ -29,7 +29,7 @@ export function buildShellTool(options: BuildShellToolOptions): ToolSet {
 
   return defineTool(
     {
-      name: 'shell',
+      id: 'shell',
       description:
         '在工作区根目录执行 shell 命令并等待结束，返回合并的 stdout/stderr（过长会截断）。用于安装依赖、构建、测试、git 等。',
       parameters: z.object({ command: z.string() }),

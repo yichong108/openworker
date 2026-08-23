@@ -47,7 +47,7 @@ export function wrapToolOnTool(onTool: ToolOnTool): ToolOnTool {
     }
     onTool({
       ...observation,
-      result: truncateToolObservationResult(observation.name, observation.result)
+      result: truncateToolObservationResult(observation.id, observation.result)
     })
   }
 }

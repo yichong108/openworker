@@ -341,7 +341,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
   return mergeToolSets(
     defineTool(
       {
-        name: 'read_file',
+        id: 'read_file',
         description: '读取工作区内 UTF-8 文本文件，路径相对于工作区根目录',
         parameters: z.object({ path: z.string() }),
         execute: ({ path }) => readFileTool(root, path)
@@ -350,7 +350,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
     ),
     defineTool(
       {
-        name: 'write_file',
+        id: 'write_file',
         description: '写入或覆盖工作区文件，自动创建父目录',
         parameters: z.object({ path: z.string(), content: z.string() }),
         execute: ({ path, content }) => writeFileTool(root, path, content)
@@ -359,7 +359,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
     ),
     defineTool(
       {
-        name: 'delete_file',
+        id: 'delete_file',
         description: '删除工作区内单个普通文件（相对路径）；不能删除目录',
         parameters: z.object({ path: z.string() }),
         execute: ({ path }) => deleteFileTool(root, path)
@@ -368,7 +368,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
     ),
     defineTool(
       {
-        name: 'list_dir',
+        id: 'list_dir',
         description: '列出目录，路径相对或空表示根目录，深度 1–3',
         parameters: z.object({
           path: z.string().optional(),
@@ -380,7 +380,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
     ),
     defineTool(
       {
-        name: 'glob',
+        id: 'glob',
         description: userDataRoot
           ? '按模式在工作区根目录与用户数据根下 glob 匹配文件。仅返回文件路径（不含目录），分「工作区」与「用户数据」两段；模式为 Node 风格如 **/*.ts；两侧均排除 node_modules/.git/dist 及缓存目录'
           : '按模式在工作区根目录下 glob 匹配文件。仅返回文件路径；模式为 Node 风格如 **/*.ts；排除 node_modules/.git/dist 等',

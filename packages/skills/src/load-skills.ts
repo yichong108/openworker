@@ -46,10 +46,11 @@ type ParsedSkillFile = ScannedSkill & { body: string }
  * 工具生命周期观察回调（与 `@openworker/agent` 的 ToolOnTool 结构兼容）。
  *
  * AI SDK 的 ToolExecutionOptions 不含 onTool，故由宿主/工作流注入。
+ * `id` 为工具名，`toolCallId` 为本次调用 ID。
  */
 export type SkillToolOnTool = (e: {
   id: string
-  name: string
+  toolCallId: string
   status: 'start' | 'end'
   args?: string
   result?: string
@@ -343,16 +344,16 @@ async function resolveSkillDefinitions(paths: string[]): Promise<SkillDefinition
  * @returns 仅含该技能一项的 ToolSet
  */
 function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet {
-  const name = def.name
+  const id = def.name
   const parameters = z.object({ question: z.string().optional() })
   const truncateTo = 8_000
 
   const wrapped: Tool = tool({
     description: def.description,
     parameters,
-    execute: async (input) => {
+    execute: async (input, options) => {
       const parsed = input as { question?: string }
-      const id = `${name}-${Date.now()}`
+      const toolCallId = options.toolCallId
       const startedAt = Date.now()
       let args: string
       try {
@@ -363,7 +364,7 @@ function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet
 
       onTool({
         id,
-        name,
+        toolCallId,
         status: 'start',
         args,
         timestampMs: startedAt
@@ -378,7 +379,7 @@ function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet
 
       onTool({
         id,
-        name,
+        toolCallId,
         status: 'end',
         result: truncated,
         timestampMs: Date.now(),
@@ -389,7 +390,7 @@ function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet
     }
   })
 
-  return { [name]: wrapped }
+  return { [id]: wrapped }
 }
 
 /**
