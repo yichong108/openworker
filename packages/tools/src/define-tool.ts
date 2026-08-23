@@ -31,8 +31,6 @@ type ToolDefinition<T extends z.ZodTypeAny> = {
   /** Zod schema，对应 AI SDK Tool.parameters */
   parameters: T
   execute: (input: z.infer<T>) => Promise<unknown>
-  /** 观测侧 result 字符串的最大长度（不影响写入 message 上下文的返回值） */
-  truncateTo?: number
 }
 
 /**
@@ -102,7 +100,7 @@ export function defineTool<T extends z.ZodTypeAny>(
   def: ToolDefinition<T>,
   onTool: ToolOnTool
 ): ToolSet {
-  const { name, description, parameters, execute, truncateTo } = def
+  const { name, description, parameters, execute } = def
 
   const wrapped: Tool = tool({
     description,
@@ -123,13 +121,12 @@ export function defineTool<T extends z.ZodTypeAny>(
 
       const result = await execute(parsed)
       const resultStr = toolResultToObservation(result)
-      const truncated = truncateTo ? resultStr.slice(0, truncateTo) : resultStr
 
       onTool({
         id,
         name,
         status: 'end',
-        result: truncated,
+        result: resultStr,
         timestampMs: Date.now(),
         durationMs: Date.now() - startedAt
       })

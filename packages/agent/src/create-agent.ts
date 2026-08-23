@@ -36,7 +36,7 @@ import {
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { formatToolResultForContext } from './tool-context.js'
+import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
@@ -210,7 +210,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
     const onTextDelta = input.onTextDelta ?? (() => {})
     const onTextRevoke = input.onTextRevoke ?? (() => {})
     const onThinking = input.onThinking ?? (() => {})
-    const onTool = input.onTool ?? (() => {})
+    const onTool = wrapToolOnTool(input.onTool ?? (() => {}))
     const { maxSteps, invokeTimeoutMs, tools: hostTools } = input
 
     // 追加本轮用户消息并立即写回，保证连续 send / 失败重试时历史连贯

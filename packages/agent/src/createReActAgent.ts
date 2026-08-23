@@ -17,7 +17,7 @@ import {
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { formatToolResultForContext } from './tool-context.js'
+import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
 import { buildWorkspaceRunPrompt, buildWorkspaceTools } from '@openworker/tools'
 
 /**
@@ -273,7 +273,7 @@ export function createReActAgent(options: CreateReActAgentOptions): ReActAgent {
     const onTextDelta = input.onTextDelta ?? (() => {})
     const onTextRevoke = input.onTextRevoke ?? (() => {})
     const onThinking = input.onThinking ?? (() => {})
-    const onTool = input.onTool ?? (() => {})
+    const onTool = wrapToolOnTool(input.onTool ?? (() => {}))
     const onEmit = input.onEmit ?? (() => {})
     const { maxSteps, invokeTimeoutMs } = input
 

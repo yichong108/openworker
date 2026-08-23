@@ -344,8 +344,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
         name: 'read_file',
         description: '读取工作区内 UTF-8 文本文件，路径相对于工作区根目录',
         parameters: z.object({ path: z.string() }),
-        execute: ({ path }) => readFileTool(root, path),
-        truncateTo: 1_000
+        execute: ({ path }) => readFileTool(root, path)
       },
       onTool
     ),
@@ -375,8 +374,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
           path: z.string().optional(),
           depth: z.number().int().min(1).max(3).optional()
         }),
-        execute: ({ path, depth }) => listDirTool(root, path || '.', { depth: depth ?? 2 }),
-        truncateTo: 8_000
+        execute: ({ path, depth }) => listDirTool(root, path || '.', { depth: depth ?? 2 })
       },
       onTool
     ),
@@ -391,8 +389,7 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
           max_results: z.number().int().min(1).max(500).optional()
         }),
         execute: ({ pattern, max_results }) =>
-          globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot }),
-        truncateTo: 12_000
+          globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot })
       },
       onTool
     )

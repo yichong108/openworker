@@ -301,8 +301,7 @@ export function buildGrepTool(options: BuildGrepToolOptions): ToolSet {
           '-B': z.number().int().min(0).max(10).optional(),
           '-C': z.number().int().min(0).max(10).optional()
         }),
-      execute: (args) => grepWorkspace(root, args),
-      truncateTo: 12_000
+      execute: (args) => grepWorkspace(root, args)
     },
     onTool
   )
