@@ -24,7 +24,7 @@
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "build": "turbo run build",
-    "build:test": "turbo run build",
+    "build:test": "turbo run build:test",
     "landing:dev": "pnpm --filter @openworker/landing dev",
     "landing:build": "pnpm --filter @openworker/landing build",
     "ap": "pnpm --dir ap exec tsx src/index.ts",

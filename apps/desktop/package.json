@@ -1,6 +1,6 @@
 {
   "name": "@openworker/desktop",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0",
   "description": "OpenWorker 桌面应用 — Electron + Ant Design + AI SDK",
   "author": "Wang Zhang",
   "license": "MIT",
@@ -11,7 +11,7 @@
     "dev": "cross-env CHANNEL=dev electron-vite dev",
     "dev:debug": "cross-env CHANNEL=dev electron-vite dev --inspect=9229 --remoteDebuggingPort=9222 --sourcemap",
     "build": "pnpm --filter @openworker/native build && cross-env CHANNEL=prod electron-vite build && cross-env CHANNEL=prod electron-builder --config scripts/electron-builder.config.mjs",
-    "build:test": "pnpm --filter @openworker/native build && cross-env CHANNEL=test electron-vite build && cross-env CHANNEL=test electron-builder --config scripts/electron-builder.config.mjs",
+    "build:test": "cross-env CHANNEL=test pnpm --filter @openworker/native build:test && cross-env CHANNEL=test electron-vite build && cross-env CHANNEL=test electron-builder --config scripts/electron-builder.config.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
