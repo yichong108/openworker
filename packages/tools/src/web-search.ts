@@ -1,3 +1,8 @@
+import type { ToolSet } from 'ai'
+import { z } from 'zod'
+
+import { defineTool, type ToolOnTool } from './define-tool.js'
+
 const TAVILY_SEARCH_URL = 'https://api.tavily.com/search'
 
 /**
@@ -114,4 +119,44 @@ export async function tavilyWebSearch(
   }
 
   return formatTavilyResponse(data)
+}
+
+/**
+ * 组装 web_search 工具的选项。
+ */
+export type BuildWebSearchToolOptions = {
+  /** Tavily API Key；未配置时不注册 web_search（仍可读环境变量） */
+  tavilyApiKey?: string
+  /** 工具生命周期观察回调 */
+  onTool: ToolOnTool
+}
+
+/**
+ * 构建 Tavily 联网搜索 ToolSet；未配置 API Key 时返回空 ToolSet。
+ *
+ * @param options - Tavily Key 与观察回调
+ * @returns 含 web_search 或空的 ToolSet
+ */
+export function buildWebSearchTool(options: BuildWebSearchToolOptions): ToolSet {
+  const { tavilyApiKey, onTool } = options
+
+  if (!isTavilyConfigured(tavilyApiKey)) {
+    return {}
+  }
+
+  return defineTool(
+    {
+      name: 'web_search',
+      description:
+        '用 Tavily 搜索公开网页（天气、新闻、文档等）。工作区内代码搜索请用 grep；需要外部信息时调用本工具。',
+      parameters: z.object({
+        query: z.string(),
+        max_results: z.number().int().min(1).max(20).optional()
+      }),
+      execute: ({ query, max_results }) =>
+        tavilyWebSearch(query, { maxResults: max_results, apiKey: tavilyApiKey }),
+      truncateTo: 12_000
+    },
+    onTool
+  )
 }

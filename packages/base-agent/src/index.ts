@@ -32,7 +32,7 @@ export {
   type CoreUserMessage
 } from './messages.js'
 
-export { runReactLoop } from './react-loop.js'
+export { runReactLoop, type FormatToolResultForContext } from './react-loop.js'
 
 export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from '@openworker/tools'
 

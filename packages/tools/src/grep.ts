@@ -1,8 +1,10 @@
+import { rgPath } from '@vscode/ripgrep'
+import type { ToolSet } from 'ai'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
+import { z } from 'zod'
 
-import { rgPath } from '@vscode/ripgrep'
-
+import { defineTool, type ToolOnTool } from './define-tool.js'
 import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
 
 /** 输出行数硬上限（响应速度） */
@@ -260,3 +262,48 @@ export const GREP_TOOL_DESCRIPTION = `基于 ripgrep 的强大搜索工具
 - multiline: true 启用跨行匹配（rg -U --multiline-dotall）。
 - 内容输出为 ripgrep 格式：':' 为匹配行，'-' 为上下文行，按文件 --heading 分组。
 - 结果为响应速度设上限；截断时会说明省略行数。`
+
+/**
+ * 组装 grep 工具的选项。
+ */
+export type BuildGrepToolOptions = {
+  root: string
+  /** 工具生命周期观察回调 */
+  onTool: ToolOnTool
+}
+
+/**
+ * 构建工作区 grep ToolSet。
+ *
+ * @param options - 工作区根与观察回调
+ * @returns 仅含 grep 一项的 ToolSet
+ */
+export function buildGrepTool(options: BuildGrepToolOptions): ToolSet {
+  const { root, onTool } = options
+
+  return defineTool(
+    {
+      name: 'grep',
+      description: GREP_TOOL_DESCRIPTION,
+      parameters: z
+        .object({
+          pattern: z.string(),
+          path: z.string().optional(),
+          glob: z.string().optional(),
+          type: z.string().optional(),
+          output_mode: z.enum(['content', 'files_with_matches', 'count']).optional(),
+          multiline: z.boolean().optional(),
+          head_limit: z.number().int().min(1).max(2000).optional()
+        })
+        .extend({
+          '-i': z.boolean().optional(),
+          '-A': z.number().int().min(0).max(10).optional(),
+          '-B': z.number().int().min(0).max(10).optional(),
+          '-C': z.number().int().min(0).max(10).optional()
+        }),
+      execute: (args) => grepWorkspace(root, args),
+      truncateTo: 12_000
+    },
+    onTool
+  )
+}

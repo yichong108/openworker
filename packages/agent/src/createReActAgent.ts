@@ -17,6 +17,7 @@ import {
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
+import { formatToolResultForContext } from './tool-context.js'
 import { buildWorkspaceRunPrompt, buildWorkspaceTools } from '@openworker/tools'
 
 /**
@@ -318,7 +319,8 @@ export function createReActAgent(options: CreateReActAgentOptions): ReActAgent {
       maxSteps,
       invokeTimeoutMs,
       onThinking,
-      onTextRevoke
+      onTextRevoke,
+      formatToolResultForContext
     )
 
     const finalMessages = runMessages.length > 0 ? runMessages : inputMessages

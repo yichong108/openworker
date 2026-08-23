@@ -1,6 +1,9 @@
+import type { ToolSet } from 'ai'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { z } from 'zod'
 
+import { defineTool, mergeToolSets, type ToolOnTool } from './define-tool.js'
 import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
 
 const MAX_READ = 500_000
@@ -66,7 +69,7 @@ function truncateForWriteDiff(text: string): string {
 /**
  * 写入或覆盖工作区文件，自动创建父目录。
  *
- * 写入前读取旧内容，供聊天时间线展示文件 diff；模型侧由 formatResult/toModelResult 映射短摘要。
+ * 写入前读取旧内容，供宿主按工具名解析 diff；模型上下文摘要由 agent 层 formatToolResultForContext 处理。
  *
  * @param workspace - 工作区根目录
  * @param relPath - 相对路径
@@ -313,4 +316,85 @@ export async function globFilesTool(
   const truncatedNote =
     wsHitCap || udHitCap ? `\n（最多返回 ${maxFiles} 条，某一分区已达上限）` : ''
   return lines.join('\n\n') + truncatedNote
+}
+
+/**
+ * 组装 fs 工具（read / write / delete / list / glob）的选项。
+ */
+export type BuildFsToolsOptions = {
+  root: string
+  /** 可选第二根目录（如 Electron userData），供 glob 搜索 */
+  userDataRoot?: string | null
+  /** 工具生命周期观察回调 */
+  onTool: ToolOnTool
+}
+
+/**
+ * 构建工作区 fs 相关 ToolSet。
+ *
+ * @param options - 工作区根、可选 userData 根与观察回调
+ * @returns 含 read_file、write_file 等五项的 ToolSet
+ */
+export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
+  const { root, userDataRoot, onTool } = options
+
+  return mergeToolSets(
+    defineTool(
+      {
+        name: 'read_file',
+        description: '读取工作区内 UTF-8 文本文件，路径相对于工作区根目录',
+        parameters: z.object({ path: z.string() }),
+        execute: ({ path }) => readFileTool(root, path),
+        truncateTo: 1_000
+      },
+      onTool
+    ),
+    defineTool(
+      {
+        name: 'write_file',
+        description: '写入或覆盖工作区文件，自动创建父目录',
+        parameters: z.object({ path: z.string(), content: z.string() }),
+        execute: ({ path, content }) => writeFileTool(root, path, content)
+      },
+      onTool
+    ),
+    defineTool(
+      {
+        name: 'delete_file',
+        description: '删除工作区内单个普通文件（相对路径）；不能删除目录',
+        parameters: z.object({ path: z.string() }),
+        execute: ({ path }) => deleteFileTool(root, path)
+      },
+      onTool
+    ),
+    defineTool(
+      {
+        name: 'list_dir',
+        description: '列出目录，路径相对或空表示根目录，深度 1–3',
+        parameters: z.object({
+          path: z.string().optional(),
+          depth: z.number().int().min(1).max(3).optional()
+        }),
+        execute: ({ path, depth }) => listDirTool(root, path || '.', { depth: depth ?? 2 }),
+        truncateTo: 8_000
+      },
+      onTool
+    ),
+    defineTool(
+      {
+        name: 'glob',
+        description: userDataRoot
+          ? '按模式在工作区根目录与用户数据根下 glob 匹配文件。仅返回文件路径（不含目录），分「工作区」与「用户数据」两段；模式为 Node 风格如 **/*.ts；两侧均排除 node_modules/.git/dist 及缓存目录'
+          : '按模式在工作区根目录下 glob 匹配文件。仅返回文件路径；模式为 Node 风格如 **/*.ts；排除 node_modules/.git/dist 等',
+        parameters: z.object({
+          pattern: z.string(),
+          max_results: z.number().int().min(1).max(500).optional()
+        }),
+        execute: ({ pattern, max_results }) =>
+          globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot }),
+        truncateTo: 12_000
+      },
+      onTool
+    )
+  )
 }

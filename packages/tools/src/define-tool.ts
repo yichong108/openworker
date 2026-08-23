@@ -30,18 +30,8 @@ type ToolDefinition<T extends z.ZodTypeAny> = {
   description: string
   /** Zod schema，对应 AI SDK Tool.parameters */
   parameters: T
-  execute: (input: z.infer<T>, onTool: ToolOnTool) => Promise<unknown>
-  /**
-   * 将 execute 结果格式化为时间线观察字符串（TOOL_CALL_RESULT / onTool）。
-   * 未提供时：string 原样，其它 JSON.stringify。
-   */
-  formatResult?: (result: unknown) => string
-  /**
-   * 将 execute 结果映射为返回给模型的工具结果。
-   * 未提供时返回 execute 的原始结果（与历史行为一致）。
-   * 用于：观察侧携带结构化 diff，模型侧仅返回短摘要。
-   */
-  toModelResult?: (result: unknown) => unknown
+  execute: (input: z.infer<T>) => Promise<unknown>
+  /** 观测侧 result 字符串的最大长度（不影响写入 message 上下文的返回值） */
   truncateTo?: number
 }
 
@@ -60,16 +50,11 @@ function toolArgsToObservation(parsed: unknown): string {
 }
 
 /**
- * 将工具执行结果规范为观察用字符串。
+ * 将工具执行结果规范为观察用字符串（string 原样，其它 JSON.stringify）。
  *
  * @param result - execute 返回值
- * @param formatResult - 可选自定义格式化
  */
-function toolResultToObservation(
-  result: unknown,
-  formatResult?: (result: unknown) => string
-): string {
-  if (formatResult) return formatResult(result)
+function toolResultToObservation(result: unknown): string {
   if (typeof result === 'string') return result
   try {
     return JSON.stringify(result)
@@ -117,7 +102,7 @@ export function defineTool<T extends z.ZodTypeAny>(
   def: ToolDefinition<T>,
   onTool: ToolOnTool
 ): ToolSet {
-  const { name, description, parameters, execute, formatResult, toModelResult, truncateTo } = def
+  const { name, description, parameters, execute, truncateTo } = def
 
   const wrapped: Tool = tool({
     description,
@@ -136,8 +121,8 @@ export function defineTool<T extends z.ZodTypeAny>(
         timestampMs: startedAt
       })
 
-      const result = await execute(parsed, onTool)
-      const resultStr = toolResultToObservation(result, formatResult)
+      const result = await execute(parsed)
+      const resultStr = toolResultToObservation(result)
       const truncated = truncateTo ? resultStr.slice(0, truncateTo) : resultStr
 
       onTool({
@@ -149,7 +134,7 @@ export function defineTool<T extends z.ZodTypeAny>(
         durationMs: Date.now() - startedAt
       })
 
-      return toModelResult ? toModelResult(result) : result
+      return result
     }
   })
 

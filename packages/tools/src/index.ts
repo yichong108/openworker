@@ -25,22 +25,31 @@ export {
 } from './terminal.js'
 
 export {
+  buildFsTools,
   deleteFileTool,
   globFilesTool,
   listDirTool,
   readFileTool,
   writeFileTool,
+  type BuildFsToolsOptions,
   type WriteFileToolResult
 } from './fs-tools.js'
 
 export {
+  buildGrepTool,
   GREP_MAX_OUTPUT_LINES,
   GREP_TOOL_DESCRIPTION,
   grepWorkspace,
+  type BuildGrepToolOptions,
   type GrepToolArgs
 } from './grep.js'
 
-export { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
+export {
+  buildWebSearchTool,
+  isTavilyConfigured,
+  tavilyWebSearch,
+  type BuildWebSearchToolOptions
+} from './web-search.js'
 
 export {
   buildWorkspaceRunPrompt,

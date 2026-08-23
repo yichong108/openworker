@@ -3,19 +3,11 @@ import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
 import type { ToolSet } from 'ai'
 import path from 'node:path'
-import { z } from 'zod'
-import { defineTool, filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
-import {
-  deleteFileTool,
-  globFilesTool,
-  listDirTool,
-  readFileTool,
-  writeFileTool,
-  type WriteFileToolResult
-} from './fs-tools.js'
-import { GREP_TOOL_DESCRIPTION, grepWorkspace } from './grep.js'
+import { filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
+import { buildFsTools } from './fs-tools.js'
+import { buildGrepTool } from './grep.js'
 import { buildShellTool } from './shell-tool.js'
-import { isTavilyConfigured, tavilyWebSearch } from './web-search.js'
+import { buildWebSearchTool, isTavilyConfigured } from './web-search.js'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([
@@ -34,32 +26,6 @@ const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([
  */
 export function isReadonlyComposerMode(mode?: AgentComposerMode): boolean {
   return mode === 'ask' || mode === 'plan'
-}
-
-type ToolDefinition<T extends z.ZodTypeAny> = {
-  name: string
-  description: string
-  parameters: T
-  execute: (input: z.infer<T>, onTool: ToolOnTool) => Promise<unknown>
-  formatResult?: (result: unknown) => string
-  toModelResult?: (result: unknown) => unknown
-  truncateTo?: number
-}
-
-/**
- * 判断未知值是否为 write_file 结构化结果。
- *
- * @param value - execute 返回值
- */
-function isWriteFileToolResult(value: unknown): value is WriteFileToolResult {
-  if (!value || typeof value !== 'object') return false
-  const o = value as Record<string, unknown>
-  return (
-    typeof o.path === 'string' &&
-    typeof o.before === 'string' &&
-    typeof o.after === 'string' &&
-    typeof o.created === 'boolean'
-  )
 }
 
 /**
@@ -95,108 +61,13 @@ export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSe
   const { terminalKey, root, tavilyApiKey, onTool, userDataRoot, mode } = options
   const termKey = terminalKey.trim() || 'term:default'
 
-  const baseToolDefs: ToolDefinition<z.ZodTypeAny>[] = [
-    {
-      name: 'read_file',
-      description: '读取工作区内 UTF-8 文本文件，路径相对于工作区根目录',
-      parameters: z.object({ path: z.string() }),
-      execute: ({ path }) => readFileTool(root, path),
-      truncateTo: 1_000
-    },
-    {
-      name: 'write_file',
-      description: '写入或覆盖工作区文件，自动创建父目录',
-      parameters: z.object({ path: z.string(), content: z.string() }),
-      execute: ({ path, content }) => writeFileTool(root, path, content),
-      /** 时间线携带 before/after，供聊天展开渲染 diff */
-      formatResult: (result) =>
-        JSON.stringify(
-          isWriteFileToolResult(result)
-            ? result
-            : { path: '', before: '', after: '', created: true }
-        ),
-      /** 模型上下文只保留短摘要，避免前后全文膨胀 */
-      toModelResult: (result) =>
-        isWriteFileToolResult(result) ? `已写入：${result.path}` : '已写入'
-    },
-    {
-      name: 'delete_file',
-      description: '删除工作区内单个普通文件（相对路径）；不能删除目录',
-      parameters: z.object({ path: z.string() }),
-      execute: ({ path }) => deleteFileTool(root, path)
-    },
-    {
-      name: 'list_dir',
-      description: '列出目录，路径相对或空表示根目录，深度 1–3',
-      parameters: z.object({
-        path: z.string().optional(),
-        depth: z.number().int().min(1).max(3).optional()
-      }),
-      execute: ({ path, depth }) => listDirTool(root, path || '.', { depth: depth ?? 2 }),
-      truncateTo: 8_000
-    },
-    {
-      name: 'grep',
-      description: GREP_TOOL_DESCRIPTION,
-      parameters: z
-        .object({
-          pattern: z.string(),
-          path: z.string().optional(),
-          glob: z.string().optional(),
-          type: z.string().optional(),
-          output_mode: z.enum(['content', 'files_with_matches', 'count']).optional(),
-          multiline: z.boolean().optional(),
-          head_limit: z.number().int().min(1).max(2000).optional()
-        })
-        .extend({
-          '-i': z.boolean().optional(),
-          '-A': z.number().int().min(0).max(10).optional(),
-          '-B': z.number().int().min(0).max(10).optional(),
-          '-C': z.number().int().min(0).max(10).optional()
-        }),
-      execute: (args) => grepWorkspace(root, args),
-      truncateTo: 12_000
-    },
-    {
-      name: 'glob',
-      description: userDataRoot
-        ? '按模式在工作区根目录与用户数据根下 glob 匹配文件。仅返回文件路径（不含目录），分「工作区」与「用户数据」两段；模式为 Node 风格如 **/*.ts；两侧均排除 node_modules/.git/dist 及缓存目录'
-        : '按模式在工作区根目录下 glob 匹配文件。仅返回文件路径；模式为 Node 风格如 **/*.ts；排除 node_modules/.git/dist 等',
-      parameters: z.object({
-        pattern: z.string(),
-        max_results: z.number().int().min(1).max(500).optional()
-      }),
-      execute: ({ pattern, max_results }) =>
-        globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot }),
-      truncateTo: 12_000
-    }
-  ]
-
-  const baseTools = mergeToolSets(
-    ...baseToolDefs.map((def) => defineTool(def, onTool)),
-    buildShellTool({ terminalKey: termKey, root, onTool })
+  const tools = mergeToolSets(
+    buildFsTools({ root, userDataRoot, onTool }),
+    buildGrepTool({ root, onTool }),
+    buildShellTool({ terminalKey: termKey, root, onTool }),
+    buildWebSearchTool({ tavilyApiKey, onTool })
   )
 
-  const webSearchTools: ToolSet = isTavilyConfigured(tavilyApiKey)
-    ? defineTool(
-        {
-          name: 'web_search',
-          description:
-            '用 Tavily 搜索公开网页（天气、新闻、文档等）。工作区内代码搜索请用 grep；需要外部信息时调用本工具。',
-          parameters: z.object({
-            query: z.string(),
-            max_results: z.number().int().min(1).max(20).optional()
-          }),
-          execute: ({ query, max_results }) =>
-            tavilyWebSearch(query, { maxResults: max_results, apiKey: tavilyApiKey }),
-          formatResult: (r) => (typeof r === 'string' ? r : String(r)),
-          truncateTo: 12_000
-        },
-        onTool
-      )
-    : {}
-
-  const tools = mergeToolSets(baseTools, webSearchTools)
   if (isReadonlyComposerMode(mode)) {
     return filterToolSet(tools, (name) => READONLY_MODE_ALLOWED_TOOL_NAMES.has(name))
   }

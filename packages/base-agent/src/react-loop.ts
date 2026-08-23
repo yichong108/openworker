@@ -15,6 +15,8 @@ import type {
 
 import { agentLog } from './logger.js'
 
+export type FormatToolResultForContext = (toolName: string, result: unknown) => unknown
+
 /**
  * 构造单条 tool 结果消息。
  *
@@ -52,7 +54,8 @@ async function executeToolCalls(
   toolCalls: ToolCallPart[],
   tools: ToolSet,
   messages: CoreMessage[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  formatToolResultForContext?: FormatToolResultForContext
 ): Promise<CoreToolMessage[]> {
   const out: CoreToolMessage[] = []
   for (const tc of toolCalls) {
@@ -63,11 +66,12 @@ async function executeToolCalls(
       continue
     }
     try {
-      const result = await impl.execute(tc.args, {
+      const raw = await impl.execute(tc.args, {
         toolCallId: tc.toolCallId,
         messages,
         abortSignal: signal
       })
+      const result = formatToolResultForContext ? formatToolResultForContext(tc.toolName, raw) : raw
       out.push(toolResultMessage(tc, result))
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
@@ -116,6 +120,7 @@ function buildAssistantMessage(text: string, toolCalls: ToolCallPart[]): CoreAss
  * @param timeoutMs - 循环超时（毫秒）；缺省时使用 defaultSettings.agentRunTimeoutMs
  * @param onThinking - 过程思考回调（有工具的中间步文本）
  * @param onTextRevoke - 撤回本步已通过 onToken 流出的 Result 文本（工具步在 onThinking 前调用）
+ * @param formatToolResultForContext - 可选：将 execute 原始结果映射为写入 message 上下文的 tool result
  * @returns 运行结束后的 CoreMessage 列表（含输入消息与本轮新增）
  */
 export async function runReactLoop(
@@ -128,7 +133,8 @@ export async function runReactLoop(
   maxSteps?: number,
   timeoutMs?: number,
   onThinking?: (text: string, durationMs?: number) => void,
-  onTextRevoke?: () => void
+  onTextRevoke?: () => void,
+  formatToolResultForContext?: FormatToolResultForContext
 ): Promise<CoreMessage[]> {
   const resolvedMaxSteps = maxSteps ?? MAX_AGENT_LOOP_STEPS
   const resolvedTimeoutMs = timeoutMs ?? defaultSettings.agentRunTimeoutMs
@@ -190,7 +196,15 @@ export async function runReactLoop(
     if (toolCalls.length === 0) break
     steps += 1
 
-    working.push(...(await executeToolCalls(toolCalls, tools, messagesForTool, ac.signal)))
+    working.push(
+      ...(await executeToolCalls(
+        toolCalls,
+        tools,
+        messagesForTool,
+        ac.signal,
+        formatToolResultForContext
+      ))
+    )
   }
 
   return working
