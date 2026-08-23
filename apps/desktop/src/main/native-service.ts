@@ -224,16 +224,14 @@ function resolveSpawnSpec(): {
   cwd: string
   env: NodeJS.ProcessEnv
 } | null {
-  const port = String(getNativePort())
-  const channel = process.env.APP_CHANNEL?.trim()
+  const channel = process.env.CHANNEL?.trim()
   if (!channel) {
-    throw new Error('未设置 APP_CHANNEL，请检查渠道环境文件')
+    throw new Error('未设置 CHANNEL，请检查渠道环境（load-env / cross-env）')
   }
+  // 渠道表由 Native 侧 bootstrapChannelEnv 写入；此处只需保证子进程有 CHANNEL
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    APP_CHANNEL: channel,
-    PORT: port,
-    OPENWORKER_NATIVE_PORT: port
+    CHANNEL: channel
   }
 
   if (useElectronNode()) {

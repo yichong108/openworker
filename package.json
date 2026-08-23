@@ -21,7 +21,7 @@
     "prepare": "husky",
     "preinstall": "npx only-allow pnpm",
     "build": "turbo run build",
-    "dev": "node scripts/with-env.mjs dev turbo run dev --parallel --filter=!@openworker/landing",
+    "dev": "cross-env CHANNEL=dev turbo run dev --parallel --filter=!@openworker/landing",
     "dev:all": "turbo run dev --parallel",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.5",

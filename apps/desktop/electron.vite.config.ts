@@ -5,17 +5,17 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
-import { bootstrapRootChannelEnv } from '@openworker/shared/load-env'
+import { bootstrapChannelEnv } from '@openworker/shared/load-env'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
-bootstrapRootChannelEnv({ defaultChannel: 'dev', startDir: rootDir })
+const channel = bootstrapChannelEnv({ defaultChannel: 'dev' })
 
 const rendererPort = Number(process.env.OPENWORKER_RENDERER_PORT)
 const nativePort = Number(process.env.OPENWORKER_NATIVE_PORT)
 
 if (!Number.isFinite(rendererPort) || rendererPort <= 0) {
-  throw new Error('未设置有效的 OPENWORKER_RENDERER_PORT，请检查渠道环境文件')
+  throw new Error('未设置有效的 OPENWORKER_RENDERER_PORT，请检查渠道环境（load-env）')
 }
 
 const nativeBaseUrl =
@@ -62,7 +62,8 @@ export default defineConfig({
   main: {
     define: {
       __OPENWORKERER_GIT_COMMIT__: JSON.stringify(readGitShortHash(rootDir)),
-      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString())
+      __OPENWORKERER_BUILD_ISO__: JSON.stringify(new Date().toISOString()),
+      __OPENWORKER_CHANNEL__: JSON.stringify(channel)
     },
     resolve: {
       alias: {

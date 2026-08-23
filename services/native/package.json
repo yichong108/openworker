@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "node scripts/dev.mjs",
+    "dev": "cross-env CHANNEL=dev node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json && node esbuild.config.mjs",
     "bundle": "node esbuild.config.mjs",
     "start": "node dist/index.js",
@@ -22,13 +22,13 @@
     "@openworker/uni-agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
     "express": "^5.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/node": "catalog:",
+    "cross-env": "^10.1.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.4",
     "typescript": "catalog:"

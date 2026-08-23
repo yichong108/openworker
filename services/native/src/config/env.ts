@@ -1,7 +1,11 @@
-import { bootstrapRootChannelEnv } from '@openworker/shared/load-env'
+import { bootstrapChannelEnv } from '@openworker/shared/load-env'
 import { getNativeSqlitePath } from '@openworker/shared/path'
 
-bootstrapRootChannelEnv({ defaultChannel: 'dev' })
+/**
+ * 始终按 `CHANNEL` 从 shared 渠道表注入（单独启动与 Desktop spawn 同一路径）。
+ * spawn 侧只需保证子进程有 `CHANNEL`。
+ */
+bootstrapChannelEnv({ defaultChannel: 'dev' })
 
 /**
  * Native 服务运行时配置

@@ -1,7 +1,7 @@
 /**
  * OpenWorker 跨包路径约定 — 用户数据根、skills / MCP / SQLite、内置 skills 内容探测。
  *
- * 用户数据根：`OPENWORKER_HOME` 显式覆盖，否则按 `APP_CHANNEL` → `~/${dataDirName}`。
+ * 用户数据根：`OPENWORKER_HOME` 显式覆盖，否则按渠道 `OPENWORKER_DATA_DIR_NAME` → `~/${dataDirName}`。
  */
 
 import { existsSync } from 'node:fs'
@@ -23,7 +23,9 @@ export function getOpenworkerDir(): string {
 
   const dataDirName = process.env.OPENWORKER_DATA_DIR_NAME?.trim()
   if (!dataDirName) {
-    throw new Error('未设置 OPENWORKER_DATA_DIR_NAME，请检查渠道环境文件')
+    throw new Error(
+      '未设置 OPENWORKER_DATA_DIR_NAME，请检查渠道环境（load-env / bootstrapChannelEnv）'
+    )
   }
 
   return path.join(homedir(), dataDirName)
