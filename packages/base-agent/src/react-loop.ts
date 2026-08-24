@@ -3,7 +3,6 @@
  * @description ReAct 循环实现（基于 AI SDK CoreMessage + ToolSet）
  */
 import { streamChatStep, toToolDeclarations } from '@openworker/llm'
-import { defaultSettings, MAX_AGENT_LOOP_STEPS } from '@openworker/shared'
 import type {
   AssistantModelMessage,
   LanguageModel,
@@ -158,8 +157,11 @@ export async function runReActLoop(params: RunReActLoopParams): Promise<CoreMess
     onTextRevoke,
     formatToolResultForContext
   } = params
-  const resolvedMaxSteps = maxSteps ?? MAX_AGENT_LOOP_STEPS
-  const resolvedTimeoutMs = timeoutMs ?? defaultSettings.agentRunTimeoutMs
+  const defaultMaxSteps = 50
+  const defaultTimeoutMs = 1000 * 60 * 60 * 24 // 24 hours
+
+  const resolvedMaxSteps = maxSteps ?? defaultMaxSteps
+  const resolvedTimeoutMs = timeoutMs ?? defaultTimeoutMs
 
   const declarations = toToolDeclarations(tools)
   const working = [...messages]

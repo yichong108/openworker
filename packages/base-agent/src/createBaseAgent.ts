@@ -83,9 +83,9 @@ export type BaseAgentSendOptions = {
   onTool?: (event: ToolObservation) => void
   /** 向宿主推送自定义事件（可选） */
   onEmit?: (event: unknown) => void
-  /** 最大工具调用轮次；缺省时使用 MAX_AGENT_LOOP_STEPS */
+  /** 最大工具调用轮次；缺省由 runReActLoop 决定 */
   maxSteps?: number
-  /** 循环超时（毫秒）；缺省时使用 defaultSettings.agentRunTimeoutMs */
+  /** 循环超时（毫秒）；缺省由 runReActLoop 决定 */
   invokeTimeoutMs?: number
 }
 

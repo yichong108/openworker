@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@openworker/llm": "workspace:*",
-    "@openworker/shared": "workspace:*",
     "@openworker/tools": "workspace:*",
     "ai": "catalog:",
     "zod": "catalog:"

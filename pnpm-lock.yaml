@@ -337,9 +337,6 @@ importers:
       '@openworker/llm':
         specifier: workspace:*
         version: link:../llm
-      '@openworker/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@openworker/tools':
         specifier: workspace:*
         version: link:../tools
