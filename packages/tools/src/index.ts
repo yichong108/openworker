@@ -28,7 +28,6 @@ export {
   buildFsTools,
   deleteFileTool,
   globFilesTool,
-  listDirTool,
   readFileTool,
   writeFileTool,
   type BuildFsToolsOptions,

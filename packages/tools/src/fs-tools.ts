@@ -133,51 +133,6 @@ export async function deleteFileTool(workspace: string, relPath: string): Promis
   return `已删除：${path.relative(root, file)}`
 }
 
-/**
- * 列出目录树（相对路径，深度可配）。
- *
- * @param workspace - 工作区根目录
- * @param relPath - 相对路径；空表示根
- * @param options - depth 等
- * @returns 缩进文本树
- */
-export async function listDirTool(
-  workspace: string,
-  relPath: string,
-  options?: { depth?: number }
-): Promise<string> {
-  const root = ensureWorkspaceExists(workspace)
-  const dir = resolveSafePath(relPath || '.', root)
-  const st = await fs.stat(dir)
-  if (!st.isDirectory()) {
-    return `不是目录：${relPath}`
-  }
-  const depth = Math.min(options?.depth ?? 2, 5)
-  const lines: string[] = []
-  const skipDir = new Set(['node_modules', '.git', 'dist', 'out', 'release', '.next'])
-
-  async function walk(d: string, dLevel: number, prefix: string) {
-    const entries = await fs.readdir(d, { withFileTypes: true })
-    for (const e of entries) {
-      const full = path.join(d, e.name)
-      if (e.isDirectory()) {
-        if (skipDir.has(e.name)) {
-          lines.push(`${prefix}${e.name}/（子项已省略）`)
-          continue
-        }
-        lines.push(`${prefix}${e.name}/`)
-        if (dLevel < depth) {
-          await walk(full, dLevel + 1, prefix + '  ')
-        }
-      } else {
-        lines.push(`${prefix}${e.name}`)
-      }
-    }
-  }
-  await walk(dir, 0, '')
-  return lines.length ? lines.join('\n') : '（空目录）'
-}
-
 const GLOB_EXCLUDE = [
   '**/node_modules/**',
   '**/.git/**',
@@ -319,7 +274,7 @@ export async function globFilesTool(
 }
 
 /**
- * 组装 fs 工具（read / write / delete / list / glob）的选项。
+ * 组装 fs 工具（read / write / delete / glob）的选项。
  */
 export type BuildFsToolsOptions = {
   root: string
@@ -333,7 +288,7 @@ export type BuildFsToolsOptions = {
  * 构建工作区 fs 相关 ToolSet。
  *
  * @param options - 工作区根、可选 userData 根与观察回调
- * @returns 含 read_file、write_file 等五项的 ToolSet
+ * @returns 含 read_file、write_file、delete_file、glob 的 ToolSet
  */
 export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
   const { root, userDataRoot, onTool } = options
@@ -363,18 +318,6 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
         description: '删除工作区内单个普通文件（相对路径）；不能删除目录',
         parameters: z.object({ path: z.string() }),
         execute: ({ path }) => deleteFileTool(root, path)
-      },
-      onTool
-    ),
-    defineTool(
-      {
-        id: 'list_dir',
-        description: '列出目录，路径相对或空表示根目录，深度 1–3',
-        parameters: z.object({
-          path: z.string().optional(),
-          depth: z.number().int().min(1).max(3).optional()
-        }),
-        execute: ({ path, depth }) => listDirTool(root, path || '.', { depth: depth ?? 2 })
       },
       onTool
     ),

@@ -10,13 +10,7 @@ import { buildShellTool } from './shell-tool.js'
 import { buildWebSearchTool, isTavilyConfigured } from './web-search.js'
 
 /** Ask / Plan 模式允许的只读工具名 */
-const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set([
-  'read_file',
-  'list_dir',
-  'glob',
-  'grep',
-  'web_search'
-])
+const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set(['read_file', 'glob', 'grep', 'web_search'])
 
 /**
  * 判断 composer 模式是否为只读（ask / plan）。
@@ -195,16 +189,16 @@ function buildBuildSystemPrompt(
 
   const mcpToolNames = includeMcp ? '、mcp_list_servers、mcp_inspect_server' : ''
   const toolLine = web
-    ? `read_file、write_file、delete_file、list_dir、glob、grep、shell、web_search（Tavily 联网搜索）${mcpToolNames}`
-    : `read_file、write_file、delete_file、list_dir、glob、grep、shell${mcpToolNames}（未配置 Tavily API Key 时无 web_search）`
+    ? `read_file、write_file、delete_file、glob、grep、shell、web_search（Tavily 联网搜索）${mcpToolNames}`
+    : `read_file、write_file、delete_file、glob、grep、shell${mcpToolNames}（未配置 Tavily API Key 时无 web_search）`
 
   const webRule = web
     ? '- 用户询问**天气、气温、降雨、实时新闻、股价、政策**等需要外部信息时，必须先调用 **web_search** 再回答；不要编造天气或声称「搜索失败」。'
     : '- 未配置 Tavily，**web_search 不可用**：若用户需要今日天气等实时信息，明确告知在应用设置中填写「Tavily API Key」或配置环境变量 TAVILY_API_KEY；可建议天气网站/App；不要声称「搜索引擎坏了」或「无法联网」。'
 
   const followTools = includeMcp
-    ? 'read_file、list_dir、grep、shell、mcp_*'
-    : 'read_file、list_dir、grep、shell'
+    ? 'read_file、glob、grep、shell、mcp_*'
+    : 'read_file、glob、grep、shell'
   const skillRule =
     '- **优先 readSkillFile**：用户意图明显匹配某 skill 描述时，必须先调用 readSkillFile 获取完整指令，再按需 readSkillRelativeFile 读取附属文件，然后使用 ' +
     followTools +
@@ -219,11 +213,10 @@ function buildBuildSystemPrompt(
 - 可用工具：${toolLine}，以及 readSkillFile、readSkillRelativeFile（渐进加载 skills）。${mcpNote}
 ${skillRule}
 - shell 在工作区根目录沙箱中执行命令并等待结束，返回 stdout/stderr；Windows 使用 cmd 风格。
-- 用户要「查看/读取工作区文件」或「列目录」时，优先 read_file/list_dir 再回答。
+- 用户要「查看/读取工作区文件」时，优先 read_file；按文件名/路径模式查找时用 glob（如 **/*.ts）${globNote}。
 - 用户明确要求删除工作区中的文件时，使用 delete_file（仅普通文件，不含目录）。
-- 用 glob 按文件名/路径模式搜索（如 **/*.ts）${globNote}。
 ${webRule}
-- 回复简洁可执行；改代码前先 read/list。
+- 回复简洁可执行；改代码前先 read/glob。
 - 先理解任务 → 必要时复述目标 → 再选工具。
 
 ${buildMarkdownReplyStylePrompt()}`
@@ -232,8 +225,8 @@ ${buildMarkdownReplyStylePrompt()}`
 function buildAskSystemPrompt(root: string, tavilyApiKey?: string): string {
   const web = isTavilyConfigured(tavilyApiKey)
   const toolLine = web
-    ? 'read_file、list_dir、glob、grep、web_search（Tavily）'
-    : 'read_file、list_dir、glob、grep（未配置 Tavily 时无 web_search）'
+    ? 'read_file、glob、grep、web_search（Tavily）'
+    : 'read_file、glob、grep（未配置 Tavily 时无 web_search）'
   const webRule = web
     ? '- 需要外部信息时调用 **web_search**；不要编造搜索结果。'
     : '- 未配置 Tavily：若用户需要实时信息，如实说明并建议在设置中配置 Tavily。'
@@ -242,7 +235,7 @@ function buildAskSystemPrompt(root: string, tavilyApiKey?: string): string {
 - 仅只读工具：${toolLine}。路径均相对于工作区根目录。
 - 若用户要求「直接改代码 / 跑命令 / 打补丁」，说明问答模式不能自动执行，给出可复制片段或步骤；要自动应用请切换到构建模式。
 ${webRule}
-- 回复清晰可验证：下结论前先 read/list/grep 仓库内容。
+- 回复清晰可验证：下结论前先 read/glob/grep 仓库内容。
 - 先理解意图 → 必要时复述目标
 
 ${buildMarkdownReplyStylePrompt()}
@@ -258,8 +251,8 @@ ${buildMarkdownReplyStylePrompt()}
 function buildPlanSystemPrompt(root: string, tavilyApiKey?: string): string {
   const web = isTavilyConfigured(tavilyApiKey)
   const toolLine = web
-    ? 'read_file、list_dir、glob、grep、web_search（Tavily）'
-    : 'read_file、list_dir、glob、grep（未配置 Tavily 时无 web_search）'
+    ? 'read_file、glob、grep、web_search（Tavily）'
+    : 'read_file、glob、grep（未配置 Tavily 时无 web_search）'
   const webRule = web
     ? '- 需要外部信息时调用 **web_search**；不要编造搜索结果。'
     : '- 未配置 Tavily：若用户需要实时信息，如实说明并建议在设置中配置 Tavily。'
@@ -274,7 +267,7 @@ function buildPlanSystemPrompt(root: string, tavilyApiKey?: string): string {
 - 计划结构建议包含：标题、概述、关键文件路径、分步 todos、风险与非目标。
 - 若用户要求「直接改代码」，说明计划模式不能写文件，请其审阅计划后点击「构建计划」，或切换到构建模式。
 ${webRule}
-- 下结论前先 read/list/grep；计划要具体可执行，避免空泛口号。
+- 下结论前先 read/glob/grep；计划要具体可执行，避免空泛口号。
 
 ${buildMarkdownReplyStylePrompt()}
 `

@@ -4,7 +4,6 @@ import type { WriteFileToolResult } from '@openworker/tools'
 /** 观测侧 tool result 字符串长度上限（按工具名；未列出则不截断） */
 const TOOL_OBSERVATION_RESULT_LIMITS: Record<string, number> = {
   read_file: 1_000,
-  list_dir: 8_000,
   glob: 12_000,
   grep: 12_000,
   shell: 4_000,

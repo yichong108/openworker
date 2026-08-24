@@ -33,7 +33,7 @@ description: 面向故障排查与修复任务，按“复现-定位-修复-验�
 
 # 工具映射建议
 
-- 看目录与范围：`list_dir`
+- 看文件范围：`glob`
 - 读关键文件：`read_file`
 - 关键词定位：`grep`
 - 修改代码：`write_file`
