@@ -1,9 +1,9 @@
 /**
- * 右侧栏终端路由：SSE run + cancel + complete
+ * 右侧栏终端路由：SSE run + cancel
  */
 
 import { Router, type Router as ExpressRouter } from 'express'
-import { completeCommandInWorkspace, killCommand, runCommand } from '@openworker/uni-agent'
+import { killCommand, runCommand } from '@openworker/uni-agent'
 import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
@@ -15,7 +15,6 @@ import { getWorkspace } from '../services/workspace-service.js'
  *
  * - POST /terminal/run — SSE 推送 stdout/stderr，结束帧含完整 output
  * - POST /terminal/cancel
- * - POST /terminal/complete
  */
 export const terminalRouter: ExpressRouter = Router()
 
@@ -99,32 +98,5 @@ terminalRouter.post('/terminal/cancel', async (req, res) => {
   } catch (error) {
     console.error('[native] POST /terminal/cancel failed', error)
     res.status(200).json(fail(50051, error instanceof Error ? error.message : String(error)))
-  }
-})
-
-terminalRouter.post('/terminal/complete', async (req, res) => {
-  try {
-    const body = (req.body ?? {}) as { workspaceId?: string; commandLine?: string }
-    const workspaceId = typeof body.workspaceId === 'string' ? body.workspaceId.trim() : ''
-    const commandLine = typeof body.commandLine === 'string' ? body.commandLine : ''
-    if (!workspaceId) {
-      res.status(200).json(fail(40050, 'workspaceId is required'))
-      return
-    }
-    const ws = await getWorkspace(workspaceId)
-    const cwd = ws.path?.trim() || ''
-    if (!cwd) {
-      res.status(200).json(ok({ items: [] as string[] }))
-      return
-    }
-    const items = await completeCommandInWorkspace(cwd, commandLine)
-    res.status(200).json(ok({ items: items ?? [] }))
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      res.status(200).json(fail(40420, error.message))
-      return
-    }
-    console.error('[native] POST /terminal/complete failed', error)
-    res.status(200).json(ok({ items: [] as string[] }))
   }
 })

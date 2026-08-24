@@ -376,26 +376,6 @@ export async function apiCancelTerminal(workspaceId: string): Promise<void> {
 }
 
 /**
- * 终端补全。
- *
- * @param workspaceId - 工作区 id
- * @param commandLine - 当前命令行
- */
-export async function apiCompleteTerminal(
-  workspaceId: string,
-  commandLine: string
-): Promise<string[]> {
-  const data = unwrap(
-    await request<{ items: string[] }>({
-      method: 'POST',
-      url: '/terminal/complete',
-      data: { workspaceId, commandLine }
-    })
-  )
-  return data?.items ?? []
-}
-
-/**
  * 运行右侧栏终端（SSE 推送 chunk，结束时返回完整 output）。
  *
  * @param workspaceId - 工作区 id

@@ -16,13 +16,7 @@ export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from 
 
 export { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
 
-export {
-  completeCommandInWorkspace,
-  isRunning,
-  killCommand,
-  runCommand,
-  type RunCommandHandlers
-} from './terminal.js'
+export { isRunning, killCommand, runCommand, type RunCommandHandlers } from './terminal.js'
 
 export {
   buildFsTools,

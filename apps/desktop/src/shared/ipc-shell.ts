@@ -174,10 +174,6 @@ export type TerminalRunResult = {
   output: string
 }
 
-export type TerminalCompleteResult = {
-  items: string[]
-}
-
 export type TerminalOutputEvent = {
   workspaceId: string
   chunk: string

@@ -31,9 +31,4 @@ export {
 
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/agent'
 
-export {
-  completeCommandInWorkspace,
-  killCommand,
-  runCommand,
-  type RunCommandHandlers
-} from '@openworker/agent'
+export { killCommand, runCommand, type RunCommandHandlers } from '@openworker/agent'

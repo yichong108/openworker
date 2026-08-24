@@ -51,7 +51,6 @@ pnpm native:dev
 | `GET`/`POST` | `/mcp/warmup`                | 读/跑 MCP 池化预热                                                                                      |
 | `POST`       | `/terminal/run`              | 右侧栏终端；**SSE** 推 stdout/stderr                                                                    |
 | `POST`       | `/terminal/cancel`           | 取消终端                                                                                                |
-| `POST`       | `/terminal/complete`         | 路径补全                                                                                                |
 
 响应格式：多数 `{ code, message, data }`；settings 为 `{ data }`；health 为 `{ status, timestamp, checks }`；SSE 为 `text/event-stream`（结束帧 `event: done`）。
 

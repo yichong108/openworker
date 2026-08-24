@@ -1,6 +1,4 @@
 import { type ChildProcess, spawn } from 'node:child_process'
-import { readdir } from 'node:fs/promises'
-import path from 'node:path'
 import { TextDecoder } from 'node:util'
 
 import { ensureWorkspaceExists } from './path-guard.js'
@@ -266,55 +264,4 @@ export function killCommand(sessionKey: string): Promise<void> {
  */
 export function isRunning(key: string): boolean {
   return running.has(key)
-}
-
-function extractLastTokenRange(input: string): { start: number; token: string } {
-  const s = input ?? ''
-  let i = s.length - 1
-  while (i >= 0 && /\s/.test(s[i] ?? '')) i -= 1
-  if (i < 0) return { start: s.length, token: '' }
-  let start = i
-  while (start >= 0 && !/\s/.test(s[start] ?? '')) start -= 1
-  const tokenStart = start + 1
-  return { start: tokenStart, token: s.slice(tokenStart, i + 1) }
-}
-
-function isPathInsideWorkspace(workspaceRoot: string, targetPath: string): boolean {
-  const rel = path.relative(workspaceRoot, targetPath)
-  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
-}
-
-/**
- * 为终端命令行提供基于工作区路径的补全（仅匹配最后一个 token）。
- *
- * @param workspace - 工作区根目录
- * @param commandLine - 当前命令行
- * @returns 补全候选
- */
-export async function completeCommandInWorkspace(
-  workspace: string,
-  commandLine: string
-): Promise<string[]> {
-  const workspaceRoot = ensureWorkspaceExists(workspace)
-  const { start, token } = extractLastTokenRange(commandLine)
-  const tokenPrefix = commandLine.slice(0, start)
-  const normalizedToken = token.replace(/[\\/]+/g, path.sep)
-  const hasTrailingSep = /[\\/]$/.test(token)
-  const basePart = hasTrailingSep ? normalizedToken : path.dirname(normalizedToken)
-  const namePart = hasTrailingSep ? '' : path.basename(normalizedToken)
-  const relativeBase =
-    basePart === '.' || basePart === path.sep || !basePart ? '' : basePart.replace(/^[\\/]+/, '')
-  const absBase = path.resolve(workspaceRoot, relativeBase || '.')
-  if (!isPathInsideWorkspace(workspaceRoot, absBase)) return []
-  const entries = await readdir(absBase, { withFileTypes: true })
-  const lowerNeedle = namePart.toLowerCase()
-  const matched = entries
-    .filter((entry) => entry.name.toLowerCase().startsWith(lowerNeedle))
-    .slice(0, 80)
-    .map((entry) => {
-      const rawPath = relativeBase ? path.join(relativeBase, entry.name) : entry.name
-      const slashPath = rawPath.split(path.sep).join('/')
-      return `${tokenPrefix}${slashPath}${entry.isDirectory() ? '/' : ''}`
-    })
-  return matched
 }

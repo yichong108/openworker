@@ -29,11 +29,7 @@ import {
 import { type NodeRendererProps, Tree } from 'react-arborist'
 
 import { WorkspaceFileTreeContainer } from '@/renderer/src/right-pane/WorkspaceFileTreeContainer'
-import {
-  apiCancelTerminal,
-  apiCompleteTerminal,
-  apiRunTerminal
-} from '@/renderer/src/api/native-api'
+import { apiCancelTerminal, apiRunTerminal } from '@/renderer/src/api/native-api'
 import { HOME_WORKSPACE_ID, type WorkspaceFileNode } from '@/shared/ipc'
 
 const { Text } = Typography
@@ -174,19 +170,6 @@ function FileTreeNodeRenderer({ node, style, dragHandle }: NodeRendererProps<Fil
       {renderNodeTitle(node.data.name, node.data.kind, node.isOpen)}
     </div>
   )
-}
-
-function longestCommonPrefix(values: string[]): string {
-  if (!values.length) return ''
-  let prefix = values[0] ?? ''
-  for (let i = 1; i < values.length; i += 1) {
-    const current = values[i] ?? ''
-    let j = 0
-    while (j < prefix.length && j < current.length && prefix[j] === current[j]) j += 1
-    prefix = prefix.slice(0, j)
-    if (!prefix) return ''
-  }
-  return prefix
 }
 
 function inferMonacoLanguage(filePath: string): string {
@@ -387,30 +370,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
     },
     [replaceTerminalInputLine]
   )
-
-  const completeTerminalInput = useCallback(async () => {
-    const term = terminalRef.current
-    if (!term || terminalRunningRef.current) return
-    if (!activeWorkspaceId) return
-    const currentInput = terminalInputBufferRef.current
-    const items = await apiCompleteTerminal(activeWorkspaceId, currentInput)
-    if (!items.length) return
-    if (items.length === 1) {
-      const only = items[0] ?? ''
-      const completed = /\/$/.test(only) ? only : `${only} `
-      replaceTerminalInputLine(term, completed)
-      return
-    }
-    const common = longestCommonPrefix(items)
-    if (common && common.length > currentInput.length) {
-      replaceTerminalInputLine(term, common)
-      return
-    }
-    term.write('\r\n')
-    term.write(`${items.join('    ')}\r\n`)
-    writeTerminalPrompt(term)
-    term.write(currentInput)
-  }, [activeWorkspaceId, replaceTerminalInputLine, writeTerminalPrompt])
 
   const loadWorkspaceTree = useCallback(async () => {
     const gen = ++fileTreeLoadGenRef.current
@@ -654,7 +613,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
 
   const interruptTerminalCommandRef = useRef(interruptTerminalCommand)
   const runTerminalCommandRef = useRef(runTerminalCommand)
-  const completeTerminalInputRef = useRef(completeTerminalInput)
   const navigateTerminalHistoryRef = useRef(navigateTerminalHistory)
   const writeTerminalPromptRef = useRef(writeTerminalPrompt)
   const copyTerminalSelectionRef = useRef(copyTerminalSelection)
@@ -662,7 +620,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
   const insertTerminalPastedTextRef = useRef(insertTerminalPastedText)
   interruptTerminalCommandRef.current = interruptTerminalCommand
   runTerminalCommandRef.current = runTerminalCommand
-  completeTerminalInputRef.current = completeTerminalInput
   navigateTerminalHistoryRef.current = navigateTerminalHistory
   writeTerminalPromptRef.current = writeTerminalPrompt
   copyTerminalSelectionRef.current = copyTerminalSelection
@@ -787,7 +744,6 @@ export function WorkspaceRightPane(props: WorkspaceRightPaneProps) {
         return
       }
       if (data === '\t') {
-        void completeTerminalInputRef.current()
         return
       }
       if (data === '\u007f') {
