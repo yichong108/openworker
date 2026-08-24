@@ -4,10 +4,10 @@ import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
 import type { ToolSet } from 'ai'
 import path from 'node:path'
 import { filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
-import { buildFsTools } from './fs-tools.js'
-import { buildGrepTool } from './grep.js'
-import { buildShellTool } from './shell-tool.js'
-import { buildWebSearchTool, isTavilyConfigured } from './web-search.js'
+import { buildFsTools } from './builtin/fs.js'
+import { buildGrepTool } from './builtin/grep.js'
+import { buildShellTool } from './builtin/shell.js'
+import { buildWebSearchTool, isTavilyConfigured } from './builtin/web-search.js'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set(['read_file', 'glob', 'grep', 'web_search'])

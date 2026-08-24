@@ -4,8 +4,8 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { z } from 'zod'
 
-import { defineTool, type ToolOnTool } from './define-tool.js'
-import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
+import { defineTool, type ToolOnTool } from '../define-tool.js'
+import { ensureWorkspaceExists, resolveSafePath } from '../path-guard.js'
 
 /** 输出行数硬上限（响应速度） */
 export const GREP_MAX_OUTPUT_LINES = 2000

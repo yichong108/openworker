@@ -1,5 +1,5 @@
 /**
- * @openworker/tools 公共 API — defineTool、工作区工具、path-guard、terminal。
+ * @openworker/tools 公共 API — defineTool、内建工具、path-guard、terminal。
  */
 
 export {
@@ -12,7 +12,7 @@ export {
   type ToolSet
 } from './define-tool.js'
 
-export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from './shell-tool.js'
+export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from './builtin/shell.js'
 
 export { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
 
@@ -32,7 +32,7 @@ export {
   writeFileTool,
   type BuildFsToolsOptions,
   type WriteFileToolResult
-} from './fs-tools.js'
+} from './builtin/fs.js'
 
 export {
   buildGrepTool,
@@ -41,14 +41,14 @@ export {
   grepWorkspace,
   type BuildGrepToolOptions,
   type GrepToolArgs
-} from './grep.js'
+} from './builtin/grep.js'
 
 export {
   buildWebSearchTool,
   isTavilyConfigured,
   tavilyWebSearch,
   type BuildWebSearchToolOptions
-} from './web-search.js'
+} from './builtin/web-search.js'
 
 export {
   buildWorkspaceRunPrompt,

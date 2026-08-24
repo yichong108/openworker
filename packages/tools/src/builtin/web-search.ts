@@ -1,7 +1,7 @@
 import type { ToolSet } from 'ai'
 import { z } from 'zod'
 
-import { defineTool, type ToolOnTool } from './define-tool.js'
+import { defineTool, type ToolOnTool } from '../define-tool.js'
 
 const TAVILY_SEARCH_URL = 'https://api.tavily.com/search'
 

@@ -3,8 +3,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 
-import { defineTool, mergeToolSets, type ToolOnTool } from './define-tool.js'
-import { ensureWorkspaceExists, resolveSafePath } from './path-guard.js'
+import { defineTool, mergeToolSets, type ToolOnTool } from '../define-tool.js'
+import { ensureWorkspaceExists, resolveSafePath } from '../path-guard.js'
 
 const MAX_READ = 500_000
 
