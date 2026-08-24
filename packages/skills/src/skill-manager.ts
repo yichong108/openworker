@@ -484,8 +484,7 @@ export class SkillManager {
       toolCallId,
       status: 'end',
       result: truncated,
-      timestampMs: Date.now(),
-      durationMs: Date.now() - startedAt
+      timestampMs: Date.now()
     })
 
     return result

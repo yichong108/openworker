@@ -14,7 +14,6 @@ export type ToolObservation = {
   args?: string
   result?: string
   timestampMs?: number
-  durationMs?: number
 }
 
 /**
@@ -129,8 +128,7 @@ export function defineTool<T extends z.ZodTypeAny>(
         toolCallId: options.toolCallId,
         status: 'end',
         result: resultStr,
-        timestampMs: Date.now(),
-        durationMs: Date.now() - startedAt
+        timestampMs: Date.now()
       })
 
       return result

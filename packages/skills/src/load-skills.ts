@@ -55,7 +55,6 @@ export type SkillToolOnTool = (e: {
   args?: string
   result?: string
   timestampMs?: number
-  durationMs?: number
 }) => void
 
 /**
@@ -382,8 +381,7 @@ function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet
         toolCallId,
         status: 'end',
         result: truncated,
-        timestampMs: Date.now(),
-        durationMs: Date.now() - startedAt
+        timestampMs: Date.now()
       })
 
       return result

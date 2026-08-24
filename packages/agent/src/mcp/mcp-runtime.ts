@@ -522,8 +522,7 @@ export async function buildMcpTools(
                   toolCallId,
                   status: 'end',
                   result: text.slice(0, 12_000),
-                  timestampMs: Date.now(),
-                  durationMs: Date.now() - startedAt
+                  timestampMs: Date.now()
                 })
                 return text
               } catch (err) {
@@ -533,8 +532,7 @@ export async function buildMcpTools(
                   toolCallId,
                   status: 'end',
                   result: message,
-                  timestampMs: Date.now(),
-                  durationMs: Date.now() - startedAt
+                  timestampMs: Date.now()
                 })
                 throw err
               }
