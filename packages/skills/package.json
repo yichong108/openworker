@@ -4,10 +4,16 @@
   "description": "OpenWorker agent skills — SKILL.md 内容包与加载器",
   "type": "module",
   "private": true,
+  "main": "./dist/index.js",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
