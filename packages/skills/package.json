@@ -1,9 +1,8 @@
 {
   "name": "@openworker/skills",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "OpenWorker agent skills — SKILL.md 内容包与加载器",
   "type": "module",
-  "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,14 +13,22 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "package.json"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "publint": "pnpm run build && publint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
+    "release": "pnpm run test && pnpm run check-npm-auth && tsc -p tsconfig.build.json && npm publish"
   },
   "dependencies": {
     "ai": "catalog:",

@@ -1,8 +1,6 @@
 import { type AgentComposerMode } from '@openworker/shared'
 import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
-import { getDefaultGlobalAgentsSkillsDir } from '@openworker/skills'
 import type { ToolSet } from 'ai'
-import path from 'node:path'
 import { filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
 import { buildFsTools } from './builtin/fs.js'
 import { buildGrepTool } from './builtin/grep.js'
@@ -139,12 +137,8 @@ export function buildWorkspaceRunPrompt(
 ): string {
   // Node 侧无浏览器地理定位；用系统时区作为本地上下文
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'
-  const globalSkillsPath = getDefaultGlobalAgentsSkillsDir()
-  const projectSkillsPath = path.join(root, '.agents', 'skills')
   const common = [
     `当前日期时间：${new Date().toLocaleString()}；时区：${timeZone}；`,
-    `全局 skills 目录：${globalSkillsPath}；`,
-    `工作区 skills 目录：${projectSkillsPath}；`,
     `mcp 配置文件路径：${getOpenworkerMcpConfigPath()}；`,
     `工作区根目录：${root}；`
   ].join('\n')

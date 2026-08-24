@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@openworker/shared": "workspace:*",
-    "@openworker/skills": "workspace:*",
     "@vscode/ripgrep": "^1.18.0",
     "ai": "catalog:",
     "zod": "catalog:"
