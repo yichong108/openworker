@@ -1,11 +1,16 @@
 import { type AgentComposerMode } from '@openworker/shared'
 import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import type { ToolSet } from 'ai'
-import { filterToolSet, mergeToolSets, type ToolOnTool } from './define-tool.js'
-import { buildFsTools } from './builtin/fs.js'
-import { buildGrepTool } from './builtin/grep.js'
-import { buildShellTool } from './builtin/shell.js'
-import { buildWebSearchTool, isTavilyConfigured } from './builtin/web-search.js'
+import {
+  buildFsTools,
+  buildGrepTool,
+  buildShellTool,
+  buildWebSearchTool,
+  filterToolSet,
+  isTavilyConfigured,
+  mergeToolSets,
+  type ToolOnTool
+} from '@openworker/tools'
 
 /** Ask / Plan 模式允许的只读工具名 */
 const READONLY_MODE_ALLOWED_TOOL_NAMES = new Set(['read_file', 'glob', 'grep', 'web_search'])
@@ -75,8 +80,6 @@ export type WorkspacePromptExtras = {
   enabledMcpNames?: string[]
   /** 是否存在未启用的 MCP 条目 */
   hasDisabledMcpEntries?: boolean
-  /** glob 是否覆盖第二根目录（用户数据） */
-  hasUserDataGlob?: boolean
 }
 
 /**
@@ -193,16 +196,12 @@ function buildBuildSystemPrompt(
     followTools +
     '；不要跳过匹配的技能而用泛化工具猜测。'
 
-  const globNote = extras?.hasUserDataGlob
-    ? '：结果含工作区与「用户数据」目录（用户技能包等）；read_file/write 仍仅限工作区路径'
-    : ''
-
   return `你是协助办公与软件开发的智能体。
 - 工具中使用**相对于工作区根目录**的路径（如 src/index.ts）；不要用 ../ 逃出工作区。
 - 可用工具：${toolLine}，以及 readSkillFile、readSkillRelativeFile（渐进加载 skills）。${mcpNote}
 ${skillRule}
 - shell 在工作区根目录沙箱中执行命令并等待结束，返回 stdout/stderr；Windows 使用 cmd 风格。
-- 用户要「查看/读取工作区文件」时，优先 read_file；按文件名/路径模式查找时用 glob（如 **/*.ts）${globNote}。
+- 用户要「查看/读取工作区文件」时，优先 read_file；按文件名/路径模式查找时用 glob（如 **/*.ts）。
 - 用户明确要求删除工作区中的文件时，使用 delete_file（仅普通文件，不含目录）。
 ${webRule}
 - 回复简洁可执行；改代码前先 read/glob。

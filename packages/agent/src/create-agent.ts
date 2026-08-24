@@ -31,14 +31,12 @@ import {
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
+import { mergeToolSets, type ToolObservation, type ToolOnTool } from '@openworker/tools'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
-  mergeToolSets,
-  type ToolObservation,
-  type ToolOnTool,
   type WorkspacePromptExtras
-} from '@openworker/tools'
+} from './workspace-tools.js'
 export { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 
 /**

@@ -55,14 +55,14 @@ export {
   type SkillWatchEvent
 } from '@openworker/skills'
 
-/** 工作区工具组装 */
+/** 工作区工具组装与 ReAct system prompt */
 export {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
   isReadonlyComposerMode,
   type BuildWorkspaceToolsOptions,
   type WorkspacePromptExtras
-} from '@openworker/tools'
+} from './workspace-tools.js'
 
 /** Plan 工件解析 */
 export {

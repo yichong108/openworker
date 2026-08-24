@@ -5,7 +5,6 @@
 
 export * from './define-tool.js'
 export * from './path-guard.js'
-export * from './workspace-tools.js'
 export * from './builtin/fs.js'
 export * from './builtin/grep.js'
 export * from './builtin/shell.js'
