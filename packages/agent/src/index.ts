@@ -78,4 +78,4 @@ export {
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
 
 /** 终端进程控制（宿主 IPC / 取消 run 用） */
-export { killCommand, runCommand, type RunCommandHandlers } from '@openworker/base-agent'
+export { TerminalManager, terminalManager, type RunCommandHandlers } from '@openworker/shared'

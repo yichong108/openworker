@@ -2,7 +2,7 @@
  * Native 会话级 Agent 运行时：run / cancel / hydrate，经 SSE 推送 AG-UI 事件
  */
 
-import { killCommand } from '@openworker/uni-agent'
+import { terminalManager } from '@openworker/shared'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
 import {
   type AgentSendOptions,
@@ -137,7 +137,7 @@ export function clearSessionState(sessionId: string): void {
   if (s?.agent) {
     void s.agent.dispose()
   }
-  void killCommand(s?.terminalKey ?? `term:${sessionId}`)
+  void terminalManager.killCommand(s?.terminalKey ?? `term:${sessionId}`)
   sessions.delete(sessionId)
   clearSessionWorking(sessionId)
   clearSessionMessagesCache(sessionId)
@@ -157,7 +157,7 @@ export function cancelRun(sessionId: string): void {
   s?.subscription?.unsubscribe()
   if (s) s.subscription = null
   s?.agent.abortRun()
-  void killCommand(`term:${sessionId}`)
+  void terminalManager.killCommand(`term:${sessionId}`)
 }
 
 /**

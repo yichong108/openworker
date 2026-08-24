@@ -3,8 +3,7 @@
  */
 
 import { Router, type Router as ExpressRouter } from 'express'
-import { killCommand, runCommand } from '@openworker/uni-agent'
-import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
+import { MAX_TERMINAL_OUTPUT_CHARS, terminalManager } from '@openworker/shared'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'
@@ -57,15 +56,21 @@ terminalRouter.post('/terminal/run', async (req, res) => {
   let clientClosed = false
   req.on('close', () => {
     clientClosed = true
-    void killCommand(sessionKey)
+    void terminalManager.killCommand(sessionKey)
   })
 
   try {
-    const output = await runCommand(sessionKey, cwd, trimmed, MAX_TERMINAL_OUTPUT_CHARS, {
-      onChunk: (chunk, stream) => {
-        writeSseData(res, { workspaceId, chunk, stream }, 'terminal')
+    const output = await terminalManager.runCommand(
+      sessionKey,
+      cwd,
+      trimmed,
+      MAX_TERMINAL_OUTPUT_CHARS,
+      {
+        onChunk: (chunk, stream) => {
+          writeSseData(res, { workspaceId, chunk, stream }, 'terminal')
+        }
       }
-    })
+    )
     writeSseData(res, { workspaceId, output }, 'result')
   } catch (error) {
     writeSseData(
@@ -93,7 +98,7 @@ terminalRouter.post('/terminal/cancel', async (req, res) => {
       res.status(200).json(fail(40050, 'workspaceId is required'))
       return
     }
-    await killCommand(`right-pane:${workspaceId}`)
+    await terminalManager.killCommand(`right-pane:${workspaceId}`)
     res.status(200).json(ok({ ok: true }))
   } catch (error) {
     console.error('[native] POST /terminal/cancel failed', error)

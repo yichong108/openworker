@@ -38,4 +38,4 @@ export { buildShellRunPrompt, buildShellTool, type BuildShellToolOptions } from 
 
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/tools'
 
-export { killCommand, runCommand, type RunCommandHandlers } from '@openworker/tools'
+export { TerminalManager, terminalManager, type RunCommandHandlers } from '@openworker/shared'

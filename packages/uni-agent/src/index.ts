@@ -31,4 +31,4 @@ export {
 
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/agent'
 
-export { killCommand, runCommand, type RunCommandHandlers } from '@openworker/agent'
+export { TerminalManager, terminalManager, type RunCommandHandlers } from '@openworker/shared'
