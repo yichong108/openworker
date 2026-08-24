@@ -42,7 +42,7 @@ export default function Home() {
             OpenWorker
           </p>
           <h1 className="anim-rise anim-delay-1 mt-5 max-w-2xl text-2xl font-medium leading-snug text-white/95 sm:text-3xl">
-            帮你处理日常信息、做出更好选择的 AI 伙伴
+            日常信息处理的 AI 伙伴，帮助你解决问题
           </h1>
           <p className="anim-rise anim-delay-2 mt-4 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
             本地优先的桌面智能助手：对话、整理资料、在工作区里完成任务，需要时再接入外部工具。
