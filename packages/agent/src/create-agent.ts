@@ -25,7 +25,7 @@ import type { McpProbeResult, McpWarmupServerResult } from './mcp/types.js'
 import {
   contentToText,
   findLastAssistantMessage,
-  runReactLoop,
+  runReActLoop,
   type CoreMessage,
   userMessage
 } from '@openworker/base-agent'
@@ -345,19 +345,19 @@ export function createAgent(options: CreateAgentOptions): Agent {
       composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''
     const runPrompt = [basePrompt, memorySection, approvedPlanSection].filter(Boolean).join('\n\n')
 
-    const runMessages = await runReactLoop(
-      provider,
-      runPrompt,
-      inputMessages,
+    const runMessages = await runReActLoop({
+      model: provider,
+      systemPrompt: runPrompt,
+      messages: inputMessages,
       tools,
       abortController,
-      onTextDelta,
+      onToken: onTextDelta,
       maxSteps,
-      invokeTimeoutMs,
+      timeoutMs: invokeTimeoutMs,
       onThinking,
       onTextRevoke,
       formatToolResultForContext
-    )
+    })
 
     const finalMessages = runMessages.length > 0 ? runMessages : inputMessages
     messages = finalMessages

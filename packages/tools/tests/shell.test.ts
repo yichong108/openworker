@@ -10,7 +10,7 @@ describe('buildShellTool', () => {
     })
 
     expect(Object.keys(tools)).toEqual(['shell'])
-    expect(tools.shell?.description).toContain('shell')
+    expect(tools.shell?.description).toContain('工作区根目录')
   })
 
   it('aborts the running child and reports cancelled', async () => {

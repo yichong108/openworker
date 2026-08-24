@@ -23,6 +23,21 @@ import { agentLog } from './logger.js'
 
 export type FormatToolResultForContext = (toolName: string, result: unknown) => unknown
 
+/** `runReActLoop` 入参：全部字段放在单一对象上，避免位置参数错位。 */
+export type RunReActLoopParams = {
+  model: LanguageModel
+  systemPrompt: string
+  messages: CoreMessage[]
+  tools: ToolSet
+  abortController: AbortController
+  maxSteps?: number
+  timeoutMs?: number
+  onToken: (token: string) => void
+  onThinking?: (text: string, durationMs?: number) => void
+  onTextRevoke?: () => void
+  formatToolResultForContext?: FormatToolResultForContext
+}
+
 /**
  * 构造单条 tool 结果消息。
  *
@@ -126,32 +141,23 @@ function buildAssistantMessage(text: string, toolCalls: ToolCallPart[]): CoreAss
  * - 本步有 tool calls → `onTextRevoke`（撤回已流出的 Result）+ `onThinking`（进入 Worked → Thought）
  * - 本步无 tool calls → 保留已流出的 delta 作为最终 Result（不再整段重发）
  *
- * @param model - 已解析的 AI SDK LanguageModel
- * @param systemPrompt - system 提示
- * @param messages - 初始会话消息（AI SDK CoreMessage）
- * @param tools - 可用工具（AI SDK ToolSet）
- * @param ac - 取消控制器
- * @param onToken - 文本增量回调（流式；收尾步保留，工具步随后 revoke）
- * @param maxSteps - 最大工具调用轮次；缺省时使用 MAX_AGENT_LOOP_STEPS
- * @param timeoutMs - 循环超时（毫秒）；缺省时使用 defaultSettings.agentRunTimeoutMs
- * @param onThinking - 过程思考回调（有工具的中间步文本）
- * @param onTextRevoke - 撤回本步已通过 onToken 流出的 Result 文本（工具步在 onThinking 前调用）
- * @param formatToolResultForContext - 可选：将 execute 原始结果映射为写入 message 上下文的 tool result
+ * @param params - 见 {@link RunReActLoopParams}
  * @returns 运行结束后的 CoreMessage 列表（含输入消息与本轮新增）
  */
-export async function runReactLoop(
-  model: LanguageModel,
-  systemPrompt: string,
-  messages: CoreMessage[],
-  tools: ToolSet,
-  ac: AbortController,
-  onToken: (token: string) => void,
-  maxSteps?: number,
-  timeoutMs?: number,
-  onThinking?: (text: string, durationMs?: number) => void,
-  onTextRevoke?: () => void,
-  formatToolResultForContext?: FormatToolResultForContext
-): Promise<CoreMessage[]> {
+export async function runReActLoop(params: RunReActLoopParams): Promise<CoreMessage[]> {
+  const {
+    model,
+    systemPrompt,
+    messages,
+    tools,
+    abortController: ac,
+    onToken,
+    maxSteps,
+    timeoutMs,
+    onThinking,
+    onTextRevoke,
+    formatToolResultForContext
+  } = params
   const resolvedMaxSteps = maxSteps ?? MAX_AGENT_LOOP_STEPS
   const resolvedTimeoutMs = timeoutMs ?? defaultSettings.agentRunTimeoutMs
 

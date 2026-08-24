@@ -9,7 +9,7 @@ vi.mock('@openworker/base-agent', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@openworker/base-agent')>()
   return {
     ...actual,
-    runReactLoop: vi.fn(async (_model, _prompt, messages) => [
+    runReActLoop: vi.fn(async ({ messages }) => [
       ...messages,
       { role: 'assistant' as const, content: 'hello' }
     ])
@@ -41,7 +41,7 @@ vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
 import { getSingleSkillManager } from '../src/single-skill-manager.js'
 
 import { createAgent } from '../src/create-agent.js'
-import { runReactLoop } from '@openworker/base-agent'
+import { runReActLoop } from '@openworker/base-agent'
 
 function createCallbacks() {
   return {
@@ -57,8 +57,8 @@ const stubModel = { modelId: 'test-model' } as LanguageModel
 describe('createAgent', () => {
   beforeEach(() => {
     process.env.OPENWORKER_DATA_DIR_NAME = '.openworker-test'
-    vi.mocked(runReactLoop).mockClear()
-    vi.mocked(runReactLoop).mockImplementation(async (_model, _prompt, messages) => [
+    vi.mocked(runReActLoop).mockClear()
+    vi.mocked(runReActLoop).mockImplementation(async ({ messages }) => [
       ...messages,
       { role: 'assistant' as const, content: 'hello' }
     ])
@@ -97,8 +97,8 @@ describe('createAgent', () => {
       invokeTimeoutMs: 60_000
     })
 
-    expect(runReactLoop).toHaveBeenCalledOnce()
-    const [model, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    expect(runReActLoop).toHaveBeenCalledOnce()
+    const [{ model, systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(model).toBe(stubModel)
     expect(runPrompt).toContain('工作区根目录：/tmp/ws')
     expect(result.messages).toEqual([
@@ -120,7 +120,7 @@ describe('createAgent', () => {
       ...callbacks
     })
 
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('工作区根目录：/other/root')
   })
 
@@ -153,7 +153,7 @@ describe('createAgent', () => {
     const agent = createAgent({ provider: stubModel })
     const callbacks = createCallbacks()
     const abortController = new AbortController()
-    vi.mocked(runReactLoop).mockImplementation(async () => {
+    vi.mocked(runReActLoop).mockImplementation(async () => {
       abortController.abort()
       throw new Error('Aborted')
     })
@@ -173,7 +173,7 @@ describe('createAgent', () => {
     const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
     const callbacks = createCallbacks()
     const boom = new Error('model failed')
-    vi.mocked(runReactLoop).mockRejectedValueOnce(boom)
+    vi.mocked(runReActLoop).mockRejectedValueOnce(boom)
 
     await expect(
       agent.send('hi', {
@@ -198,7 +198,7 @@ describe('createAgent', () => {
       'project',
       expect.stringContaining('.agents')
     )
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('可用技能（渐进加载）')
     expect(runPrompt).toContain('debug_workflow')
     expect(runPrompt).toContain('code_review')
@@ -214,7 +214,7 @@ describe('createAgent', () => {
     await agent.send('这段代码做什么？', { composerMode: 'ask' })
 
     expect(getSingleSkillManager).not.toHaveBeenCalled()
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).not.toContain('可用技能（渐进加载）')
     expect(runPrompt).not.toContain('debug_workflow')
   })
@@ -229,7 +229,7 @@ describe('createAgent', () => {
     await agent.send('设计会话压缩', { composerMode: 'plan' })
 
     expect(getSingleSkillManager).not.toHaveBeenCalled()
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('计划模式')
     expect(runPrompt).toContain('openworker-plan')
     expect(runPrompt).not.toContain('可用技能（渐进加载）')
@@ -242,7 +242,7 @@ describe('createAgent', () => {
       planMarkdown: '# 计划\n- 改 A'
     })
 
-    const [, runPrompt] = vi.mocked(runReactLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('Approved plan')
     expect(runPrompt).toContain('# 计划')
   })

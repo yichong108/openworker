@@ -5,20 +5,14 @@
 
 import type { LanguageModel, ToolSet } from 'ai'
 
-import {
-  buildShellRunPrompt,
-  buildShellTool,
-  mergeToolSets,
-  type ToolObservation,
-  type ToolOnTool
-} from '@openworker/tools'
+import { buildShellTool, mergeToolSets, type ToolObservation } from '@openworker/tools'
 import {
   contentToText,
   findLastAssistantMessage,
   userMessage,
   type CoreMessage
 } from './messages.js'
-import { runReactLoop } from './react-loop.js'
+import { runReActLoop } from './react-loop.js'
 
 /**
  * 从 messages 提取最后一条助手文本。
@@ -32,74 +26,38 @@ function extractAssistantText(messages: CoreMessage[]): string {
 }
 
 /**
- * 工具准备阶段产物：ReAct 可用工具与 system prompt。
- */
-type PreparedTooling = {
-  tools: ToolSet
-  runPrompt: string
-}
-
-/**
- * createBaseAgent 本地运行环境配置。
- */
-export type CreateBaseAgentLocalOptions = {
-  /** 工作区根目录；send 时若未指定 workspacePath 则使用此值 */
-  cwd?: string
-}
-
-/** createBaseAgent 未传 local 时的默认值；cwd 缺省时在 send 侧回退 process.cwd() */
-const DEFAULT_LOCAL: CreateBaseAgentLocalOptions = {}
-
-/**
  * createBaseAgent 配置项。
  *
- * provider 必填；messages / local 可选（messages 默认 []，cwd 回退 process.cwd()）。
+ * cwd 可选，缺省时在 send 侧回退 process.cwd()。provider / messages 在 send 的 BaseAgentSendOptions 中传入。
  *
  * @example
  * ```ts
- * const agent = createBaseAgent({
- *   provider: model,
- *   messages: history,
- *   local: { cwd: process.cwd() }
- * })
+ * const agent = createBaseAgent({ cwd: process.cwd() })
+ * await agent.send('hi', { provider: model, messages: history })
  * ```
  */
 export type CreateBaseAgentOptions = {
-  /** AI SDK LanguageModel；创建时必填，send 未传 provider 时作为本轮对话模型 */
-  provider: LanguageModel
-  /**
-   * 会话消息初始值；由 agent 持有。
-   * 可选，默认 []。send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
-   */
-  messages?: CoreMessage[]
-  /** 本地运行环境；可选，默认 {}，cwd 缺省时回退 process.cwd() */
-  local?: CreateBaseAgentLocalOptions
+  /** 工作区根目录；缺省回退 process.cwd() */
+  cwd?: string
 }
 
 /**
- * 单次 base agent run 的可选参数（send 的第二参）。
+ * 单次 send 的参数。
  */
-export type BaseAgentRunInput = {
+export type BaseAgentSendOptions = {
+  /** AI SDK LanguageModel；本轮对话模型，必填 */
+  provider: LanguageModel
   /**
-   * 本轮已解析的聊天模型。
-   * 可选；未传时回退 createBaseAgent 时注入的 provider。
+   * 本轮会话历史；可选。
+   * 传入时作为本轮起点（覆盖 agent 当前 messages）；未传则使用 agent 持有的 messages。
+   * send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
    */
-  provider?: LanguageModel
+  messages?: CoreMessage[]
   /**
    * 取消控制器；可选，未传时内部新建 AbortController。
    * 宿主若需外部取消（如 Stop），应自行传入并持有引用。
    */
   abortController?: AbortController
-  /**
-   * 本轮工作区根目录绝对路径。
-   * 优先于 createBaseAgent local.cwd；均未提供时回退 process.cwd()。
-   */
-  workspacePath?: string
-  /**
-   * Shell 命令隔离键。
-   * 由宿主派生（如 `term:${sessionId}`）；缺省为 `term:default`。
-   */
-  terminalKey?: string
   /**
    * 本轮宿主额外工具（AI SDK ToolSet）；可选。
    * 与 shell 工具合并；同名时覆盖 shell 工具。
@@ -132,9 +90,9 @@ export type BaseAgentRunInput = {
 }
 
 /**
- * 单次 base agent run 的结果。
+ * 单次 send 的结果。
  */
-export type BaseAgentRunResult = {
+export type BaseAgentSendResult = {
   /** 本轮结束后的完整消息轨迹 */
   messages: CoreMessage[]
   /** 最终助手文本；无助手回复时为空串 */
@@ -146,60 +104,36 @@ export type BaseAgentRunResult = {
  */
 export type BaseAgent = {
   /**
-   * 当前会话消息；创建时来自 CreateBaseAgentOptions.messages。
+   * 当前会话消息；初始为 []，也可由 send 的 input.messages 覆盖。
    * send 会追加本轮用户消息，成功后写回含助手回复的完整轨迹，可直接再 send。
    */
   messages: CoreMessage[]
   /**
-   * 发起一次 run：`send(userText, options?)`。
+   * 发起一次 run：`send(userText, input)`。
    * 内部更新 messages；同会话互斥由宿主保证，不同会话可并行。
    */
-  send: (userText: string, input?: BaseAgentRunInput) => Promise<BaseAgentRunResult>
+  send: (userText: string, input: BaseAgentSendOptions) => Promise<BaseAgentSendResult>
 }
 
 /**
  * 创建仅含 ReAct 循环与 shell 工具的最小 agent 实例。
  *
- * @param options - 创建配置；provider 必填，messages / local 有默认值
+ * @param options - 创建配置；cwd 可选
  * @returns 可 send 的 agent 实例
  */
-export function createBaseAgent(options: CreateBaseAgentOptions): BaseAgent {
-  const local = options.local ?? DEFAULT_LOCAL
-  const defaultCwd = local.cwd?.trim() || process.cwd()
-  const defaultProvider = options.provider
-  let messages: CoreMessage[] = [...(options.messages ?? [])]
-
-  /**
-   * 组装本轮工具与 system prompt：shell 工具 + 本轮可选 tools。
-   */
-  async function prepareTooling(args: {
-    root: string
-    tools?: ToolSet
-    onTool: ToolOnTool
-  }): Promise<PreparedTooling> {
-    const shellTools = buildShellTool({
-      root: args.root,
-      onTool: args.onTool
-    })
-
-    return {
-      tools: mergeToolSets(shellTools, args.tools ?? {}),
-      runPrompt: buildShellRunPrompt(args.root)
-    }
-  }
+export function createBaseAgent(options: CreateBaseAgentOptions = {}): BaseAgent {
+  const cwd = options.cwd?.trim() || process.cwd()
+  let messages: CoreMessage[] = []
 
   /**
    * 发起一次 agent run：追加用户消息 → 组装工具与 prompt → ReAct 循环。
    *
    * @param userText - 本轮用户文本
-   * @param input - 可选 run 参数（回调、超时等）
+   * @param input - run 参数（provider 必填；messages / 回调 / 超时等可选）
    * @returns 运行结束后的 messages 与助手文本
    * @throws 消息为空、运行失败或取消时抛出
    */
-  async function send(
-    userText: string,
-    input: BaseAgentRunInput = {}
-  ): Promise<BaseAgentRunResult> {
+  async function send(userText: string, input: BaseAgentSendOptions): Promise<BaseAgentSendResult> {
     const trimmed = userText.trim()
     if (!trimmed) {
       throw new Error('userText is empty')
@@ -211,31 +145,40 @@ export function createBaseAgent(options: CreateBaseAgentOptions): BaseAgent {
     const onTool = input.onTool ?? (() => {})
     const { maxSteps, invokeTimeoutMs } = input
 
-    const inputMessages = [...messages, userMessage(trimmed)]
+    // 构建历史
+    const history = input.messages != null ? [...input.messages] : [...messages]
+    const inputMessages = [...history, userMessage(trimmed)]
     messages = inputMessages
 
-    const provider = input.provider ?? defaultProvider
-    const abortController = input.abortController ?? new AbortController()
-    const root = input.workspacePath?.trim() || defaultCwd
+    // 构建模型
+    const provider = input.provider
 
-    const tooling = await prepareTooling({
-      root,
-      tools: input.tools,
-      onTool
+    // 取消控制器
+    const abortController = input.abortController ?? new AbortController()
+
+    // 构建工具
+    const shellTool = buildShellTool({
+      root: cwd,
+      onTool: onTool
     })
 
-    const runMessages = await runReactLoop(
-      provider,
-      tooling.runPrompt,
-      inputMessages,
-      tooling.tools,
+    const tools = mergeToolSets(shellTool, input.tools ?? {})
+
+    // 构建 system prompt
+    const systemPrompt = `You are a helpful assistant that can help with tasks in the workspace at ${cwd}.`
+
+    const runMessages = await runReActLoop({
+      model: provider,
+      systemPrompt,
+      messages: inputMessages,
+      tools,
       abortController,
-      onTextDelta,
+      onToken: onTextDelta,
       maxSteps,
-      invokeTimeoutMs,
+      timeoutMs: invokeTimeoutMs,
       onThinking,
       onTextRevoke
-    )
+    })
 
     const finalMessages = runMessages.length > 0 ? runMessages : inputMessages
     messages = finalMessages

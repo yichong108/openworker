@@ -28,24 +28,14 @@ export function buildShellTool(options: BuildShellToolOptions): ToolSet {
   return defineTool(
     {
       id: 'shell',
-      description:
-        '在工作区根目录执行 shell 命令并等待结束，返回合并的 stdout/stderr。用于安装依赖、构建、测试、git 等。',
+      description: `默认在目录${root}执行一条 shell 命令，阻塞直到进程结束，返回合并后的 stdout/stderr。你可以指定其他目录。
+用法：
+- 适合一次性命令：安装依赖、构建、测试、git、包管理器、格式化等。
+- 不要用本工具长期挂起（dev server、watch、REPL）；这类进程会一直等到结束或被取消。`,
       parameters: z.object({ command: z.string() }),
       execute: ({ command }, execOptions) =>
         runWorkspaceCommandOnce(root, command, execOptions.abortSignal)
     },
     onTool
   )
-}
-
-/**
- * 构建 base agent 的极简 system prompt。
- *
- * @param root - 工作区根目录
- * @returns system prompt 文本
- */
-export function buildShellRunPrompt(root: string): string {
-  return `You are a helpful assistant. The workspace root is: ${root}
-
-You have access to the shell tool to run commands in this workspace. Use it when you need to install dependencies, build, test, or inspect the project via the command line.`
 }
