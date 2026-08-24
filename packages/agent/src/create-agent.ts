@@ -6,22 +6,12 @@
 
 import path from 'node:path'
 
-import {
-  type AgentComposerMode,
-  type McpServerEntry,
-  normalizeComposerMode
-} from '@openworker/shared'
-import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
-import { getSingleSkillManager } from './single-skill-manager.js'
 import type { LanguageModel, ToolSet } from 'ai'
-
 import {
   buildMcpToolsFromConfig,
-  disposeMcpConnectionPool,
-  probeMcpServer,
-  warmupMcpServersFromConfig
-} from './mcp/mcp-runtime.js'
-import type { McpProbeResult, McpWarmupServerResult } from './mcp/types.js'
+  type McpProbeResult,
+  type McpWarmupServerResult
+} from '@openworker/mcp'
 import {
   contentToText,
   findLastAssistantMessage,
@@ -29,9 +19,18 @@ import {
   type CoreMessage,
   userMessage
 } from '@openworker/base-agent'
-import { buildApprovedPlanSystemSection } from './plan-artifact.js'
-import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
+import {
+  type AgentComposerMode,
+  type McpServerEntry,
+  normalizeComposerMode
+} from '@openworker/shared'
+import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import { mergeToolSets, type ToolObservation, type ToolOnTool } from '@openworker/tools'
+
+import { getDefaultMcpManager } from './default-mcp-manager.js'
+import { buildApprovedPlanSystemSection } from './plan-artifact.js'
+import { getSingleSkillManager } from './single-skill-manager.js'
+import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
@@ -253,7 +252,11 @@ async function loadSkillsAndMcpTools(
   await skillManager.init(onTool)
   await skillManager.addSkillRootDir('project', path.join(workspaceRoot, '.agents', 'skills'))
   const skillBundle = skillManager.toPromptAndTools()
-  const mcpResult = await buildMcpToolsFromConfig(getOpenworkerMcpConfigPath(), onTool)
+  const mcpResult = await buildMcpToolsFromConfig(
+    getOpenworkerMcpConfigPath(),
+    onTool,
+    getDefaultMcpManager()
+  )
 
   const promptExtras: WorkspacePromptExtras = {
     ...(skillBundle.hint ? { skillHint: skillBundle.hint } : {})
@@ -367,11 +370,12 @@ export function createAgent(options: CreateAgentOptions): Agent {
     }
   }
 
+  const mcpManager = getDefaultMcpManager()
   const mcpApi: AgentMcp = {
-    probe: (entry) => probeMcpServer(entry),
+    probe: (entry) => mcpManager.probe(entry),
     warmup: (configPath) =>
-      warmupMcpServersFromConfig((configPath?.trim() || getOpenworkerMcpConfigPath()).trim()),
-    dispose: () => disposeMcpConnectionPool()
+      mcpManager.warmupFromConfig((configPath?.trim() || getOpenworkerMcpConfigPath()).trim()),
+    dispose: () => mcpManager.dispose()
   }
 
   return {

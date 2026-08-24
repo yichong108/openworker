@@ -1,0 +1,54 @@
+{
+  "name": "@openworker/mcp",
+  "version": "1.0.0",
+  "description": "OpenWorker MCP client — stdio connection pool, probe/warmup, Agent tool binding",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yichong108/openworker.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/yichong108/openworker/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "publint": "pnpm run build && publint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
+    "release": "pnpm run test && pnpm run check-npm-auth && tsc -p tsconfig.build.json && npm publish"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@openworker/shared": "workspace:*",
+    "@openworker/tools": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "publint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "^4.1.10"
+  }
+}

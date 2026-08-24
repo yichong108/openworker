@@ -26,8 +26,8 @@ vi.mock('../src/single-skill-manager.js', () => ({
   getSingleSkillManager: vi.fn(() => skillManagerMock)
 }))
 
-vi.mock('../src/mcp/mcp-runtime.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../src/mcp/mcp-runtime.js')>()
+vi.mock('@openworker/mcp', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@openworker/mcp')>()
   return {
     ...actual,
     buildMcpToolsFromConfig: vi.fn(async () => ({

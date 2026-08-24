@@ -73,7 +73,6 @@ export async function resetMcpHostAgent(): Promise<UniAgent> {
  * 释放 MCP 宿主（进程退出时调用）。
  */
 export async function disposeMcpHostAgent(): Promise<void> {
-  if (!mcpHostAgent) return
-  await mcpHostAgent.dispose()
+  await getMcpHostAgent().dispose()
   mcpHostAgent = undefined
 }

@@ -15,9 +15,9 @@
   "dependencies": {
     "@ag-ui/client": "catalog:",
     "@ag-ui/core": "catalog:",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@openworker/base-agent": "workspace:*",
     "@openworker/llm": "workspace:*",
+    "@openworker/mcp": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
     "@openworker/tools": "workspace:*",
