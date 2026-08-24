@@ -5,16 +5,12 @@
 import type { LanguageModel } from 'ai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@openworker/base-agent', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@openworker/base-agent')>()
-  return {
-    ...actual,
-    runReActLoop: vi.fn(async ({ messages }) => [
-      ...messages,
-      { role: 'assistant' as const, content: 'hello' }
-    ])
-  }
-})
+vi.mock('../../base-agent/src/react-loop.js', () => ({
+  runReActLoop: vi.fn(async ({ messages }) => [
+    ...messages,
+    { role: 'assistant' as const, content: 'hello' }
+  ])
+}))
 
 const skillManagerMock = {
   init: vi.fn(async () => undefined),
@@ -41,7 +37,7 @@ vi.mock('@openworker/mcp', async (importOriginal) => {
 import { getSingleSkillManager } from '../src/single-skill-manager.js'
 
 import { createAgent } from '../src/create-agent.js'
-import { runReActLoop } from '@openworker/base-agent'
+import { runReActLoop } from '../../base-agent/src/react-loop.js'
 
 function createCallbacks() {
   return {
@@ -214,9 +210,10 @@ describe('createAgent', () => {
     await agent.send('这段代码做什么？', { composerMode: 'ask' })
 
     expect(getSingleSkillManager).not.toHaveBeenCalled()
-    const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
+    const [{ systemPrompt: runPrompt, tools }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).not.toContain('可用技能（渐进加载）')
     expect(runPrompt).not.toContain('debug_workflow')
+    expect(Object.keys(tools)).not.toContain('shell')
   })
 
   it('plan 模式不加载 skills，并使用计划 prompt', async () => {

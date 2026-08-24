@@ -19,6 +19,8 @@ const agent = createBaseAgent({ cwd: process.cwd() })
 await agent.send('hi', { provider: model, messages: history })
 ```
 
+`send` 的 `tools` 传入时作为完整工具集（不再与内置 shell 合并）；未传则仅 `shell`。`messages` 中 `role: 'system'` 会抽出作为 system prompt，不进入会话轨迹。
+
 | 导出              | 用途                             |
 | ----------------- | -------------------------------- |
 | `createBaseAgent` | 工厂：返回可 `send` 的最小 agent |

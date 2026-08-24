@@ -1,8 +1,10 @@
+import type { ToolSet } from 'ai'
 import { describe, expect, it } from 'vitest'
 
 import {
   formatToolResultForContext,
   truncateToolObservationResult,
+  wrapToolExecuteForContext,
   wrapToolOnTool
 } from '../src/tool-context.js'
 
@@ -24,6 +26,30 @@ describe('formatToolResultForContext', () => {
         created: true
       })
     ).toBe('已写入：src/a.ts')
+  })
+})
+
+describe('wrapToolExecuteForContext', () => {
+  it('write_file 的 execute 返回值裁成短摘要', async () => {
+    const tools = wrapToolExecuteForContext({
+      write_file: {
+        description: 'write',
+        execute: async () => ({
+          path: 'src/a.ts',
+          before: '',
+          after: 'content',
+          created: true
+        })
+      }
+    } as unknown as ToolSet)
+
+    const result = await tools.write_file?.execute?.({}, {
+      toolCallId: '1',
+      messages: [],
+      abortSignal: new AbortController().signal
+    } as never)
+
+    expect(result).toBe('已写入：src/a.ts')
   })
 })
 

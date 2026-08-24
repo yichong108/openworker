@@ -5,7 +5,7 @@
 
 import type { LanguageModel, ToolSet } from 'ai'
 
-import { buildShellTool, mergeToolSets, type ToolObservation } from '@openworker/tools'
+import { buildShellTool, type ToolObservation } from '@openworker/tools'
 import {
   contentToText,
   findLastAssistantMessage,
@@ -23,6 +23,35 @@ import { runReActLoop } from './react-loop.js'
 function extractAssistantText(messages: CoreMessage[]): string {
   const last = findLastAssistantMessage(messages)
   return last ? contentToText(last.content) : ''
+}
+
+/**
+ * 从历史中分出 system 消息与会话消息。
+ *
+ * system 文本拼接为本轮 prompt；空内容的 system 忽略。
+ * 写回的轨迹不含 system，避免与顶层 systemPrompt 重复。
+ *
+ * @param history - 本轮起点消息（可能含 system）
+ * @returns 抽出的 prompt（无则 undefined）与不含 system 的会话历史
+ */
+function splitSystemMessages(history: CoreMessage[]): {
+  systemPrompt: string | undefined
+  conversation: CoreMessage[]
+} {
+  const systemParts: string[] = []
+  const conversation: CoreMessage[] = []
+  for (const msg of history) {
+    if (msg.role === 'system') {
+      const text = contentToText(msg.content).trim()
+      if (text) systemParts.push(text)
+      continue
+    }
+    conversation.push(msg)
+  }
+  return {
+    systemPrompt: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
+    conversation
+  }
 }
 
 /**
@@ -51,6 +80,7 @@ export type BaseAgentSendOptions = {
    * 本轮会话历史；可选。
    * 传入时作为本轮起点（覆盖 agent 当前 messages）；未传则使用 agent 持有的 messages。
    * send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
+   * 其中 `role: 'system'` 的消息会抽出作为本轮 system prompt，不进入会话轨迹。
    */
   messages?: CoreMessage[]
   /**
@@ -59,8 +89,8 @@ export type BaseAgentSendOptions = {
    */
   abortController?: AbortController
   /**
-   * 本轮宿主额外工具（AI SDK ToolSet）；可选。
-   * 与 shell 工具合并；同名时覆盖 shell 工具。
+   * 本轮工具（AI SDK ToolSet）；可选。
+   * 传入时作为完整工具集（调用方需自行包含 shell）；未传则仅注册内置 shell。
    */
   tools?: ToolSet
   /**
@@ -145,9 +175,10 @@ export function createBaseAgent(options: CreateBaseAgentOptions = {}): BaseAgent
     const onTool = input.onTool ?? (() => {})
     const { maxSteps, invokeTimeoutMs } = input
 
-    // 构建历史
+    // 构建历史：system 抽出为 prompt，不进入会话轨迹
     const history = input.messages != null ? [...input.messages] : [...messages]
-    const inputMessages = [...history, userMessage(trimmed)]
+    const { systemPrompt: extractedPrompt, conversation } = splitSystemMessages(history)
+    const inputMessages = [...conversation, userMessage(trimmed)]
     messages = inputMessages
 
     // 构建模型
@@ -156,16 +187,18 @@ export function createBaseAgent(options: CreateBaseAgentOptions = {}): BaseAgent
     // 取消控制器
     const abortController = input.abortController ?? new AbortController()
 
-    // 构建工具
-    const shellTool = buildShellTool({
-      root: cwd,
-      onTool: onTool
-    })
+    // 未传 tools 时仅内置 shell；传入则为完整工具集
+    const tools: ToolSet =
+      input.tools != null
+        ? input.tools
+        : buildShellTool({
+            root: cwd,
+            onTool: onTool
+          })
 
-    const tools = mergeToolSets(shellTool, input.tools ?? {})
-
-    // 构建 system prompt
-    const systemPrompt = `You are a helpful assistant that can help with tasks in the workspace at ${cwd}.`
+    const systemPrompt =
+      extractedPrompt ??
+      `You are a helpful assistant that can help with tasks in the workspace at ${cwd}.`
 
     const runMessages = await runReActLoop({
       model: provider,

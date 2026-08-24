@@ -1,7 +1,6 @@
 /**
  * createAgent 是包内底层工厂，由 OpenWorkerAgent 委托；宿主勿直接调用。
- * send 时按 `OPENWORKER_HOME` 加载 Skills / MCP，并在本文件内合并系统 prompt
- * （技能名摘要 / MCP 上下文）。
+ * send 时按 `OPENWORKER_HOME` 加载 Skills / MCP，合并系统 prompt 后委托 createBaseAgent。
  */
 
 import path from 'node:path'
@@ -12,13 +11,7 @@ import {
   type McpProbeResult,
   type McpWarmupServerResult
 } from '@openworker/mcp'
-import {
-  contentToText,
-  findLastAssistantMessage,
-  runReActLoop,
-  type CoreMessage,
-  userMessage
-} from '@openworker/base-agent'
+import { createBaseAgent, type CoreMessage } from '@openworker/base-agent'
 import {
   type AgentComposerMode,
   type McpServerEntry,
@@ -30,7 +23,7 @@ import { mergeToolSets, type ToolObservation, type ToolOnTool } from '@openworke
 import { getDefaultMcpManager } from './default-mcp-manager.js'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { getSingleSkillManager } from './single-skill-manager.js'
-import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
+import { wrapToolExecuteForContext, wrapToolOnTool } from './tool-context.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
@@ -218,17 +211,6 @@ export type Agent = {
 const DEFAULT_LOCAL: CreateAgentLocalOptions = {}
 
 /**
- * 从 messages 提取最后一条助手文本。
- *
- * @param messages - 本轮结束后的 CoreMessage 列表
- * @returns 助手纯文本；无则空串
- */
-function extractAssistantText(messages: CoreMessage[]): string {
-  const last = findLastAssistantMessage(messages)
-  return last ? contentToText(last.content) : ''
-}
-
-/**
  * 按约定加载本轮 Skills / MCP 工具与 prompt 增强片段。
  *
  * ask / plan 模式下跳过（不暴露 readSkill* / mcp_*，也不注入技能名摘要）。
@@ -294,11 +276,13 @@ export function createAgent(options: CreateAgentOptions): Agent {
   const local = options.local ?? DEFAULT_LOCAL
   const defaultCwd = local.cwd?.trim() || process.cwd()
   const defaultProvider = options.provider
-  /** 会话消息由 agent 持有；初始值来自 options.messages */
-  let messages: CoreMessage[] = [...(options.messages ?? [])]
+  const inner = createBaseAgent({ cwd: defaultCwd })
+  if (options.messages) {
+    inner.messages = options.messages
+  }
 
   /**
-   * 发起一次 agent run：加载 skills / MCP → 合并系统 prompt → ReAct 循环。
+   * 发起一次 agent run：加载 skills / MCP → 合并系统 prompt → 委托 createBaseAgent.send。
    *
    * @param userText - 本轮用户文本
    * @param input - 可选 run 参数（不含 skills / mcp 路径配置）
@@ -311,19 +295,11 @@ export function createAgent(options: CreateAgentOptions): Agent {
       throw new Error('userText is empty')
     }
 
-    const onTextDelta = input.onTextDelta ?? (() => {})
-    const onTextRevoke = input.onTextRevoke ?? (() => {})
-    const onThinking = input.onThinking ?? (() => {})
     const onTool = wrapToolOnTool(input.onTool ?? (() => {}))
     const { maxSteps, invokeTimeoutMs, tools: hostTools } = input
 
-    // 追加本轮用户消息并立即写回，保证连续 send / 失败重试时历史连贯
-    const inputMessages = [...messages, userMessage(trimmed)]
-    messages = inputMessages
-
     const composerMode = normalizeComposerMode(input.composerMode)
     const provider: LanguageModel = input.provider ?? defaultProvider
-    const abortController = input.abortController ?? new AbortController()
     const root = input.workspacePath?.trim() || defaultCwd
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
@@ -339,7 +315,9 @@ export function createAgent(options: CreateAgentOptions): Agent {
       onTool,
       mode: composerMode
     })
-    const tools = mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
+    const tools = wrapToolExecuteForContext(
+      mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
+    )
 
     // 在 create-agent 内合并系统 prompt（工作区 + skills 名称摘要 + MCP 上下文 + 可选记忆段 + 批准计划）
     const basePrompt = buildWorkspaceRunPrompt(composerMode, root, tavilyApiKey, promptExtras)
@@ -348,26 +326,19 @@ export function createAgent(options: CreateAgentOptions): Agent {
       composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''
     const runPrompt = [basePrompt, memorySection, approvedPlanSection].filter(Boolean).join('\n\n')
 
-    const runMessages = await runReActLoop({
-      model: provider,
-      systemPrompt: runPrompt,
-      messages: inputMessages,
+    return inner.send(userText, {
+      provider,
+      abortController: input.abortController,
+      messages: [{ role: 'system', content: runPrompt }, ...inner.messages],
       tools,
-      abortController,
-      onToken: onTextDelta,
+      onTextDelta: input.onTextDelta,
+      onTextRevoke: input.onTextRevoke,
+      onThinking: input.onThinking,
+      onTool,
+      onEmit: input.onEmit,
       maxSteps,
-      timeoutMs: invokeTimeoutMs,
-      onThinking,
-      onTextRevoke,
-      formatToolResultForContext
+      invokeTimeoutMs
     })
-
-    const finalMessages = runMessages.length > 0 ? runMessages : inputMessages
-    messages = finalMessages
-    return {
-      messages: finalMessages,
-      result: extractAssistantText(finalMessages)
-    }
   }
 
   const mcpManager = getDefaultMcpManager()
@@ -380,10 +351,10 @@ export function createAgent(options: CreateAgentOptions): Agent {
 
   return {
     get messages() {
-      return messages
+      return inner.messages
     },
     set messages(next) {
-      messages = [...next]
+      inner.messages = next
     },
     send,
     mcp: mcpApi

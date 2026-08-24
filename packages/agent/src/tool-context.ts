@@ -1,3 +1,4 @@
+import type { ToolSet } from 'ai'
 import type { ToolObservation, ToolOnTool, WriteFileToolResult } from '@openworker/tools'
 
 /** 观测侧 tool result 字符串长度上限（按工具名；未列出则不截断） */
@@ -62,4 +63,31 @@ export function formatToolResultForContext(toolName: string, result: unknown): u
     return `已写入：${result.path}`
   }
   return result
+}
+
+/**
+ * 包装 ToolSet 的 execute：先跑原实现（onTool 仍看到原始结果），再裁剪模型上下文。
+ *
+ * 用于在不给 createBaseAgent 增加字段的前提下，保持 formatToolResultForContext 语义。
+ *
+ * @param tools - 已合并的本轮工具
+ * @returns execute 返回值已经过 formatToolResultForContext 的 ToolSet
+ */
+export function wrapToolExecuteForContext(tools: ToolSet): ToolSet {
+  const out: ToolSet = {}
+  for (const [name, t] of Object.entries(tools)) {
+    if (!t?.execute) {
+      out[name] = t
+      continue
+    }
+    const originalExecute = t.execute.bind(t)
+    out[name] = {
+      ...t,
+      execute: async (input, options) => {
+        const raw = await originalExecute(input, options)
+        return formatToolResultForContext(name, raw)
+      }
+    }
+  }
+  return out
 }
