@@ -26,7 +26,7 @@ import {
   type ToolCallResultEvent,
   type ToolCallStartEvent
 } from '@ag-ui/client'
-import type { CoreMessage, CoreToolMessage } from 'ai'
+import type { ToolModelMessage, ToolResultPart } from 'ai'
 import { normalizeComposerMode } from '@openworker/shared'
 import { Observable, type Subscriber } from 'rxjs'
 
@@ -37,7 +37,7 @@ import {
   type AgentRunInput,
   type CreateAgentOptions
 } from './create-agent.js'
-import type { ToolObservation } from '@openworker/base-agent'
+import type { CoreMessage, ToolObservation } from '@openworker/base-agent'
 import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.js'
 
 /**
@@ -157,6 +157,23 @@ function detachNonCloneableForwardedProps(forwarded: unknown): {
   return { cloneable, extras }
 }
 
+function toolResultOutputToString(output: ToolResultPart['output']): string {
+  if (output.type === 'text' || output.type === 'error-text') return output.value
+  if (output.type === 'json' || output.type === 'error-json') {
+    try {
+      return JSON.stringify(output.value ?? '')
+    } catch {
+      return String(output.value)
+    }
+  }
+  if (output.type === 'execution-denied') return output.reason ?? ''
+  try {
+    return JSON.stringify(output)
+  } catch {
+    return String(output)
+  }
+}
+
 /**
  * 将 AG-UI 消息 content 转为纯文本。
  *
@@ -232,7 +249,7 @@ export function coreMessagesToAgui(messages: CoreMessage[]): Message[] {
             type: 'function',
             function: {
               name: part.toolName,
-              arguments: JSON.stringify(part.args ?? {})
+              arguments: JSON.stringify(part.input ?? {})
             }
           })
         }
@@ -249,13 +266,11 @@ export function coreMessagesToAgui(messages: CoreMessage[]): Message[] {
     if (message.role === 'tool') {
       for (const part of message.content) {
         if (part.type !== 'tool-result') continue
-        const content =
-          typeof part.result === 'string' ? part.result : JSON.stringify(part.result ?? '')
         result.push({
           id: randomUUID(),
           role: 'tool',
           toolCallId: part.toolCallId,
-          content
+          content: toolResultOutputToString(part.output)
         })
       }
     }
@@ -290,23 +305,23 @@ export function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
 
       const parts: Array<
         | { type: 'text'; text: string }
-        | { type: 'tool-call'; toolCallId: string; toolName: string; args: unknown }
+        | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
       > = []
       if (message.content) {
         parts.push({ type: 'text', text: message.content })
       }
       for (const tc of toolCalls) {
-        let args: unknown = {}
+        let input: unknown = {}
         try {
-          args = JSON.parse(tc.function.arguments || '{}')
+          input = JSON.parse(tc.function.arguments || '{}')
         } catch {
-          args = { raw: tc.function.arguments }
+          input = { raw: tc.function.arguments }
         }
         parts.push({
           type: 'tool-call',
           toolCallId: tc.id,
           toolName: tc.function.name,
-          args
+          input
         })
       }
       result.push({ role: 'assistant', content: parts })
@@ -314,14 +329,14 @@ export function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
     }
 
     if (message.role === 'tool') {
-      const toolMsg: CoreToolMessage = {
+      const toolMsg: ToolModelMessage = {
         role: 'tool',
         content: [
           {
             type: 'tool-result',
             toolCallId: message.toolCallId,
             toolName: 'unknown',
-            result: message.content
+            output: { type: 'text', value: message.content ?? '' }
           }
         ]
       }

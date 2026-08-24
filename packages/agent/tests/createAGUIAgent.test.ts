@@ -149,7 +149,7 @@ describe('OpenWorkerAgent helpers', () => {
             type: 'tool-call',
             toolCallId: 'tc1',
             toolName: 'read_file',
-            args: { path: 'a.ts' }
+            input: { path: 'a.ts' }
           }
         ]
       },
@@ -160,7 +160,7 @@ describe('OpenWorkerAgent helpers', () => {
             type: 'tool-result',
             toolCallId: 'tc1',
             toolName: 'read_file',
-            result: 'ok'
+            output: { type: 'text', value: 'ok' }
           }
         ]
       }
@@ -244,14 +244,14 @@ describe('OpenWorkerAgent', () => {
           input.onThinking?.('先看一下目录', 800)
           input.onTool?.({
             id: 'list_dir-1',
-            name: 'list_dir',
+            toolCallId: 'list_dir-1',
             status: 'start',
             args: '.',
             timestampMs: 1
           })
           input.onTool?.({
             id: 'list_dir-1',
-            name: 'list_dir',
+            toolCallId: 'list_dir-1',
             status: 'end',
             result: '[]',
             timestampMs: 2
@@ -292,14 +292,14 @@ describe('OpenWorkerAgent', () => {
         send: async (userText, input = {}) => {
           input.onTool?.({
             id: 'read_file-1',
-            name: 'read_file',
+            toolCallId: 'read_file-1',
             status: 'start',
             args: 'a.ts',
             timestampMs: 1
           })
           input.onTool?.({
             id: 'read_file-1',
-            name: 'read_file',
+            toolCallId: 'read_file-1',
             status: 'end',
             result: 'file content',
             timestampMs: 2
@@ -340,14 +340,14 @@ describe('OpenWorkerAgent', () => {
           input.onThinking?.('我先检查工作区目录', 1200)
           input.onTool?.({
             id: 'list_dir-1',
-            name: 'list_dir',
+            toolCallId: 'list_dir-1',
             status: 'start',
             args: '.',
             timestampMs: 1
           })
           input.onTool?.({
             id: 'list_dir-1',
-            name: 'list_dir',
+            toolCallId: 'list_dir-1',
             status: 'end',
             result: '[]',
             timestampMs: 2

@@ -4,13 +4,17 @@
  */
 
 import {
+  stepCountIs,
   streamText,
-  type CoreMessage,
   type LanguageModel,
+  type ModelMessage,
   type Tool,
   type ToolCallPart,
   type ToolSet
 } from 'ai'
+
+/** 对外稳定别名，与历史 `CoreMessage` 导出名一致 */
+type CoreMessage = ModelMessage
 
 /**
  * 构建仅用于模型声明的 ToolSet（去掉 execute，避免 streamText 自动执行）。
@@ -18,14 +22,14 @@ import {
  * ReAct 等循环应手动调用 Tool.execute，以便控制工具观察上报、错误与取消语义。
  *
  * @param tools - 完整 ToolSet（含 execute）
- * @returns 仅含 parameters/description 的声明用 ToolSet
+ * @returns 仅含 inputSchema/description 的声明用 ToolSet
  */
 export function toToolDeclarations(tools: ToolSet): ToolSet {
   const set: ToolSet = {}
   for (const [name, t] of Object.entries(tools)) {
     set[name] = {
       description: t.description,
-      parameters: t.parameters
+      inputSchema: t.inputSchema
     } as Tool
   }
   return set
@@ -83,21 +87,28 @@ export async function streamChatStep(params: StreamChatStepParams): Promise<Stre
     system,
     messages,
     tools,
-    abortSignal
+    abortSignal,
+    stopWhen: stepCountIs(1)
   })
 
   let stepText = ''
   let streamedLen = 0
-  for await (const chunk of result.fullStream) {
-    if (chunk.type === 'text-delta' && chunk.textDelta) {
-      stepText += chunk.textDelta
-      onTextDelta?.(chunk.textDelta)
-      streamedLen += chunk.textDelta.length
+  for await (const chunk of result.stream) {
+    if (chunk.type === 'text-delta' && chunk.text) {
+      stepText += chunk.text
+      onTextDelta?.(chunk.text)
+      streamedLen += chunk.text.length
     }
   }
 
   const text = (await result.text) || stepText
-  const toolCalls = await result.toolCalls
+  const rawCalls = await result.toolCalls
+  const toolCalls: ToolCallPart[] = rawCalls.map((tc) => ({
+    type: 'tool-call',
+    toolCallId: tc.toolCallId,
+    toolName: tc.toolName,
+    input: tc.input
+  }))
   const usage = await result.usage
 
   return { text, toolCalls, usage, streamedLen }

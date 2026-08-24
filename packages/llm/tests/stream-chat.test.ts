@@ -10,15 +10,19 @@ vi.mock('ai', async (importOriginal) => {
   return {
     ...actual,
     streamText: vi.fn(() => {
-      const fullStream = (async function* () {
-        yield { type: 'text-delta', textDelta: 'hello' }
-        yield { type: 'text-delta', textDelta: ' world' }
+      const stream = (async function* () {
+        yield { type: 'text-delta', text: 'hello' }
+        yield { type: 'text-delta', text: ' world' }
       })()
       return {
-        fullStream,
+        stream,
         text: Promise.resolve('hello world'),
         toolCalls: Promise.resolve([]),
-        usage: Promise.resolve({ promptTokens: 1, completionTokens: 2, totalTokens: 3 })
+        usage: Promise.resolve({
+          inputTokens: 1,
+          outputTokens: 2,
+          totalTokens: 3
+        })
       }
     })
   }
@@ -28,17 +32,17 @@ import { tool } from 'ai'
 import { streamChatStep, toToolDeclarations } from '../src/stream-chat.js'
 
 describe('toToolDeclarations', () => {
-  it('去掉 execute，保留 description / parameters', () => {
+  it('去掉 execute，保留 description / inputSchema', () => {
     const tools = {
       echo: tool({
         description: 'echo',
-        parameters: z.object({ text: z.string() }),
+        inputSchema: z.object({ text: z.string() }),
         execute: async ({ text }) => text
       })
     }
     const decls = toToolDeclarations(tools)
     expect(decls.echo?.description).toBe('echo')
-    expect(decls.echo?.parameters).toBeDefined()
+    expect(decls.echo?.inputSchema).toBeDefined()
     expect(decls.echo?.execute).toBeUndefined()
   })
 })

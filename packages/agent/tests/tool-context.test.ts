@@ -34,10 +34,10 @@ describe('wrapToolOnTool', () => {
       seen.push({ status: e.status, result: e.result })
     })
 
-    onTool({ id: '1', name: 'read_file', status: 'start', args: '{}' })
+    onTool({ id: 'read_file', toolCallId: '1', status: 'start', args: '{}' })
     onTool({
-      id: '1',
-      name: 'read_file',
+      id: 'read_file',
+      toolCallId: '1',
       status: 'end',
       result: 'x'.repeat(2_000)
     })

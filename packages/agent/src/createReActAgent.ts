@@ -4,7 +4,7 @@
  */
 
 import { type AgentComposerMode, normalizeComposerMode } from '@openworker/shared'
-import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
+import type { LanguageModel, ToolSet } from 'ai'
 
 import type { PreparedTooling } from './run-types.js'
 import {
@@ -12,6 +12,7 @@ import {
   findLastAssistantMessage,
   mergeToolSets,
   runReactLoop,
+  type CoreMessage,
   type ToolObservation,
   type ToolOnTool,
   userMessage

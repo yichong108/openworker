@@ -13,7 +13,7 @@ import {
 } from '@openworker/shared'
 import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import { getSingleSkillManager } from './single-skill-manager.js'
-import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
+import type { LanguageModel, ToolSet } from 'ai'
 
 import {
   type AgentRunInput as ReActAgentRunInput,
@@ -21,7 +21,7 @@ import {
   type CreateReActAgentLocalOptions,
   type CreateReActAgentOptions
 } from './createReActAgent.js'
-import { mergeToolSets, type ToolOnTool } from '@openworker/base-agent'
+import { mergeToolSets, type CoreMessage, type ToolOnTool } from '@openworker/base-agent'
 import {
   buildMcpToolsFromConfig,
   disposeMcpConnectionPool,

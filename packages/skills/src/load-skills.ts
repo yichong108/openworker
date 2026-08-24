@@ -350,7 +350,7 @@ function defineSkillTool(def: SkillDefinition, onTool: SkillToolOnTool): ToolSet
 
   const wrapped: Tool = tool({
     description: def.description,
-    parameters,
+    inputSchema: parameters,
     execute: async (input, options) => {
       const parsed = input as { question?: string }
       const toolCallId = options.toolCallId

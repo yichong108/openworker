@@ -1,8 +1,15 @@
 /**
  * @file messages.ts
- * @description 基于 AI SDK CoreMessage 的会话消息辅助函数
+ * @description 基于 AI SDK 会话消息的辅助函数
  */
-import type { CoreAssistantMessage, CoreMessage, CoreUserMessage } from 'ai'
+import type { AssistantModelMessage, ModelMessage, UserModelMessage } from 'ai'
+
+/** AI SDK 7 `ModelMessage` 的对外稳定别名 */
+export type CoreMessage = ModelMessage
+/** AI SDK 7 `AssistantModelMessage` 的对外稳定别名 */
+export type CoreAssistantMessage = AssistantModelMessage
+/** AI SDK 7 `UserModelMessage` 的对外稳定别名 */
+export type CoreUserMessage = UserModelMessage
 
 /**
  * 将 message content 转为纯文本（兼容多模态数组）。
@@ -61,5 +68,3 @@ export function findLastAssistantMessage(
 
 /** @deprecated 使用 findLastAssistantMessage */
 export const findLastAiMessage = findLastAssistantMessage
-
-export type { CoreMessage, CoreAssistantMessage, CoreUserMessage }

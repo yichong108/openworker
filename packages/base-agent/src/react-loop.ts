@@ -5,13 +5,19 @@
 import { streamChatStep, toToolDeclarations } from '@openworker/llm'
 import { defaultSettings, MAX_AGENT_LOOP_STEPS } from '@openworker/shared'
 import type {
-  CoreAssistantMessage,
-  CoreMessage,
-  CoreToolMessage,
+  AssistantModelMessage,
   LanguageModel,
+  ModelMessage,
   ToolCallPart,
+  ToolExecutionOptions,
+  ToolModelMessage,
+  ToolResultPart,
   ToolSet
 } from 'ai'
+
+type CoreAssistantMessage = AssistantModelMessage
+type CoreMessage = ModelMessage
+type CoreToolMessage = ToolModelMessage
 
 import { agentLog } from './logger.js'
 
@@ -26,6 +32,15 @@ export type FormatToolResultForContext = (toolName: string, result: unknown) => 
  * @param result - 执行结果（保留结构化对象；provider 发送前再序列化）
  * @returns AI SDK tool 消息
  */
+function toToolResultOutput(result: unknown): ToolResultPart['output'] {
+  if (typeof result === 'string') return { type: 'text', value: result }
+  try {
+    return { type: 'json', value: JSON.parse(JSON.stringify(result)) }
+  } catch {
+    return { type: 'text', value: String(result) }
+  }
+}
+
 function toolResultMessage(tc: ToolCallPart, result: unknown): CoreToolMessage {
   return {
     role: 'tool',
@@ -34,7 +49,7 @@ function toolResultMessage(tc: ToolCallPart, result: unknown): CoreToolMessage {
         type: 'tool-result',
         toolCallId: tc.toolCallId,
         toolName: tc.toolName,
-        result
+        output: toToolResultOutput(result)
       }
     ]
   }
@@ -66,11 +81,12 @@ async function executeToolCalls(
       continue
     }
     try {
-      const raw = await impl.execute(tc.args, {
+      const raw = await impl.execute(tc.input, {
         toolCallId: tc.toolCallId,
         messages,
-        abortSignal: signal
-      })
+        abortSignal: signal,
+        context: {}
+      } as ToolExecutionOptions<unknown>)
       const result = formatToolResultForContext ? formatToolResultForContext(tc.toolName, raw) : raw
       out.push(toolResultMessage(tc, result))
     } catch (e) {

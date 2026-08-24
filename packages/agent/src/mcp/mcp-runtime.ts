@@ -493,7 +493,7 @@ export async function buildMcpTools(
 
           out[lcName] = tool({
             description: descParts.join('\n'),
-            parameters: z.object({}).passthrough(),
+            inputSchema: z.looseObject({}),
             execute: async (input, options) => {
               const args = (typeof input === 'object' && input !== null ? input : {}) as Record<
                 string,

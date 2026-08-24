@@ -1,4 +1,4 @@
-import { tool, type Tool, type ToolSet } from 'ai'
+import { tool, type Tool, type ToolExecutionOptions, type ToolSet } from 'ai'
 import type { z } from 'zod'
 
 /**
@@ -25,7 +25,16 @@ export type ToolObservation = {
  */
 export type ToolOnTool = (e: ToolObservation) => void
 
-type ToolDefinition<T extends z.ZodTypeAny> = Tool<T, unknown> & { id: string }
+type ToolDefinition<T extends z.ZodTypeAny> = {
+  id: string
+  description?: string
+  /** 对外仍使用 parameters；内部映射为 SDK inputSchema */
+  parameters: T
+  execute?: (
+    input: z.infer<T>,
+    options: ToolExecutionOptions<unknown>
+  ) => unknown | Promise<unknown>
+}
 
 /**
  * 将工具参数规范为 JSON 字符串，供时间线解析（如 path / content）。
@@ -98,7 +107,7 @@ export function defineTool<T extends z.ZodTypeAny>(
 
   const wrapped: Tool = tool({
     description,
-    parameters,
+    inputSchema: parameters,
     execute: async (input, options) => {
       const parsed = input as z.infer<T>
       const startedAt = Date.now()

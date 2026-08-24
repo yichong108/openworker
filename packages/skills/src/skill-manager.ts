@@ -379,7 +379,7 @@ export class SkillManager {
     const readSkillFile = tool({
       description:
         'Read the full SKILL.md body for a skill by its normalized name. Call this when a skill matches the user intent.',
-      parameters: z.object({
+      inputSchema: z.object({
         skillName: z.string().describe('Normalized skill name, e.g. code_review')
       }),
       execute: async (input, options) => {
@@ -408,7 +408,7 @@ export class SkillManager {
     const readSkillRelativeFile = tool({
       description:
         'Read a file relative to a skill directory (references, scripts, etc.). Requires skillName and relativePath.',
-      parameters: z.object({
+      inputSchema: z.object({
         skillName: z.string().describe('Normalized skill name'),
         relativePath: z
           .string()

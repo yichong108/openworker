@@ -51,7 +51,7 @@ export function createMemorySummarizer(
         model,
         prompt,
         temperature,
-        maxTokens: Math.min(8_192, Math.max(256, Math.ceil(maxChars / 2)))
+        maxOutputTokens: Math.min(8_192, Math.max(256, Math.ceil(maxChars / 2)))
       })
       return text
     }

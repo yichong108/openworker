@@ -3,7 +3,7 @@
  * 仅提供 shell 工具，不含 fs / grep / skills / MCP 等增强能力。
  */
 
-import type { CoreMessage, LanguageModel, ToolSet } from 'ai'
+import type { LanguageModel, ToolSet } from 'ai'
 
 import {
   buildShellRunPrompt,
@@ -12,7 +12,12 @@ import {
   type ToolObservation,
   type ToolOnTool
 } from '@openworker/tools'
-import { contentToText, findLastAssistantMessage, userMessage } from './messages.js'
+import {
+  contentToText,
+  findLastAssistantMessage,
+  userMessage,
+  type CoreMessage
+} from './messages.js'
 import { runReactLoop } from './react-loop.js'
 
 /**
