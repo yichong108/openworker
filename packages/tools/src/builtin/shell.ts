@@ -1,4 +1,5 @@
-import { MAX_TERMINAL_OUTPUT_CHARS, terminalManager } from '@openworker/shared'
+import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
+import { terminalManager } from '@openworker/shared/single-instance'
 import type { ToolSet } from 'ai'
 import { z } from 'zod'
 

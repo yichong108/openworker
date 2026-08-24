@@ -10,7 +10,7 @@ import {
   getDefaultGlobalAgentsSkillsDir,
   listSkillsFromPaths,
   type SkillListItem
-} from '@openworker/uni-agent'
+} from '@openworker/skills'
 
 import { NotFoundError } from '../http/envelope.js'
 import { getWorkspace } from '../services/workspace-service.js'

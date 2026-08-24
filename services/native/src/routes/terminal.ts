@@ -3,7 +3,8 @@
  */
 
 import { Router, type Router as ExpressRouter } from 'express'
-import { MAX_TERMINAL_OUTPUT_CHARS, terminalManager } from '@openworker/shared'
+import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
+import { terminalManager } from '@openworker/shared/single-instance'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'

@@ -2,7 +2,7 @@
  * Native 聊天模型解析 — 从 AppSettings 解析本轮 AI SDK LanguageModel
  */
 
-import { getChatModel } from '@openworker/uni-agent'
+import { getChatModel } from '@openworker/llm'
 import { type AppSettings, getActiveProviderProfile } from '@openworker/shared'
 import type { LanguageModel } from 'ai'
 

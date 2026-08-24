@@ -1,5 +1,4 @@
-import type { ToolObservation, ToolOnTool } from '@openworker/base-agent'
-import type { WriteFileToolResult } from '@openworker/tools'
+import type { ToolObservation, ToolOnTool, WriteFileToolResult } from '@openworker/tools'
 
 /** 观测侧 tool result 字符串长度上限（按工具名；未列出则不截断） */
 const TOOL_OBSERVATION_RESULT_LIMITS: Record<string, number> = {

@@ -5,7 +5,8 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./terminal-manager": "./src/terminal-manager.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -2,7 +2,7 @@
  * Native 会话级 Agent 运行时：run / cancel / hydrate，经 SSE 推送 AG-UI 事件
  */
 
-import { terminalManager } from '@openworker/shared'
+import { terminalManager } from '@openworker/shared/single-instance'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
 import {
   type AgentSendOptions,

@@ -1,19 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process'
-import fs from 'node:fs'
-import path from 'node:path'
 import { TextDecoder } from 'node:util'
 
-/** 与 tools path-guard 同语义；本地实现以免 shared → tools 循环依赖。 */
-function ensureWorkspaceExists(workspaceRoot: string | null | undefined): string {
-  if (!workspaceRoot) {
-    throw new Error('未设置工作区根目录')
-  }
-  const p = path.resolve(workspaceRoot)
-  if (!fs.existsSync(p) || !fs.statSync(p).isDirectory()) {
-    throw new Error('工作区无效或已不存在')
-  }
-  return p
-}
+import { ensureWorkspaceExists } from './path-guard.js'
 
 function truncate(s: string, max: number): { text: string; truncated: boolean } {
   if (s.length <= max) return { text: s, truncated: false }
@@ -158,8 +146,8 @@ function spawnWorkspaceShell(command: string, cwd: string): ChildProcess {
 /**
  * 按 sessionKey 跟踪工作区 shell 子进程：执行、取消与运行态查询。
  *
- * 进程表与取消集合挂在实例上，便于测试隔离；宿主应使用 `@openworker/shared` 导出的
- * `terminalManager` 单例，以保证 shell 工具与取消路由共享同一进程表。
+ * 进程表与取消集合挂在实例上，便于测试隔离；宿主应使用
+ * `@openworker/shared/single-instance` 的 `terminalManager` 单例。
  */
 export class TerminalManager {
   private readonly running = new Map<string, ChildProcess>()
@@ -285,10 +273,3 @@ export class TerminalManager {
     return this.running.has(key)
   }
 }
-
-/**
- * 进程内默认终端管理器。
- *
- * shell 工具与宿主取消/右侧终端必须共用此实例，才能按 sessionKey 互斥与杀进程。
- */
-export const terminalManager = new TerminalManager()

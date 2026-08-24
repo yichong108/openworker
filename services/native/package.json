@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@ag-ui/client": "catalog:",
+    "@openworker/llm": "workspace:*",
     "@openworker/memory": "workspace:*",
     "@openworker/shared": "workspace:*",
+    "@openworker/skills": "workspace:*",
     "@openworker/uni-agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",

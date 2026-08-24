@@ -5,11 +5,6 @@
  * 目前只做OpenAI的兼容，后续可以考虑其他模型。
  */
 
-export { getChatModel, type OpenAiChatModelOptions } from './provider.js'
+export * from './provider.js'
 
-export {
-  streamChatStep,
-  toToolDeclarations,
-  type StreamChatStepParams,
-  type StreamChatStepResult
-} from './stream-chat.js'
+export * from './stream-chat.js'

@@ -29,7 +29,7 @@ export {
   mergeToolSets,
   type ToolObservation,
   type ToolOnTool
-} from '@openworker/base-agent'
+} from '@openworker/tools'
 
 export {
   assistantMessage,
@@ -75,7 +75,11 @@ export {
 } from './plan-artifact.js'
 
 /** 路径安全（宿主 workspace 文件 API 可复用） */
-export { ensureWorkspaceExists, resolveSafePath } from '@openworker/base-agent'
+export { ensureWorkspaceExists, resolveSafePath } from '@openworker/tools'
 
 /** 终端进程控制（宿主 IPC / 取消 run 用） */
-export { TerminalManager, terminalManager, type RunCommandHandlers } from '@openworker/shared'
+export {
+  TerminalManager,
+  terminalManager,
+  type RunCommandHandlers
+} from '@openworker/shared/single-instance'

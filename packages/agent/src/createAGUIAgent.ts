@@ -37,7 +37,8 @@ import {
   type AgentRunInput,
   type CreateAgentOptions
 } from './create-agent.js'
-import type { CoreMessage, ToolObservation } from '@openworker/base-agent'
+import type { CoreMessage } from '@openworker/base-agent'
+import type { ToolObservation } from '@openworker/tools'
 import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.js'
 
 /**

@@ -13,7 +13,7 @@ import type { McpServerEntry } from '@openworker/shared'
 import { tool, type ToolSet } from 'ai'
 import { z } from 'zod'
 
-import { type ToolOnTool } from '@openworker/base-agent'
+import { type ToolOnTool } from '@openworker/tools'
 import { agentLog } from '../logger.js'
 import { loadMcpServersFromConfig } from './load-config.js'
 import type { McpProbeResult, McpWarmupServerResult } from './types.js'

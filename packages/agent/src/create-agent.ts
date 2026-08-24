@@ -21,7 +21,6 @@ import {
   type CreateReActAgentLocalOptions,
   type CreateReActAgentOptions
 } from './createReActAgent.js'
-import { mergeToolSets, type CoreMessage, type ToolOnTool } from '@openworker/base-agent'
 import {
   buildMcpToolsFromConfig,
   disposeMcpConnectionPool,
@@ -33,6 +32,7 @@ import {
   contentToText,
   findLastAssistantMessage,
   runReactLoop,
+  type CoreMessage,
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
@@ -40,6 +40,8 @@ import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
 import {
   buildWorkspaceRunPrompt,
   buildWorkspaceTools,
+  mergeToolSets,
+  type ToolOnTool,
   type WorkspacePromptExtras
 } from '@openworker/tools'
 export type { AgentRunResult, AgentRunTavilyOptions } from './createReActAgent.js'

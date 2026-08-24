@@ -10,16 +10,19 @@ import type { PreparedTooling } from './run-types.js'
 import {
   contentToText,
   findLastAssistantMessage,
-  mergeToolSets,
   runReactLoop,
   type CoreMessage,
-  type ToolObservation,
-  type ToolOnTool,
   userMessage
 } from '@openworker/base-agent'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { formatToolResultForContext, wrapToolOnTool } from './tool-context.js'
-import { buildWorkspaceRunPrompt, buildWorkspaceTools } from '@openworker/tools'
+import {
+  buildWorkspaceRunPrompt,
+  buildWorkspaceTools,
+  mergeToolSets,
+  type ToolObservation,
+  type ToolOnTool
+} from '@openworker/tools'
 
 /**
  * 从 messages 提取最后一条助手文本。
