@@ -41,7 +41,9 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,mjs,cjs,js,jsx,json,md,scss,css}\"",
     "release:ap": "pnpm --filter @openworker/ap release",
     "release:skills": "pnpm --filter @openworker/skills release",
-    "release:tools": "pnpm --filter @openworker/tools release"
+    "release:tools": "pnpm --filter @openworker/tools release",
+    "release:llm": "pnpm --filter @openworker/llm release",
+    "release:base-agent": "pnpm --filter @openworker/base-agent release"
   },
   "dependencies": {
     "ai": "catalog:",

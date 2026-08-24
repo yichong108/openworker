@@ -1,16 +1,43 @@
 {
   "name": "@openworker/base-agent",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "OpenWorker base agent — ReAct loop and shell tool only",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yichong108/openworker.git",
+    "directory": "packages/base-agent"
+  },
+  "bugs": {
+    "url": "https://github.com/yichong108/openworker/issues"
+  },
   "type": "module",
-  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "publint": "pnpm run build && publint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
+    "release": "pnpm run test && pnpm run check-npm-auth && tsc -p tsconfig.build.json && pnpm publish --access public --no-git-checks"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
     "@openworker/llm": "workspace:*",
@@ -20,6 +47,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "publint": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.1.10"
   }
