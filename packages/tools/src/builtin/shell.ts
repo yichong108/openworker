@@ -3,7 +3,7 @@ import type { ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { defineTool, type ToolOnTool } from '../define-tool.js'
-import { runCommand } from '../terminal.js'
+import { runCommand } from '../terminal-manager.js'
 
 /**
  * 组装 shell 工具的选项。
