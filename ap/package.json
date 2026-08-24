@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "publint": "catalog:",
     "tsx": "^4.19.4",
     "typescript": "catalog:"
   }

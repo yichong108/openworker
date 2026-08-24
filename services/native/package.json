@@ -21,7 +21,8 @@
     "@openworker/uni-agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/cors": "^2.8.18",

@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "publint": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.1.10"
   }
