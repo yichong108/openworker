@@ -40,8 +40,6 @@ function extractAssistantText(messages: CoreMessage[]): string {
  */
 type PrepareToolingFn = (args: {
   composerMode: AgentComposerMode
-  /** Shell 命令隔离键（宿主提供） */
-  terminalKey: string
   root: string
   /** Tavily API Key（可选） */
   tavilyApiKey?: string
@@ -235,14 +233,12 @@ export function createReActAgent(options: CreateReActAgentOptions): ReActAgent {
    */
   const prepareTooling: PrepareToolingFn = async ({
     composerMode,
-    terminalKey,
     root,
     tavilyApiKey,
     tools: runTools,
     onTool
   }) => {
     const workspaceTools = buildWorkspaceTools({
-      terminalKey,
       root,
       tavilyApiKey,
       onTool,
@@ -293,13 +289,10 @@ export function createReActAgent(options: CreateReActAgentOptions): ReActAgent {
     const abortController = input.abortController ?? new AbortController()
     // 工作区路径：本轮 send 入参优先，其次 createReActAgent local.cwd（已含默认）
     const root = input.workspacePath?.trim() || defaultCwd
-    // Shell 隔离键由宿主提供；agent 不使用 sessionId
-    const terminalKey = input.terminalKey?.trim() || 'term:default'
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
     const tooling = await prepareTooling({
       composerMode,
-      terminalKey,
       root,
       tavilyApiKey,
       tools: input.tools,

@@ -173,13 +173,11 @@ export function createBaseAgent(options: CreateBaseAgentOptions): BaseAgent {
    * 组装本轮工具与 system prompt：shell 工具 + 本轮可选 tools。
    */
   async function prepareTooling(args: {
-    terminalKey: string
     root: string
     tools?: ToolSet
     onTool: ToolOnTool
   }): Promise<PreparedTooling> {
     const shellTools = buildShellTool({
-      terminalKey: args.terminalKey,
       root: args.root,
       onTool: args.onTool
     })
@@ -219,10 +217,8 @@ export function createBaseAgent(options: CreateBaseAgentOptions): BaseAgent {
     const provider = input.provider ?? defaultProvider
     const abortController = input.abortController ?? new AbortController()
     const root = input.workspacePath?.trim() || defaultCwd
-    const terminalKey = input.terminalKey?.trim() || 'term:default'
 
     const tooling = await prepareTooling({
-      terminalKey,
       root,
       tools: input.tools,
       onTool

@@ -223,7 +223,6 @@ export function createAgent(options: CreateAgentOptions): Agent {
     const provider: LanguageModel = input.provider ?? defaultProvider
     const abortController = input.abortController ?? new AbortController()
     const root = input.workspacePath?.trim() || defaultCwd
-    const terminalKey = input.terminalKey?.trim() || 'term:default'
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
     const { tools: extraTools, promptExtras } = await loadSkillsAndMcpTools(
@@ -233,7 +232,6 @@ export function createAgent(options: CreateAgentOptions): Agent {
     )
 
     const workspaceTools = buildWorkspaceTools({
-      terminalKey,
       root,
       tavilyApiKey,
       onTool,

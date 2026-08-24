@@ -1,5 +1,6 @@
 import { tool, type Tool, type ToolExecutionOptions, type ToolSet } from 'ai'
 import type { z } from 'zod'
+import { toolsLog } from './logger'
 
 /**
  * 工具执行生命周期观察（start / end）。
@@ -120,6 +121,8 @@ export function defineTool<T extends z.ZodTypeAny>(
         timestampMs: startedAt
       })
 
+      toolsLog.info('execute tool start', { id, args })
+
       const result = await execute?.(parsed, options)
       const resultStr = toolResultToObservation(result)
 
@@ -130,6 +133,8 @@ export function defineTool<T extends z.ZodTypeAny>(
         result: resultStr,
         timestampMs: Date.now()
       })
+
+      toolsLog.info('execute tool end', { id, result: resultStr })
 
       return result
     }

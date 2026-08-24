@@ -1,16 +1,14 @@
 import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
-import { terminalManager } from '@openworker/shared/single-instance'
 import type { ToolSet } from 'ai'
 import { z } from 'zod'
 
 import { defineTool, type ToolOnTool } from '../define-tool.js'
+import { runWorkspaceCommandOnce } from '../workspace-shell.js'
 
 /**
  * 组装 shell 工具的选项。
  */
 export type BuildShellToolOptions = {
-  /** Shell 命令隔离键（由宿主提供） */
-  terminalKey: string
   /** 工作区根目录 */
   root: string
   /** 工具生命周期观察回调 */
@@ -20,12 +18,13 @@ export type BuildShellToolOptions = {
 /**
  * 构建仅含 shell 工具的 ToolSet。
  *
- * @param options - 终端键、工作区与观察回调
+ * 每次 execute 独立 spawn，不经过 TerminalManager；取消靠 abortSignal 杀本子进程。
+ *
+ * @param options - 工作区与观察回调
  * @returns 仅含 shell 一项的 ToolSet
  */
 export function buildShellTool(options: BuildShellToolOptions): ToolSet {
-  const { terminalKey, root, onTool } = options
-  const termKey = terminalKey.trim() || 'term:default'
+  const { root, onTool } = options
 
   return defineTool(
     {
@@ -33,8 +32,8 @@ export function buildShellTool(options: BuildShellToolOptions): ToolSet {
       description:
         '在工作区根目录执行 shell 命令并等待结束，返回合并的 stdout/stderr（过长会截断）。用于安装依赖、构建、测试、git 等。',
       parameters: z.object({ command: z.string() }),
-      execute: ({ command }) =>
-        terminalManager.runCommand(termKey, root, command, MAX_TERMINAL_OUTPUT_CHARS)
+      execute: ({ command }, execOptions) =>
+        runWorkspaceCommandOnce(root, command, MAX_TERMINAL_OUTPUT_CHARS, execOptions.abortSignal)
     },
     onTool
   )

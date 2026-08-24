@@ -20,6 +20,7 @@
     "@openworker/memory": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
+    "@openworker/tools": "workspace:*",
     "@openworker/uni-agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",

@@ -84,13 +84,11 @@ describe('plan mode tools & prompt', () => {
   it('plan 与 ask 一样只暴露只读工具', () => {
     const onTool = () => {}
     const askTools = buildWorkspaceTools({
-      terminalKey: 't',
       root: '/tmp/ws',
       onTool,
       mode: 'ask'
     })
     const planTools = buildWorkspaceTools({
-      terminalKey: 't',
       root: '/tmp/ws',
       onTool,
       mode: 'plan'

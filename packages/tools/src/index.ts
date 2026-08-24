@@ -1,6 +1,6 @@
 /**
  * @openworker/tools 公共 API — defineTool、内建工具、path-guard、TerminalManager。
- * 进程内单例 `terminalManager` 在 `@openworker/shared/single-instance`。
+ * TerminalManager 供宿主交互式终端；agent shell 独立 spawn 并监听 abort。
  */
 
 export * from './define-tool.js'

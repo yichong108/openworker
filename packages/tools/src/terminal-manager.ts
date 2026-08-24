@@ -1,15 +1,12 @@
-import { type ChildProcess, spawn } from 'node:child_process'
-import { TextDecoder } from 'node:util'
+import { type ChildProcess } from 'node:child_process'
 
 import { ensureWorkspaceExists } from './path-guard.js'
-
-function truncate(s: string, max: number): { text: string; truncated: boolean } {
-  if (s.length <= max) return { text: s, truncated: false }
-  return {
-    text: s.slice(0, max) + `\n[Output truncated, original length ${s.length} characters]`,
-    truncated: true
-  }
-}
+import {
+  createConsoleOutputDecoder,
+  killChildProcess,
+  spawnWorkspaceShell,
+  truncateOutput
+} from './workspace-shell.js'
 
 /**
  * shell 命令流式输出回调（如宿主右侧终端）。
@@ -20,134 +17,9 @@ export type RunCommandHandlers = {
 }
 
 /**
- * 截去可能不完整的 UTF-8 尾部，避免按块解码时把跨 chunk 的多字节字符误判为非法。
+ * 按 sessionKey 跟踪宿主交互式终端子进程：执行、取消与运行态查询。
  *
- * @param buf - 待拆分的字节
- * @returns complete 可安全解码的前缀；rest 需留到下一 chunk
- */
-function splitIncompleteUtf8Tail(buf: Buffer): { complete: Buffer; rest: Buffer } {
-  if (buf.length === 0) return { complete: buf, rest: Buffer.alloc(0) }
-  const last = buf[buf.length - 1]!
-  if (last < 0x80) return { complete: buf, rest: Buffer.alloc(0) }
-
-  let i = buf.length - 1
-  let cont = 0
-  while (i >= 0 && cont < 3 && (buf[i]! & 0xc0) === 0x80) {
-    cont += 1
-    i -= 1
-  }
-  if (i < 0) return { complete: Buffer.alloc(0), rest: buf }
-
-  const lead = buf[i]!
-  const need =
-    (lead & 0xe0) === 0xc0 ? 1 : (lead & 0xf0) === 0xe0 ? 2 : (lead & 0xf8) === 0xf0 ? 3 : -1
-  if (need > 0 && cont < need) {
-    return { complete: buf.subarray(0, i), rest: buf.subarray(i) }
-  }
-  return { complete: buf, rest: Buffer.alloc(0) }
-}
-
-/**
- * 判断缓冲区是否仅含 ASCII（无高位字节）。
- *
- * @param buf - 待检查字节
- */
-function isAsciiOnly(buf: Buffer): boolean {
-  for (let i = 0; i < buf.length; i += 1) {
-    if (buf[i]! >= 0x80) return false
-  }
-  return true
-}
-
-/**
- * 创建控制台 stdout/stderr 流式解码器。
- *
- * Windows 管道输出常为系统 ANSI 代码页（中文为 GBK），直接 `toString('utf8')` 会乱码；
- * 优先按 UTF-8 解码，遇到非法序列再回退 GBK。ASCII 前缀不锁定编码，避免误判。
- *
- * @returns 将 Buffer chunk 转为字符串的函数
- */
-function createConsoleOutputDecoder(): (chunk: Buffer) => string {
-  if (process.platform !== 'win32') {
-    const utf8 = new TextDecoder('utf-8')
-    return (chunk) => utf8.decode(chunk, { stream: true })
-  }
-
-  let pending: Buffer = Buffer.alloc(0)
-  let encoding: 'utf8' | 'gbk' | null = null
-  let decoder: TextDecoder | null = null
-
-  return (chunk: Buffer) => {
-    const buf = pending.length > 0 ? Buffer.concat([pending, chunk]) : chunk
-    pending = Buffer.alloc(0)
-
-    if (encoding && decoder) {
-      return decoder.decode(buf, { stream: true })
-    }
-
-    const { complete, rest } = splitIncompleteUtf8Tail(buf)
-    if (complete.length === 0) {
-      pending = Buffer.from(rest)
-      return ''
-    }
-
-    if (isAsciiOnly(complete)) {
-      pending = Buffer.from(rest)
-      return complete.toString('utf8')
-    }
-
-    try {
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(complete)
-      encoding = 'utf8'
-      decoder = new TextDecoder('utf-8')
-      pending = Buffer.from(rest)
-      return text
-    } catch {
-      encoding = 'gbk'
-      decoder = new TextDecoder('gbk')
-      return decoder.decode(Buffer.concat([complete, rest]), { stream: true })
-    }
-  }
-}
-
-/**
- * 为 Windows 子进程准备环境：引导 Python 等工具使用 UTF-8。
- */
-function buildWorkspaceShellEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env }
-  if (process.platform === 'win32') {
-    env.PYTHONIOENCODING = env.PYTHONIOENCODING || 'utf-8'
-    env.PYTHONUTF8 = env.PYTHONUTF8 || '1'
-    env.LANG = env.LANG || 'zh_CN.UTF-8'
-  }
-  return env
-}
-
-function spawnWorkspaceShell(command: string, cwd: string): ChildProcess {
-  const env = buildWorkspaceShellEnv()
-  if (process.platform === 'win32') {
-    // 切换到 UTF-8 代码页，减轻 cmd 内建命令与多数控制台工具的中文乱码
-    const wrapped = `chcp 65001>NUL && ${command}`
-    return spawn(wrapped, {
-      cwd,
-      env,
-      shell: true,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
-  }
-  return spawn('/bin/sh', ['-c', command], {
-    cwd,
-    env,
-    stdio: ['ignore', 'pipe', 'pipe']
-  })
-}
-
-/**
- * 按 sessionKey 跟踪工作区 shell 子进程：执行、取消与运行态查询。
- *
- * 进程表与取消集合挂在实例上，便于测试隔离；宿主应使用
- * `@openworker/shared/single-instance` 的 `terminalManager` 单例。
+ * 仅供宿主右侧栏等交互式终端使用；agent shell 工具不经过本类，各自 spawn 并监听 abort。
  */
 export class TerminalManager {
   private readonly running = new Map<string, ChildProcess>()
@@ -194,7 +66,7 @@ export class TerminalManager {
           child.stdout?.removeAllListeners('data')
           child.stderr?.removeAllListeners('data')
           void this.killCommand(sessionKey)
-          const { text: truncated } = truncate(out, maxOutputChars)
+          const { text: truncated } = truncateOutput(out, maxOutputChars)
           const msg = truncated + '\n[Process terminated due to excessive output]'
           finish(streaming ? '\n[Process terminated due to excessive output]' : msg)
         }
@@ -204,7 +76,7 @@ export class TerminalManager {
       const done = (code: number | null) => {
         const wasCancelled = this.cancelledSessions.delete(sessionKey)
         this.running.delete(sessionKey)
-        const { text } = truncate(out, maxOutputChars)
+        const { text } = truncateOutput(out, maxOutputChars)
         const suffix = wasCancelled
           ? '\n[Command cancelled]'
           : code && code !== 0
@@ -229,38 +101,7 @@ export class TerminalManager {
     const c = this.running.get(sessionKey)
     if (!c) return Promise.resolve()
     this.cancelledSessions.add(sessionKey)
-    return new Promise((resolve) => {
-      c.once('close', () => resolve())
-      const pid = c.pid
-      if (process.platform === 'win32' && pid) {
-        const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
-          stdio: 'ignore',
-          windowsHide: true
-        })
-        killer.on('error', () => {
-          try {
-            c.kill()
-          } catch {
-            /* ignore */
-          }
-        })
-      } else {
-        try {
-          c.kill('SIGTERM')
-        } catch {
-          /* ignore */
-        }
-      }
-      setTimeout(() => {
-        if (!c.killed) {
-          try {
-            c.kill('SIGKILL')
-          } catch {
-            /* ignore */
-          }
-        }
-      }, 3000)
-    })
+    return killChildProcess(c)
   }
 
   /**

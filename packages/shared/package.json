@@ -6,14 +6,10 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./load-env": "./src/load-env.ts",
-    "./single-instance": "./src/single-instance.ts"
+    "./load-env": "./src/load-env.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@openworker/tools": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -2,7 +2,6 @@
  * Native 会话级 Agent 运行时：run / cancel / hydrate，经 SSE 推送 AG-UI 事件
  */
 
-import { terminalManager } from '@openworker/shared/single-instance'
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
 import {
   type AgentSendOptions,
@@ -123,7 +122,7 @@ export function getSessionAguiMessages(sessionId: string): Message[] {
 }
 
 /**
- * 清除会话运行时：取消进行中的 run、释放 agent、杀掉终端进程并删除会话条目。
+ * 清除会话运行时：取消进行中的 run、释放 agent 并删除会话条目。
  *
  * @param sessionId - 会话 ID
  */
@@ -137,7 +136,6 @@ export function clearSessionState(sessionId: string): void {
   if (s?.agent) {
     void s.agent.dispose()
   }
-  void terminalManager.killCommand(s?.terminalKey ?? `term:${sessionId}`)
   sessions.delete(sessionId)
   clearSessionWorking(sessionId)
   clearSessionMessagesCache(sessionId)
@@ -157,7 +155,6 @@ export function cancelRun(sessionId: string): void {
   s?.subscription?.unsubscribe()
   if (s) s.subscription = null
   s?.agent.abortRun()
-  void terminalManager.killCommand(`term:${sessionId}`)
 }
 
 /**

@@ -24,8 +24,6 @@ export function isReadonlyComposerMode(mode?: AgentComposerMode): boolean {
  * 组装工作区基础工具（fs / grep / shell / 可选 web_search）的选项。
  */
 export type BuildWorkspaceToolsOptions = {
-  /** Shell 命令隔离键（由宿主提供；agent 不感知 sessionId） */
-  terminalKey: string
   root: string
   /** Tavily API Key；未配置时不注册 web_search（仍可读环境变量） */
   tavilyApiKey?: string
@@ -46,17 +44,16 @@ export type BuildWorkspaceToolsOptions = {
  * 这是 agent 内建能力：读写文件、搜索、shell、可选联网搜索。
  * MCP 由 send 内部从 ~/.openworker/mcp.json 叠加；意图筛选由宿主增强。
  *
- * @param options - 终端键、工作区、Tavily 与观察回调
+ * @param options - 工作区、Tavily 与观察回调
  * @returns AI SDK ToolSet
  */
 export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSet {
-  const { terminalKey, root, tavilyApiKey, onTool, userDataRoot, mode } = options
-  const termKey = terminalKey.trim() || 'term:default'
+  const { root, tavilyApiKey, onTool, userDataRoot, mode } = options
 
   const tools = mergeToolSets(
     buildFsTools({ root, userDataRoot, onTool }),
     buildGrepTool({ root, onTool }),
-    buildShellTool({ terminalKey: termKey, root, onTool }),
+    buildShellTool({ root, onTool }),
     buildWebSearchTool({ tavilyApiKey, onTool })
   )
 

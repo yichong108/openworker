@@ -77,9 +77,5 @@ export {
 /** 路径安全（宿主 workspace 文件 API 可复用） */
 export { ensureWorkspaceExists, resolveSafePath } from '@openworker/tools'
 
-/** 终端进程控制（宿主 IPC / 取消 run 用） */
-export {
-  TerminalManager,
-  terminalManager,
-  type RunCommandHandlers
-} from '@openworker/shared/single-instance'
+/** 终端进程控制（宿主交互式终端用；agent shell 不经过此类） */
+export { TerminalManager, type RunCommandHandlers } from '@openworker/tools'
