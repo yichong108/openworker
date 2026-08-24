@@ -21,7 +21,6 @@ export {
   getActiveProviderProfile,
   MAX_AGENT_LOOP_STEPS,
   MAX_MCP_SERVERS,
-  MAX_TERMINAL_OUTPUT_CHARS,
   mergeFormIntoProviderProfiles,
   normalizeComposerMode,
   normalizeSettings,

@@ -4,8 +4,7 @@ import { ensureWorkspaceExists } from './path-guard.js'
 import {
   createConsoleOutputDecoder,
   killChildProcess,
-  spawnWorkspaceShell,
-  truncateOutput
+  spawnWorkspaceShell
 } from './workspace-shell.js'
 
 /**
@@ -31,7 +30,6 @@ export class TerminalManager {
    * @param sessionKey - 会话键，用于取消/互斥
    * @param workspace - 工作区根目录
    * @param command - 要执行的命令
-   * @param maxOutputChars - 输出截断上限
    * @param handlers - 可选流式回调
    * @returns 合并 stdout/stderr（或流式模式下的状态后缀）
    */
@@ -39,7 +37,6 @@ export class TerminalManager {
     sessionKey: string,
     workspace: string,
     command: string,
-    maxOutputChars: number,
     handlers?: RunCommandHandlers
   ): Promise<string> {
     const cwd = ensureWorkspaceExists(workspace)
@@ -61,28 +58,18 @@ export class TerminalManager {
         if (!text) return
         out += text
         handlers?.onChunk?.(text, stream)
-        if (out.length > maxOutputChars * 2) {
-          out = out.slice(0, maxOutputChars * 2)
-          child.stdout?.removeAllListeners('data')
-          child.stderr?.removeAllListeners('data')
-          void this.killCommand(sessionKey)
-          const { text: truncated } = truncateOutput(out, maxOutputChars)
-          const msg = truncated + '\n[Process terminated due to excessive output]'
-          finish(streaming ? '\n[Process terminated due to excessive output]' : msg)
-        }
       }
       child.stdout?.on('data', (chunk) => push(chunk, 'stdout'))
       child.stderr?.on('data', (chunk) => push(chunk, 'stderr'))
       const done = (code: number | null) => {
         const wasCancelled = this.cancelledSessions.delete(sessionKey)
         this.running.delete(sessionKey)
-        const { text } = truncateOutput(out, maxOutputChars)
         const suffix = wasCancelled
           ? '\n[Command cancelled]'
           : code && code !== 0
             ? `\n[Exit code ${code}]`
             : ''
-        finish(streaming ? suffix : text + suffix)
+        finish(streaming ? suffix : out + suffix)
       }
       child.on('error', (err) => {
         this.running.delete(sessionKey)

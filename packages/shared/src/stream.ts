@@ -1,6 +1,3 @@
-/** 终端/命令单条输出最大字符（内置） */
-export const MAX_TERMINAL_OUTPUT_CHARS = 10000
-
 type RunRef = {
   traceId?: string
   runId?: string

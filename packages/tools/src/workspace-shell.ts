@@ -4,21 +4,6 @@ import { TextDecoder } from 'node:util'
 import { ensureWorkspaceExists } from './path-guard.js'
 
 /**
- * 截断过长的命令输出。
- *
- * @param s - 原始输出
- * @param max - 字符上限
- * @returns 截断后文本与是否发生截断
- */
-export function truncateOutput(s: string, max: number): { text: string; truncated: boolean } {
-  if (s.length <= max) return { text: s, truncated: false }
-  return {
-    text: s.slice(0, max) + `\n[Output truncated, original length ${s.length} characters]`,
-    truncated: true
-  }
-}
-
-/**
  * 截去可能不完整的 UTF-8 尾部，避免按块解码时把跨 chunk 的多字节字符误判为非法。
  *
  * @param buf - 待拆分的字节
@@ -197,14 +182,12 @@ export function killChildProcess(child: ChildProcess): Promise<void> {
  *
  * @param workspace - 工作区根目录
  * @param command - 要执行的命令
- * @param maxOutputChars - 输出截断上限
  * @param abortSignal - 取消信号；触发时终止本子进程
  * @returns 合并 stdout/stderr
  */
 export function runWorkspaceCommandOnce(
   workspace: string,
   command: string,
-  maxOutputChars: number,
   abortSignal?: AbortSignal
 ): Promise<string> {
   const cwd = ensureWorkspaceExists(workspace)
@@ -240,14 +223,6 @@ export function runWorkspaceCommandOnce(
       const text = stream === 'stdout' ? decodeStdout(chunk) : decodeStderr(chunk)
       if (!text) return
       out += text
-      if (out.length > maxOutputChars * 2) {
-        out = out.slice(0, maxOutputChars * 2)
-        child.stdout?.removeAllListeners('data')
-        child.stderr?.removeAllListeners('data')
-        void killChildProcess(child)
-        const { text: truncated } = truncateOutput(out, maxOutputChars)
-        finish(truncated + '\n[Process terminated due to excessive output]')
-      }
     }
 
     child.stdout?.on('data', (chunk) => push(chunk, 'stdout'))
@@ -256,13 +231,12 @@ export function runWorkspaceCommandOnce(
       finish(`Child process error: ${err.message}`)
     })
     child.on('close', (code) => {
-      const { text } = truncateOutput(out, maxOutputChars)
       const suffix = cancelled
         ? '\n[Command cancelled]'
         : code && code !== 0
           ? `\n[Exit code ${code}]`
           : ''
-      finish(text + suffix)
+      finish(out + suffix)
     })
   })
 }

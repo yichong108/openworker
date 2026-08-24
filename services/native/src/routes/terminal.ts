@@ -3,7 +3,6 @@
  */
 
 import { Router, type Router as ExpressRouter } from 'express'
-import { MAX_TERMINAL_OUTPUT_CHARS } from '@openworker/shared'
 import { terminalManager } from '../terminal-manager.js'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
@@ -61,17 +60,11 @@ terminalRouter.post('/terminal/run', async (req, res) => {
   })
 
   try {
-    const output = await terminalManager.runCommand(
-      sessionKey,
-      cwd,
-      trimmed,
-      MAX_TERMINAL_OUTPUT_CHARS,
-      {
-        onChunk: (chunk, stream) => {
-          writeSseData(res, { workspaceId, chunk, stream }, 'terminal')
-        }
+    const output = await terminalManager.runCommand(sessionKey, cwd, trimmed, {
+      onChunk: (chunk, stream) => {
+        writeSseData(res, { workspaceId, chunk, stream }, 'terminal')
       }
-    )
+    })
     writeSseData(res, { workspaceId, output }, 'result')
   } catch (error) {
     writeSseData(
