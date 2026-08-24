@@ -29,8 +29,6 @@ export type BuildWorkspaceToolsOptions = {
   tavilyApiKey?: string
   /** 工具生命周期观察回调 */
   onTool: ToolOnTool
-  /** 可选第二根目录（如 Electron userData），供 glob 搜索 */
-  userDataRoot?: string | null
   /**
    * ask / plan：仅只读工具；build（默认）：含写文件与 shell。
    * 未传则返回完整工具集。
@@ -48,10 +46,10 @@ export type BuildWorkspaceToolsOptions = {
  * @returns AI SDK ToolSet
  */
 export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSet {
-  const { root, tavilyApiKey, onTool, userDataRoot, mode } = options
+  const { root, tavilyApiKey, onTool, mode } = options
 
   const tools = mergeToolSets(
-    buildFsTools({ root, userDataRoot, onTool }),
+    buildFsTools({ root, onTool }),
     buildGrepTool({ root, onTool }),
     buildShellTool({ root, onTool }),
     buildWebSearchTool({ tavilyApiKey, onTool })

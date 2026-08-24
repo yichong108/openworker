@@ -143,16 +143,6 @@ const GLOB_EXCLUDE = [
   '**/coverage/**'
 ] as const
 
-/** 第二根目录（如 Electron userData）额外排除项 */
-const GLOB_EXCLUDE_USERDATA_EXTRA = [
-  '**/Cache/**',
-  '**/GPUCache/**',
-  '**/blob_storage/**',
-  '**/skills/.cache/**',
-  '**/Code Cache/**',
-  '**/DawnGraphiteCache/**'
-] as const
-
 async function globFilesUnderRoot(
   rootAbs: string,
   pat: string,
@@ -187,22 +177,18 @@ async function globFilesUnderRoot(
   return { relPosix, hitCap }
 }
 
-function rootsAreSame(a: string, b: string): boolean {
-  return path.normalize(path.resolve(a)) === path.normalize(path.resolve(b))
-}
-
 /**
- * 按 glob 模式在工作区（及可选第二根目录）查找文件路径。
+ * 按 glob 模式在工作区查找文件路径。
  *
  * @param workspace - 工作区根目录
  * @param pattern - Node 风格 glob（相对路径）
- * @param options - maxFiles、userDataRoot（如 Electron userData）
- * @returns 分段路径列表文本
+ * @param options - maxFiles
+ * @returns 路径列表文本
  */
 export async function globFilesTool(
   workspace: string,
   pattern: string,
-  options?: { maxFiles?: number; userDataRoot?: string | null }
+  options?: { maxFiles?: number }
 ): Promise<string> {
   const root = ensureWorkspaceExists(workspace)
   const pat = pattern.trim()
@@ -218,59 +204,23 @@ export async function globFilesTool(
   }
 
   const maxFiles = Math.min(Math.max(options?.maxFiles ?? 200, 1), 500)
-  const wsBudget = Math.ceil(maxFiles / 2)
-  const udBudget = maxFiles - wsBudget
 
   let wsRel: string[] = []
   let wsHitCap = false
   try {
-    const ws = await globFilesUnderRoot(root, pat, wsBudget, GLOB_EXCLUDE)
+    const ws = await globFilesUnderRoot(root, pat, maxFiles, GLOB_EXCLUDE)
     wsRel = ws.relPosix
     wsHitCap = ws.hitCap
   } catch (e) {
     return `工作区 glob 失败：${(e as Error).message}`
   }
 
-  let udRel: string[] = []
-  let udHitCap = false
-  const udRaw = options?.userDataRoot?.trim()
-  if (udRaw && udBudget > 0 && !rootsAreSame(root, udRaw)) {
-    const udAbs = path.resolve(udRaw)
-    try {
-      const st = await fs.stat(udAbs)
-      if (st.isDirectory()) {
-        const excludeUd = [...GLOB_EXCLUDE, ...GLOB_EXCLUDE_USERDATA_EXTRA]
-        try {
-          const ud = await globFilesUnderRoot(udAbs, pat, udBudget, excludeUd)
-          udRel = ud.relPosix
-          udHitCap = ud.hitCap
-        } catch (e) {
-          return (
-            (wsRel.length ? `【工作区】\n${wsRel.sort().join('\n')}\n\n` : '') +
-            `用户数据目录 glob 失败：${(e as Error).message}`
-          )
-        }
-      }
-    } catch {
-      // userData doesn't exist or unreadable: ignore
-    }
-  }
-
-  if (!wsRel.length && !udRel.length) {
+  if (!wsRel.length) {
     return `无匹配文件：${pattern}`
   }
 
-  const lines: string[] = []
-  if (wsRel.length) {
-    lines.push('[工作区]\n' + [...wsRel].sort().join('\n'))
-  }
-  if (udRel.length) {
-    lines.push('[用户数据]（相对第二根目录）\n' + [...udRel].sort().join('\n'))
-  }
-
-  const truncatedNote =
-    wsHitCap || udHitCap ? `\n（最多返回 ${maxFiles} 条，某一分区已达上限）` : ''
-  return lines.join('\n\n') + truncatedNote
+  const truncatedNote = wsHitCap ? `\n（最多返回 ${maxFiles} 条）` : ''
+  return '[工作区]\n' + [...wsRel].sort().join('\n') + truncatedNote
 }
 
 /**
@@ -278,8 +228,6 @@ export async function globFilesTool(
  */
 export type BuildFsToolsOptions = {
   root: string
-  /** 可选第二根目录（如 Electron userData），供 glob 搜索 */
-  userDataRoot?: string | null
   /** 工具生命周期观察回调 */
   onTool: ToolOnTool
 }
@@ -287,11 +235,11 @@ export type BuildFsToolsOptions = {
 /**
  * 构建工作区 fs 相关 ToolSet。
  *
- * @param options - 工作区根、可选 userData 根与观察回调
+ * @param options - 工作区根与观察回调
  * @returns 含 read_file、write_file、delete_file、glob 的 ToolSet
  */
 export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
-  const { root, userDataRoot, onTool } = options
+  const { root, onTool } = options
 
   return mergeToolSets(
     defineTool(
@@ -324,15 +272,14 @@ export function buildFsTools(options: BuildFsToolsOptions): ToolSet {
     defineTool(
       {
         id: 'glob',
-        description: userDataRoot
-          ? '按模式在工作区根目录与用户数据根下 glob 匹配文件。仅返回文件路径（不含目录），分「工作区」与「用户数据」两段；模式为 Node 风格如 **/*.ts；两侧均排除 node_modules/.git/dist 及缓存目录'
-          : '按模式在工作区根目录下 glob 匹配文件。仅返回文件路径；模式为 Node 风格如 **/*.ts；排除 node_modules/.git/dist 等',
+        description:
+          '按模式在工作区根目录下 glob 匹配文件。仅返回文件路径；模式为 Node 风格如 **/*.ts；排除 node_modules/.git/dist 等',
         parameters: z.object({
           pattern: z.string(),
           max_results: z.number().int().min(1).max(500).optional()
         }),
         execute: ({ pattern, max_results }) =>
-          globFilesTool(root, pattern, { maxFiles: max_results, userDataRoot })
+          globFilesTool(root, pattern, { maxFiles: max_results })
       },
       onTool
     )
