@@ -11,6 +11,15 @@
       "default": "./dist/index.js"
     }
   },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yichong108/openworker.git",
+    "directory": "packages/skills"
+  },
+  "bugs": {
+    "url": "https://github.com/yichong108/openworker/issues"
+  },
   "files": [
     "dist",
     "README.md",

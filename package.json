@@ -40,7 +40,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,mjs,cjs,js,jsx,json,md,scss,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,mjs,cjs,js,jsx,json,md,scss,css}\"",
     "release:ap": "pnpm --filter @openworker/ap release",
-    "release:skills": "pnpm --filter @openworker/skills release"
+    "release:skills": "pnpm --filter @openworker/skills release",
+    "release:tools": "pnpm --filter @openworker/tools release"
   },
   "dependencies": {
     "ai": "catalog:",

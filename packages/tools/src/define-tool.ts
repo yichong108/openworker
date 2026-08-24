@@ -1,6 +1,6 @@
 import { tool, type Tool, type ToolExecutionOptions, type ToolSet } from 'ai'
 import type { z } from 'zod'
-import { toolsLog } from './logger'
+import { toolsLog } from './logger.js'
 
 /**
  * 工具执行生命周期观察（start / end）。

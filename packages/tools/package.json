@@ -1,17 +1,47 @@
 {
   "name": "@openworker/tools",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "OpenWorker agent tools — defineTool, workspace fs/grep/shell/web, path-guard, terminal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yichong108/openworker.git",
+    "directory": "packages/tools"
+  },
+  "bugs": {
+    "url": "https://github.com/yichong108/openworker/issues"
+  },
   "type": "module",
-  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./terminal-manager": "./src/terminal-manager.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./terminal-manager": {
+      "types": "./dist/terminal-manager.d.ts",
+      "default": "./dist/terminal-manager.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "publint": "pnpm run build && publint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
+    "release": "pnpm run test && pnpm run check-npm-auth && tsc -p tsconfig.build.json && npm publish"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
     "@vscode/ripgrep": "^1.18.0",
@@ -20,6 +50,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "publint": "catalog:",
     "typescript": "catalog:",
     "vitest": "^4.1.10"
   }

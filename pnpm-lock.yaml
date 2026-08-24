@@ -441,6 +441,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.24
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
