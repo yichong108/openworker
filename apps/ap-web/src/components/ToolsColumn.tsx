@@ -13,6 +13,7 @@ type CatalogSkill = {
 
 type ToolsColumnProps = {
   onAiAuthError?: (message: string) => void
+  className?: string
 }
 
 type ScheduleState = {
@@ -139,7 +140,7 @@ function writeSchedules(schedules: Record<string, ScheduleState>): void {
 /**
  * 工具集列：从 `.agents/skills` 挑选 skill，并用 Cursor SDK 开始/停止执行。
  */
-export function ToolsColumn({ onAiAuthError }: ToolsColumnProps) {
+export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   const [catalog, setCatalog] = useState<CatalogSkill[]>([])
   const [toolbox, setToolbox] = useState<string[]>([])
   const [running, setRunning] = useState<string[]>([])
@@ -390,7 +391,9 @@ export function ToolsColumn({ onAiAuthError }: ToolsColumnProps) {
   }, [])
 
   return (
-    <section className="relative z-20 flex min-h-0 min-w-0 flex-col overflow-visible rounded-2xl border border-dashed border-[var(--panel-edge)] bg-[var(--panel)]/60 py-3 pl-3 pr-1">
+    <section
+      className={`relative z-20 flex min-h-0 min-w-0 flex-col overflow-visible rounded-2xl border border-dashed border-[var(--panel-edge)] bg-[var(--panel)]/60 py-3 pl-3 pr-1 ${className ?? ''}`}
+    >
       <header className="relative mb-3 flex items-center justify-start gap-2 px-1">
         <div
           className="relative"

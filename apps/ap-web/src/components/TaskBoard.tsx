@@ -160,79 +160,77 @@ export function TaskBoard() {
   )
 
   return (
-    <main className="flex h-screen flex-col overflow-hidden">
-      <header className="flex h-12 shrink-0 items-center justify-end px-6">
-        <button
-          type="button"
-          aria-label="配置"
-          title="配置"
-          onClick={() => {
-            setConfigAuthError(null)
-            setConfigOpen(true)
-          }}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--paper)] transition hover:bg-white/10 hover:text-[var(--brass)]"
+    <main className="relative h-screen overflow-hidden p-4">
+      <button
+        type="button"
+        aria-label="配置"
+        title="配置"
+        onClick={() => {
+          setConfigAuthError(null)
+          setConfigOpen(true)
+        }}
+        className="absolute right-5 top-5 z-40 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--paper)] transition hover:bg-white/10 hover:text-[var(--brass)]"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-          </svg>
-        </button>
-      </header>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+        </svg>
+      </button>
 
       {loadError ? (
-        <p className="shrink-0 truncate px-6 pb-2 text-sm text-[var(--rust)]">{loadError}</p>
+        <p className="absolute left-4 top-4 z-40 max-w-sm truncate text-sm text-[var(--rust)]">
+          {loadError}
+        </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 px-6 pb-6">
-        <div className="grid h-full w-full grid-cols-5 gap-3">
-          {board
-            ? TASK_COLUMNS.map((column) => (
-                <TaskColumnView
-                  key={column}
-                  column={column}
-                  tasks={board[column]}
-                  expandedId={expanded[column]}
-                  details={details}
-                  loadingId={loadingId}
-                  detailError={detailError}
-                  onToggle={toggleCard}
-                  onCollapse={collapseColumn}
-                  onMove={moveTask}
-                  onDropTask={moveTask}
-                  onCreate={
-                    column === 'todo'
-                      ? () => {
-                          setCreateError(null)
-                          setDialogOpen(true)
-                        }
-                      : undefined
-                  }
-                />
-              ))
-            : TASK_COLUMNS.map((column) => (
-                <section
-                  key={column}
-                  className="rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] p-4 text-sm text-[var(--mist)]"
-                >
-                  加载中…
-                </section>
-              ))}
-          <ToolsColumn
-            onAiAuthError={(message) => {
-              setConfigAuthError(message)
-              setConfigOpen(true)
-            }}
-          />
-        </div>
+      <div className="grid h-full w-full grid-cols-5 gap-3">
+        {board
+          ? TASK_COLUMNS.map((column) => (
+              <TaskColumnView
+                key={column}
+                column={column}
+                tasks={board[column]}
+                expandedId={expanded[column]}
+                details={details}
+                loadingId={loadingId}
+                detailError={detailError}
+                onToggle={toggleCard}
+                onCollapse={collapseColumn}
+                onMove={moveTask}
+                onDropTask={moveTask}
+                onCreate={
+                  column === 'todo'
+                    ? () => {
+                        setCreateError(null)
+                        setDialogOpen(true)
+                      }
+                    : undefined
+                }
+              />
+            ))
+          : TASK_COLUMNS.map((column) => (
+              <section
+                key={column}
+                className="rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] p-4 text-sm text-[var(--mist)]"
+              >
+                加载中…
+              </section>
+            ))}
+        <ToolsColumn
+          onAiAuthError={(message) => {
+            setConfigAuthError(message)
+            setConfigOpen(true)
+          }}
+        />
       </div>
 
       <ConfigDialog
