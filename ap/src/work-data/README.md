@@ -1,12 +1,12 @@
 # 目录说明
 
-本目录是 work-data **种子**。`ap` 启动时拷贝到 `.agents/ap-config/work-data`；目标中已存在的同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
+本目录是 work-data **种子**。`ap` 启动时拷贝到 `.agents/ap-config/work-data`；`*-template.md` 会覆盖已有文件，其余同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
 
 ```text
 .agents/ap-config/work-data/
 ├── README.md
 ├── tasks/
-│   ├── task-template.md   ← 模板，不动
+│   ├── task-template.md   ← 模板，安装时覆盖
 │   ├── active/            ← AI 当前可以直接执行的任务
 │   ├── plan/              ← 需要人决策 / 澄清，由人处理
 │   ├── blocked/           ← 执行过程中被外部条件阻塞
@@ -14,7 +14,7 @@
 │       └── 年份/
 │
 └── decisions/             ← 已确认的架构决策
-    └── decision-template.md   ← 模板，不动
+    └── decision-template.md   ← 模板，安装时覆盖
 ```
 
 # decisions

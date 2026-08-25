@@ -68,7 +68,7 @@ export function resolveCreateFileName(kind: WorkDataKind, name?: string): string
 /**
  * 读取 task / decision 模板正文。
  *
- * 优先用工作区已安装的模板，便于用户改过的模板生效；
+ * 优先用工作区已安装的模板（安装时由种子覆盖 `*-template.md`）；
  * 工作区没有时回退到包内种子。
  *
  * @param kind - task 或 decision

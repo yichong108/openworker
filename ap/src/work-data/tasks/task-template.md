@@ -1,6 +1,6 @@
 # <任务名称>
 
-## Status
+## Task Status(Required)
 
 TODO
 
@@ -13,7 +13,7 @@ TODO
 - COMPLETED
 -->
 
-## Priority
+## Task Priority(Required)
 
 P1
 
@@ -25,7 +25,7 @@ P1
 - P3：低优先级
 -->
 
-## Dependencies
+## Task Dependencies(Required)
 
 - None
 
@@ -35,50 +35,16 @@ P1
 - TASK-XXX
 -->
 
-## Decision Needed
+## Context(Required)
 
 - None
-
-<!--
-仅当 Status 为 PLAN、文件位于 .agents/ap-config/work-data/tasks/plan/ 时填写。
-列出人必须拍板的问题，每条应能用一句话回答。
-澄清完成后清空本段。
--->
-
-## Context
-
 <!--
 说明为什么需要这个任务。
 描述当前系统状态、问题或背景。
 不要描述具体实现步骤。
 -->
 
-## Goal
-
-<!--
-明确这个任务最终要解决什么问题。
-应该描述结果，而不是实现过程。
--->
-
-## Scope
-
-### In Scope
-
--
--
--
-
-### Out of Scope
-
--
--
--
-
-<!--
-明确允许做什么，以及明确不应该顺手做什么。
--->
-
-## Requirements
+## Requirements(Required)
 
 -
 -
@@ -88,8 +54,9 @@ P1
 描述必须满足的功能或行为要求。
 -->
 
-## Constraints
+## Constraints(Required)
 
+- None
 -
 -
 -
@@ -102,55 +69,6 @@ P1
 - 遵循 ADR-XXX
 -->
 
-## Acceptance Criteria
+## Agent Notes
 
-- [ ]
-- [ ]
-- [ ]
-- [ ]
-
-<!--
-什么条件全部满足后，任务才能算完成。
-验收标准应该尽可能客观、可验证。
--->
-
-## Related Decisions
-
-- None
-  <!-- 任务完成后由 AI 填写 -->
-  <!--
-  相关架构决策：
-- ADR-001-xxx.md
-- ADR-002-xxx.md
-  -->
-
-## Completion
-
-### Implementation
-
-<!-- 任务完成后由 AI 填写 -->
-<!--
-实际实现了什么。
--->
-
-### Tests
-
-<!-- 任务完成后由 AI 填写 -->
-<!--
-任务完成后由 AI 填写：
-运行了哪些测试，结果如何。
--->
-
-### Validation
-
-<!-- 任务完成后由 AI 填写 -->
-<!--
-lint / type check / build / 其他验证结果。
--->
-
-### Notes
-
-<!-- 任务完成后由 AI 填写 -->
-<!--
-重要发现、偏差、遗留问题等。
--->
+<!-- 由 Agent 填写 -->
