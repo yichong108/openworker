@@ -598,9 +598,9 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
 }
 
 .app-session-placeholder {
-  color: var(--aw-color-text-secondary);
+  color: var(--aw-color-text-tertiary);
   font-size: var(--aw-font-xs);
-  padding: 8px 6px 8px 0;
+  padding: 8px 6px 8px 12px;
 }
 
 .app-session-item {
