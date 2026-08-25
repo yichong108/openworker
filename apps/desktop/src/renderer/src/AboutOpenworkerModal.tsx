@@ -3,7 +3,7 @@ import { App as AntdApp, Button, Modal, Spin, Typography } from 'antd'
 import { useCallback } from 'react'
 
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
-import { type AboutAppInfo, formatAboutAppCopyText, formatBuildIsoLocalHuman } from '@/shared/ipc'
+import { type AboutAppInfo, formatAboutAppCopyText, formatBuildIsoUtcHuman } from '@/shared/ipc'
 
 export type AboutOpenworkerModalProps = {
   open: boolean
@@ -24,8 +24,7 @@ export function AboutOpenworkerModal({ open, info, onClose }: AboutOpenworkerMod
     }
   }, [info, msgApi])
 
-  const buildDisplay =
-    info && info.buildIso ? (formatBuildIsoLocalHuman(info.buildIso) ?? '—') : '—'
+  const buildDisplay = info && info.buildIso ? (formatBuildIsoUtcHuman(info.buildIso) ?? '—') : '—'
 
   const commitDisplay = info?.gitCommit?.trim() ? info.gitCommit : '—'
 

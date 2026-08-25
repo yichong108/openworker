@@ -49,21 +49,15 @@ export type AboutAppInfo = {
 }
 
 /**
- * 将构建时刻 ISO 字符串格式化为当前运行环境的本地日历钟。
+ * 将构建时刻 ISO 字符串格式化为 UTC 日历钟。
  *
- * @param iso - 构建时写入的 ISO 时间（UTC）
+ * @param iso - ISO 时间
  */
-export function formatBuildIsoLocalHuman(iso: string): string | null {
+export function formatBuildIsoUtcHuman(iso: string): string | null {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-  const tz =
-    new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
-      .formatToParts(d)
-      .find((part) => part.type === 'timeZoneName')?.value ?? ''
-  return tz ? `${date} ${time} ${tz}` : `${date} ${time}`
+  const s = d.toISOString()
+  return `${s.slice(0, 10)} ${s.slice(11, 19)} UTC`
 }
 
 /**
@@ -72,7 +66,7 @@ export function formatBuildIsoLocalHuman(iso: string): string | null {
  * @param info - 关于信息
  */
 export function formatAboutAppCopyText(info: AboutAppInfo): string {
-  const buildLine = (formatBuildIsoLocalHuman(info.buildIso) ?? info.buildIso) || '(未知)'
+  const buildLine = (formatBuildIsoUtcHuman(info.buildIso) ?? info.buildIso) || '(未知)'
   return [
     info.productName,
     `版本: ${info.version}`,
