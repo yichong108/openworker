@@ -22,7 +22,7 @@ const FIELD =
   'mt-1.5 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none ring-[var(--brass)] focus:ring-2'
 
 /**
- * 配置弹窗：夜间工作室外壳 + 奶油纸面表单。
+ * 配置抽屉：自右向左滑入，左菜单 + 右内容区。
  */
 export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const [menu, setMenu] = useState<'ai'>('ai')
@@ -104,6 +104,15 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
     void loadConfig()
   }, [open, loadConfig])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
 
   const loggedIn = loginStatus === 'logged-in'
@@ -116,14 +125,14 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const banner = authError || modelError || saveError
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-[70]">
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/60 anim-fade-in"
         aria-label="关闭配置"
         onClick={onClose}
       />
-      <div className="relative flex h-[min(38rem,86vh)] w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] text-[var(--paper)] shadow-lift">
+      <div className="absolute right-0 top-0 flex h-full w-[min(42rem,92vw)] overflow-hidden border-l border-[var(--panel-edge)] bg-[var(--panel)] text-[var(--paper)] shadow-lift anim-slide-in-right">
         <nav className="flex w-40 shrink-0 flex-col border-r border-[var(--panel-edge)] px-3 py-5">
           <p className="px-2 font-display text-[11px] tracking-[0.22em] text-[var(--brass)]">
             CONFIG
