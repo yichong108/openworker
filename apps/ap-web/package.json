@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "dev": "cross-env BROWSER=none next dev --port 3010",
+    "dev": "cross-env BROWSER=none next dev --port 3011",
     "build": "next build",
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit"

@@ -36,7 +36,17 @@ export type TaskBoardPayload = {
 
 /** 创建任务时可由前端提交的字段 */
 export type CreateTaskInput = {
-  title: string
+  /** 任务名称；空则根据想法生成 */
+  title?: string
+  priority?: TaskPriority
+  context?: string
+  requirements?: string
+  constraints?: string
+}
+
+/** 编辑已有任务时可由前端提交的字段；未传的项保持原值 */
+export type UpdateTaskInput = {
+  title?: string
   priority?: TaskPriority
   context?: string
   requirements?: string

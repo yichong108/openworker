@@ -1,6 +1,8 @@
 'use client'
 
-import type { TaskColumn, TaskDetail, TaskSummary } from '@/lib/task-types'
+import { useEffect, useState } from 'react'
+
+import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import { columnAccent } from './CreateTaskDialog'
@@ -11,9 +13,15 @@ type TaskCardProps = {
   detail: TaskDetail | undefined
   loading: boolean
   error: string | null
+  saving: boolean
   onToggle: () => void
   onCollapse: () => void
   onMove: (status: TaskColumn) => void
+  onUpdate: (input: {
+    title: string
+    priority: TaskPriority
+    requirements: string
+  }) => Promise<boolean>
 }
 
 const PRIORITY_CLASS: Record<string, string> = {
@@ -23,8 +31,13 @@ const PRIORITY_CLASS: Record<string, string> = {
   P3: 'bg-black/15 text-[var(--ink-soft)]'
 }
 
+const PRIORITIES: TaskPriority[] = ['P0', 'P1', 'P2', 'P3']
+
+const FIELD =
+  'mt-1 w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 font-body text-[13px] outline-none ring-[var(--brass)] focus:ring-2'
+
 /**
- * 单张任务卡片：折叠显示标题；展开后在列内拉高并展示详情。
+ * 单张任务卡片：折叠显示标题；展开后可查看或编辑详情。
  */
 export function TaskCard({
   task,
@@ -32,10 +45,36 @@ export function TaskCard({
   detail,
   loading,
   error,
+  saving,
   onToggle,
   onCollapse,
-  onMove
+  onMove,
+  onUpdate
 }: TaskCardProps) {
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(task.title)
+  const [priority, setPriority] = useState<TaskPriority>(task.priority)
+  const [requirements, setRequirements] = useState('')
+
+  useEffect(() => {
+    if (!expanded) setEditing(false)
+  }, [expanded])
+
+  useEffect(() => {
+    if (!detail || editing) return
+    setTitle(detail.title)
+    setPriority(detail.priority)
+    setRequirements(detail.requirements)
+  }, [detail, editing])
+
+  const startEdit = () => {
+    if (!detail) return
+    setTitle(detail.title)
+    setPriority(detail.priority)
+    setRequirements(detail.requirements)
+    setEditing(true)
+  }
+
   return (
     <article
       draggable={!expanded}
@@ -43,14 +82,17 @@ export function TaskCard({
         event.dataTransfer.setData('text/plain', task.id)
         event.dataTransfer.effectAllowed = 'move'
       }}
-      className={`rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition ${
-        expanded ? 'shadow-lift' : 'hover:-translate-y-0.5'
+      className={`rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition-shadow ${
+        expanded ? 'shadow-lift' : 'hover:shadow-lift'
       }`}
     >
       <button
         type="button"
         className="flex w-full items-start gap-3 px-3 py-3 text-left"
-        onClick={onToggle}
+        onClick={() => {
+          if (editing) return
+          onToggle()
+        }}
       >
         <span
           className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${PRIORITY_CLASS[task.priority]}`}
@@ -74,7 +116,86 @@ export function TaskCard({
         <div className="border-t border-black/10 px-3 pb-3 pt-2">
           {loading ? <p className="text-sm text-[var(--ink-soft)]">加载详情…</p> : null}
           {error ? <p className="text-sm text-[var(--rust)]">{error}</p> : null}
-          {detail && !loading ? (
+          {detail && !loading && editing ? (
+            <form
+              className="space-y-3 text-sm"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const idea = requirements.trim()
+                if (!idea) return
+                void onUpdate({
+                  title: title.trim(),
+                  priority,
+                  requirements: idea
+                }).then((ok) => {
+                  if (ok) setEditing(false)
+                })
+              }}
+            >
+              <label className="block font-medium">
+                <span className="flex items-center gap-1.5">
+                  想法
+                  <span
+                    className="font-display text-base leading-none text-[var(--rust)]"
+                    aria-hidden
+                  >
+                    *
+                  </span>
+                  <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
+                </span>
+                <textarea
+                  value={requirements}
+                  onChange={(event) => setRequirements(event.target.value)}
+                  required
+                  autoFocus
+                  rows={5}
+                  className={`${FIELD} resize-y`}
+                  placeholder="要做什么"
+                />
+              </label>
+              <label className="block font-medium">
+                名称
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className={FIELD}
+                  placeholder="非必填，留空则保留原名称"
+                />
+              </label>
+              <label className="block font-medium">
+                优先级
+                <select
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value as TaskPriority)}
+                  className={FIELD}
+                >
+                  {PRIORITIES.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-1 text-[11px] text-[var(--ink-soft)] hover:bg-black/5"
+                  disabled={saving}
+                  onClick={() => setEditing(false)}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-[var(--ink)] px-3 py-1 text-[11px] text-[var(--paper)] disabled:opacity-60"
+                  disabled={saving}
+                >
+                  {saving ? '保存中…' : '保存'}
+                </button>
+              </div>
+            </form>
+          ) : null}
+          {detail && !loading && !editing ? (
             <div className="space-y-3 text-sm leading-6">
               <DetailBlock title="Context" body={detail.context} />
               <DetailBlock title="Requirements" body={detail.requirements} />
@@ -83,30 +204,40 @@ export function TaskCard({
             </div>
           ) : null}
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {(['todo', 'doing', 'done', 'blocked'] as TaskColumn[]).map((column) => (
+          {!editing ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {(['todo', 'doing', 'done', 'blocked'] as TaskColumn[]).map((column) => (
+                <button
+                  key={column}
+                  type="button"
+                  disabled={column === task.status}
+                  onClick={() => onMove(column)}
+                  className="rounded-md px-2 py-1 text-[11px] disabled:opacity-40"
+                  style={{
+                    background: column === task.status ? columnAccent(column) : 'rgba(0,0,0,0.06)',
+                    color: column === task.status ? '#fff' : 'var(--ink-soft)'
+                  }}
+                >
+                  {COLUMN_LABELS[column]}
+                </button>
+              ))}
               <button
-                key={column}
                 type="button"
-                disabled={column === task.status}
-                onClick={() => onMove(column)}
-                className="rounded-md px-2 py-1 text-[11px] disabled:opacity-40"
-                style={{
-                  background: column === task.status ? columnAccent(column) : 'rgba(0,0,0,0.06)',
-                  color: column === task.status ? '#fff' : 'var(--ink-soft)'
-                }}
+                className="text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline disabled:opacity-40"
+                disabled={!detail || loading}
+                onClick={startEdit}
               >
-                {COLUMN_LABELS[column]}
+                编辑
               </button>
-            ))}
-            <button
-              type="button"
-              className="ml-auto text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline"
-              onClick={onCollapse}
-            >
-              收起
-            </button>
-          </div>
+              <button
+                type="button"
+                className="ml-auto text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline"
+                onClick={onCollapse}
+              >
+                收起
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </article>

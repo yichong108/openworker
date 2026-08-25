@@ -1,0 +1,22 @@
+[
+  {
+    "name": "ap-refactor",
+    "userText": "",
+    "schedule": {
+      "enabled": false,
+      "time": "09:00",
+      "loops": 1,
+      "remaining": 1
+    }
+  },
+  {
+    "name": "ap-task-execute",
+    "userText": "",
+    "schedule": {
+      "enabled": false,
+      "time": "09:00",
+      "loops": 1,
+      "remaining": 1
+    }
+  }
+]

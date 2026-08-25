@@ -13,6 +13,7 @@ import {
   buildTaskMarkdown,
   formatLocalTimestamp,
   replaceTaskStatus,
+  serializeTaskMarkdown,
   toTaskDetail,
   toTaskSummary
 } from './task-parse'
@@ -21,10 +22,12 @@ import type {
   TaskBoardPayload,
   TaskColumn,
   TaskDetail,
-  TaskSummary
+  TaskSummary,
+  UpdateTaskInput
 } from './task-types'
 import { TASK_COLUMNS } from './task-types'
 import { getTasksRoot } from './tasks-root'
+import { resolveTaskTitle } from './task-title'
 
 export { TaskFsError } from './task-fs-error'
 
@@ -192,14 +195,15 @@ function destinationDir(column: TaskColumn): string {
 /**
  * 在 todo/ 创建任务文件，文件名为 task-YYYYMMDDHHmmSS.md。
  *
- * @param input - 标题等字段
+ * @param input - 名称、想法等字段
  * @returns 新任务详情
  */
-export function createTask(input: CreateTaskInput): TaskDetail {
-  const title = input.title.trim()
-  if (!title) {
-    throw new TaskFsError('标题不能为空', 400)
+export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
+  const requirements = input.requirements?.trim() ?? ''
+  if (!requirements) {
+    throw new TaskFsError('想法不能为空', 400)
   }
+  const title = await resolveTaskTitle(input.title, requirements)
 
   const tasksRoot = getTasksRoot()
   const destDir = join(tasksRoot, 'todo')
@@ -215,9 +219,41 @@ export function createTask(input: CreateTaskInput): TaskDetail {
     throw new TaskFsError('文件已存在，请重试', 409)
   }
 
-  const markdown = buildTaskMarkdown({ ...input, title })
+  const markdown = buildTaskMarkdown({ ...input, title, requirements })
   writeFileSync(dest, markdown, 'utf8')
   return readTask(toPosixId(tasksRoot, dest))
+}
+
+/**
+ * 就地更新任务正文：标题、优先级与想法（Requirements）。
+ *
+ * 不改目录、Status、依赖、Context、Constraints 与 Agent Notes。想法不能为空。
+ *
+ * @param id - 当前 id
+ * @param input - 要覆盖的字段
+ * @returns 更新后的详情
+ */
+export function updateTask(id: string, input: UpdateTaskInput): TaskDetail {
+  const current = readTask(id)
+  const title = input.title !== undefined ? input.title.trim() || current.title : current.title
+  const requirements =
+    input.requirements !== undefined ? input.requirements.trim() : current.requirements
+  if (!requirements) {
+    throw new TaskFsError('想法不能为空', 400)
+  }
+
+  const markdown = serializeTaskMarkdown({
+    title,
+    status: current.status,
+    priority: input.priority ?? current.priority,
+    dependencies: current.dependencies,
+    context: current.context,
+    requirements,
+    constraints: current.constraints,
+    agentNotes: current.agentNotes
+  })
+  writeFileSync(resolveSafeTaskFile(id), markdown, 'utf8')
+  return readTask(id)
 }
 
 /**

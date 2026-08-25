@@ -12,6 +12,9 @@ type CreateTaskDialogProps = {
 
 const PRIORITIES: TaskPriority[] = ['P0', 'P1', 'P2', 'P3']
 
+const FIELD =
+  'mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2'
+
 /**
  * 新建任务对话框。创建后始终写入 todo/。
  */
@@ -34,8 +37,8 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
           const data = new FormData(form)
           const title = String(data.get('title') ?? '').trim()
           const priority = String(data.get('priority') ?? 'P1') as TaskPriority
-          const requirements = String(data.get('requirements') ?? '')
-          if (!title) return
+          const requirements = String(data.get('requirements') ?? '').trim()
+          if (!requirements) return
           onSubmit({ title, priority, requirements })
         }}
       >
@@ -43,39 +46,37 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
         <p className="mt-1 text-sm text-[var(--ink-soft)]">写入 todo/，文件名按时间戳生成。</p>
 
         <label className="mt-5 block text-sm font-medium">
-          标题
-          <input
-            name="title"
+          <span className="flex items-center gap-1.5">
+            想法
+            <span className="font-display text-base leading-none text-[var(--rust)]" aria-hidden>
+              *
+            </span>
+            <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
+          </span>
+          <textarea
+            name="requirements"
             required
             autoFocus
-            className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-            placeholder="例如：实现用户登录"
+            rows={5}
+            className={`${FIELD} resize-y`}
+            placeholder="要做什么"
           />
         </label>
 
         <label className="mt-4 block text-sm font-medium">
+          名称
+          <input name="title" className={FIELD} placeholder="非必填，默认AI根据想法自动生成" />
+        </label>
+
+        <label className="mt-4 block text-sm font-medium">
           优先级
-          <select
-            name="priority"
-            defaultValue="P1"
-            className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-          >
+          <select name="priority" defaultValue="P1" className={FIELD}>
             {PRIORITIES.map((item) => (
               <option key={item} value={item}>
                 {item}
               </option>
             ))}
           </select>
-        </label>
-
-        <label className="mt-4 block text-sm font-medium">
-          Requirements
-          <textarea
-            name="requirements"
-            rows={5}
-            className="mt-1 w-full resize-y rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-            placeholder="要做什么"
-          />
         </label>
 
         {error ? <p className="mt-3 text-sm text-[var(--rust)]">{error}</p> : null}

@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const PAGE_SIZE = 20
-const STORAGE_KEY = 'ap-web-toolbox-skills'
-const SCHEDULE_KEY = 'ap-web-toolbox-schedules'
+const USER_TEXT_DEBOUNCE_MS = 400
 
 type CatalogSkill = {
   name: string
@@ -16,11 +15,20 @@ type ToolsColumnProps = {
   className?: string
 }
 
-type ScheduleState = {
+type StoredSchedule = {
   enabled: boolean
   time: string
   loops: number
   remaining: number
+}
+
+type ToolboxRecord = {
+  name: string
+  userText: string
+  schedule: StoredSchedule
+}
+
+type ScheduleState = StoredSchedule & {
   nextAt: number | null
 }
 
@@ -29,39 +37,16 @@ type RunSnapshot = {
   last?: Record<string, { ok?: boolean; error?: string; cancelled?: boolean; finishedAt?: number }>
 }
 
-/**
- * 从 localStorage 读出已加入工具集的 skill 名。
- *
- * @returns 名称数组
- */
-function readToolbox(): string[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is string => typeof item === 'string')
-  } catch {
-    return []
-  }
-}
-
-/**
- * 把工具集列表写入 localStorage。
- *
- * @param names - skill 名
- */
-function writeToolbox(names: string[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(names))
-}
-
 function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function blankSchedule(): ScheduleState {
-  return { enabled: false, time: '09:00', loops: 1, remaining: 1, nextAt: null }
+function blankSchedule(): StoredSchedule {
+  return { enabled: false, time: '09:00', loops: 1, remaining: 1 }
+}
+
+function blankRecord(name: string): ToolboxRecord {
+  return { name, userText: '', schedule: blankSchedule() }
 }
 
 function nextOccurrence(hhmm: string, from = Date.now()): number {
@@ -92,49 +77,8 @@ function sleep(ms: number): Promise<void> {
   })
 }
 
-/**
- * 从 localStorage 读出各工具的定时设置。
- */
-function readSchedules(): Record<string, ScheduleState> {
-  if (typeof window === 'undefined') return {}
-  try {
-    const raw = window.localStorage.getItem(SCHEDULE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object') return {}
-    const result: Record<string, ScheduleState> = {}
-    for (const [name, value] of Object.entries(parsed as Record<string, unknown>)) {
-      if (!value || typeof value !== 'object') continue
-      const item = value as Partial<ScheduleState>
-      const time =
-        typeof item.time === 'string' && /^\d{2}:\d{2}$/.test(item.time) ? item.time : '09:00'
-      const loops = Math.max(1, Math.min(99, Number(item.loops) || 1))
-      const remaining = Math.max(0, Math.min(loops, Number(item.remaining) || loops))
-      result[name] = {
-        enabled: Boolean(item.enabled),
-        time,
-        loops,
-        remaining: item.enabled ? Math.max(1, remaining) : remaining,
-        nextAt: null
-      }
-    }
-    return result
-  } catch {
-    return {}
-  }
-}
-
-function writeSchedules(schedules: Record<string, ScheduleState>): void {
-  const stored: Record<string, Omit<ScheduleState, 'nextAt'>> = {}
-  for (const [name, item] of Object.entries(schedules)) {
-    stored[name] = {
-      enabled: item.enabled,
-      time: item.time,
-      loops: item.loops,
-      remaining: item.remaining
-    }
-  }
-  window.localStorage.setItem(SCHEDULE_KEY, JSON.stringify(stored))
+function scheduleOf(items: ToolboxRecord[], name: string): StoredSchedule {
+  return items.find((item) => item.name === name)?.schedule ?? blankSchedule()
 }
 
 /**
@@ -142,7 +86,7 @@ function writeSchedules(schedules: Record<string, ScheduleState>): void {
  */
 export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   const [catalog, setCatalog] = useState<CatalogSkill[]>([])
-  const [toolbox, setToolbox] = useState<string[]>([])
+  const [items, setItems] = useState<ToolboxRecord[]>([])
   const [running, setRunning] = useState<string[]>([])
   const [page, setPage] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -152,35 +96,84 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     null
   )
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [inputs, setInputs] = useState<Record<string, string>>({})
-  const [schedules, setSchedules] = useState<Record<string, ScheduleState>>({})
+  const [nextAtByName, setNextAtByName] = useState<Record<string, number | null>>({})
 
-  const schedulesRef = useRef(schedules)
-  const inputsRef = useRef(inputs)
+  const itemsRef = useRef(items)
+  const nextAtRef = useRef(nextAtByName)
   const genRef = useRef<Record<string, number>>({})
   const timersRef = useRef<Record<string, number>>({})
+  const debounceRef = useRef<number>(0)
+  const saveSeqRef = useRef(0)
   const onAuthRef = useRef(onAiAuthError)
   const tickRef = useRef<(name: string, gen: number) => Promise<void>>(async () => undefined)
+  const armRef = useRef<(name: string) => void>(() => undefined)
 
-  schedulesRef.current = schedules
-  inputsRef.current = inputs
+  itemsRef.current = items
+  nextAtRef.current = nextAtByName
   onAuthRef.current = onAiAuthError
 
-  useEffect(() => {
-    setToolbox(readToolbox())
+  const persistItems = useCallback(async (next: ToolboxRecord[]) => {
+    const previous = itemsRef.current
+    itemsRef.current = next
+    setItems(next)
+    window.clearTimeout(debounceRef.current)
+    const seq = (saveSeqRef.current += 1)
+    try {
+      const response = await fetch('/api/toolbox', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: next })
+      })
+      const payload = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(payload.error || '无法保存工具集')
+      }
+    } catch (err) {
+      if (seq === saveSeqRef.current) {
+        itemsRef.current = previous
+        setItems(previous)
+        setError(err instanceof Error ? err.message : '无法保存工具集')
+      }
+    }
   }, [])
 
-  const persistSchedules = (next: Record<string, ScheduleState>): void => {
-    schedulesRef.current = next
-    setSchedules(next)
-    writeSchedules(next)
-  }
+  const persistItemsDebounced = useCallback(
+    (next: ToolboxRecord[]) => {
+      itemsRef.current = next
+      setItems(next)
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = window.setTimeout(() => {
+        void persistItems(itemsRef.current)
+      }, USER_TEXT_DEBOUNCE_MS)
+    },
+    [persistItems]
+  )
 
   const patchSchedule = (name: string, partial: Partial<ScheduleState>): ScheduleState => {
-    const current = schedulesRef.current[name] ?? blankSchedule()
-    const nextItem = { ...current, ...partial }
-    persistSchedules({ ...schedulesRef.current, [name]: nextItem })
-    return nextItem
+    const current = {
+      ...scheduleOf(itemsRef.current, name),
+      nextAt: nextAtRef.current[name] ?? null
+    }
+    const merged: ScheduleState = { ...current, ...partial }
+    if ('nextAt' in partial) {
+      const nextMap = { ...nextAtRef.current, [name]: merged.nextAt }
+      nextAtRef.current = nextMap
+      setNextAtByName(nextMap)
+    }
+    const persistKeys = Object.keys(partial).filter((key) => key !== 'nextAt')
+    if (persistKeys.length > 0) {
+      const stored: StoredSchedule = {
+        enabled: merged.enabled,
+        time: merged.time,
+        loops: merged.loops,
+        remaining: merged.remaining
+      }
+      const next = itemsRef.current.map((item) =>
+        item.name === name ? { ...item, schedule: stored } : item
+      )
+      void persistItems(next)
+    }
+    return merged
   }
 
   const clearTimer = (name: string): void => {
@@ -196,8 +189,8 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   }
 
   const arm = (name: string): void => {
-    const item = schedulesRef.current[name]
-    if (!item?.enabled) return
+    const item = scheduleOf(itemsRef.current, name)
+    if (!item.enabled) return
     clearTimer(name)
     const nextAt = nextOccurrence(item.time)
     patchSchedule(name, { nextAt })
@@ -207,6 +200,8 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
       void tickRef.current(name, gen)
     }, delay)
   }
+
+  armRef.current = arm
 
   const refreshCatalog = useCallback(async () => {
     const response = await fetch('/api/skills', { cache: 'no-store' })
@@ -238,44 +233,56 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     return () => window.clearInterval(timer)
   }, [refreshRuns])
 
+  useEffect(() => {
+    const load = async (): Promise<void> => {
+      try {
+        const response = await fetch('/api/toolbox', { cache: 'no-store' })
+        const payload = (await response.json()) as { items?: ToolboxRecord[]; error?: string }
+        if (!response.ok) {
+          throw new Error(payload.error || '无法读取工具集')
+        }
+        const loaded = payload.items ?? []
+        itemsRef.current = loaded
+        setItems(loaded)
+        for (const record of loaded) {
+          if (record.schedule.enabled) armRef.current(record.name)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '无法读取工具集')
+      }
+    }
+    void load()
+    return () => {
+      window.clearTimeout(debounceRef.current)
+      for (const id of Object.values(timersRef.current)) window.clearTimeout(id)
+    }
+  }, [])
+
   const catalogByName = useMemo(() => {
     const map = new Map<string, CatalogSkill>()
     for (const skill of catalog) map.set(skill.name, skill)
     return map
   }, [catalog])
 
+  const toolboxNames = useMemo(() => items.map((item) => item.name), [items])
   const totalPages = Math.max(1, Math.ceil(catalog.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages - 1)
   const pageItems = catalog.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE)
 
   const addSkill = (name: string): void => {
-    setToolbox((current) => {
-      if (current.includes(name)) return current
-      const next = [...current, name]
-      writeToolbox(next)
-      return next
-    })
+    if (itemsRef.current.some((item) => item.name === name)) return
+    void persistItems([...itemsRef.current, blankRecord(name)])
   }
 
   const removeSkill = (name: string): void => {
-    setToolbox((current) => {
-      const next = current.filter((item) => item !== name)
-      writeToolbox(next)
-      return next
-    })
+    invalidate(name)
     setContextMenu(null)
     setExpanded((current) => (current === name ? null : current))
-    setInputs((current) => {
-      const next = { ...current }
-      delete next[name]
-      return next
-    })
-    invalidate(name)
-    if (schedulesRef.current[name]) {
-      const next = { ...schedulesRef.current }
-      delete next[name]
-      persistSchedules(next)
-    }
+    const nextAtMap = { ...nextAtRef.current }
+    delete nextAtMap[name]
+    nextAtRef.current = nextAtMap
+    setNextAtByName(nextAtMap)
+    void persistItems(itemsRef.current.filter((item) => item.name !== name))
   }
 
   useEffect(() => {
@@ -304,7 +311,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     setBusy(name)
     setError(null)
     try {
-      const input = inputsRef.current[name]?.trim()
+      const input = itemsRef.current.find((item) => item.name === name)?.userText.trim()
       const response = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -359,7 +366,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
 
   tickRef.current = async (name, gen) => {
     if ((genRef.current[name] ?? 0) !== gen) return
-    if (!schedulesRef.current[name]?.enabled) return
+    if (!scheduleOf(itemsRef.current, name).enabled) return
     const ok = await startAndWait(name)
     if ((genRef.current[name] ?? 0) !== gen) return
     if (!ok) {
@@ -367,7 +374,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
       patchSchedule(name, { enabled: false, nextAt: null })
       return
     }
-    const remaining = (schedulesRef.current[name]?.remaining ?? 1) - 1
+    const remaining = (scheduleOf(itemsRef.current, name).remaining ?? 1) - 1
     if (remaining <= 0) {
       invalidate(name)
       patchSchedule(name, { enabled: false, remaining: 0, nextAt: null })
@@ -376,19 +383,6 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     patchSchedule(name, { remaining })
     arm(name)
   }
-
-  useEffect(() => {
-    const stored = readSchedules()
-    persistSchedules(stored)
-    for (const [name, item] of Object.entries(stored)) {
-      if (item.enabled) arm(name)
-    }
-    return () => {
-      for (const id of Object.values(timersRef.current)) window.clearTimeout(id)
-    }
-    // 仅在进入页面时恢复定时
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   return (
     <section
@@ -426,7 +420,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                       </tr>
                     ) : (
                       pageItems.map((skill) => {
-                        const added = toolbox.includes(skill.name)
+                        const added = toolboxNames.includes(skill.name)
                         return (
                           <tr key={skill.name} className="border-t border-black/10">
                             <td className="truncate px-2 py-2 font-medium" title={skill.name}>
@@ -486,19 +480,17 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
       {error ? <p className="mb-2 truncate px-1 text-xs text-[var(--rust)]">{error}</p> : null}
 
       <div className="column-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-        {toolbox.length === 0 ? (
+        {items.length === 0 ? (
           <p className="px-1 py-8 text-center text-sm text-[var(--mist)]">尚未添加工具</p>
         ) : (
-          toolbox.map((name) => {
+          items.map((record) => {
+            const { name } = record
             const skill = catalogByName.get(name)
             const isRunning = running.includes(name)
             const description = skill?.summary || '（无描述）'
-            const schedule = schedules[name] ?? {
-              enabled: false,
-              time: '09:00',
-              loops: 1,
-              remaining: 1,
-              nextAt: null
+            const schedule: ScheduleState = {
+              ...record.schedule,
+              nextAt: nextAtByName[name] ?? null
             }
             return (
               <article
@@ -516,7 +508,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm font-medium"
-                    title={description}
+                    title="点击展开/收起"
                     onClick={() => setExpanded((current) => (current === name ? null : name))}
                   >
                     <span className="min-w-0 truncate">{name}</span>
@@ -532,7 +524,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                       disabled={busy === name}
                       onClick={() => {
                         invalidate(name)
-                        if (schedulesRef.current[name]?.enabled) {
+                        if (scheduleOf(itemsRef.current, name).enabled) {
                           patchSchedule(name, { enabled: false, nextAt: null })
                         }
                         void callSkill('/api/skills/stop', name)
@@ -557,10 +549,15 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                     <p className="text-xs leading-5 text-[var(--ink-soft)]">{description}</p>
                     <textarea
                       rows={2}
-                      value={inputs[name] ?? ''}
-                      onChange={(event) =>
-                        setInputs((current) => ({ ...current, [name]: event.target.value }))
-                      }
+                      value={record.userText}
+                      onChange={(event) => {
+                        const userText = event.target.value
+                        persistItemsDebounced(
+                          itemsRef.current.map((item) =>
+                            item.name === name ? { ...item, userText } : item
+                          )
+                        )
+                      }}
                       placeholder="有想法写这儿就好"
                       className="mt-2 w-full resize-none rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs leading-5 outline-none ring-[var(--brass)] focus:ring-2"
                     />
@@ -572,7 +569,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                           role="switch"
                           aria-checked={schedule.enabled}
                           onClick={() => {
-                            const current = schedulesRef.current[name] ?? blankSchedule()
+                            const current = scheduleOf(itemsRef.current, name)
                             if (current.enabled) {
                               invalidate(name)
                               patchSchedule(name, { enabled: false, nextAt: null })
@@ -603,7 +600,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                             onChange={(event) => {
                               const time = event.target.value || schedule.time
                               patchSchedule(name, { time })
-                              if (schedulesRef.current[name]?.enabled) arm(name)
+                              if (scheduleOf(itemsRef.current, name).enabled) arm(name)
                             }}
                             className="mt-1 h-7 w-full rounded-md border border-black/10 bg-white px-1.5 text-xs text-[var(--ink)] outline-none"
                           />
@@ -620,12 +617,12 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                                 1,
                                 Math.min(99, Number(event.target.value) || 1)
                               )
-                              const enabled = Boolean(schedulesRef.current[name]?.enabled)
+                              const enabled = scheduleOf(itemsRef.current, name).enabled
                               patchSchedule(name, {
                                 loops,
                                 remaining: enabled
                                   ? loops
-                                  : (schedulesRef.current[name]?.remaining ?? loops)
+                                  : (scheduleOf(itemsRef.current, name).remaining ?? loops)
                               })
                             }}
                             className="mt-1 h-7 w-full rounded-md border border-black/10 bg-white px-1.5 text-xs text-[var(--ink)] outline-none"

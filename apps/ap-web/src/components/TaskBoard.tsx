@@ -40,7 +40,7 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 }
 
 /**
- * 五列任务看板：拉取列表、列内展开详情、拖拽或按钮改状态、新建任务。
+ * 五列任务看板：拉取列表、列内展开详情、编辑字段、拖拽或按钮改状态、新建任务。
  */
 export function TaskBoard() {
   const [board, setBoard] = useState<TaskBoardPayload | null>(null)
@@ -54,23 +54,11 @@ export function TaskBoard() {
   const [createError, setCreateError] = useState<string | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
   const detailsRef = useRef(details)
   detailsRef.current = details
-
-  const refresh = useCallback(async () => {
-    const response = await fetch('/api/tasks', { cache: 'no-store' })
-    const payload = (await response.json()) as TaskBoardPayload & { error?: string }
-    if (!response.ok) {
-      throw new Error(payload.error || '无法读取任务')
-    }
-    setBoard(payload)
-  }, [])
-
-  useEffect(() => {
-    refresh().catch((error: unknown) => {
-      setLoadError(error instanceof Error ? error.message : '无法读取任务')
-    })
-  }, [refresh])
+  const expandedRef = useRef(expanded)
+  expandedRef.current = expanded
 
   const fetchDetail = useCallback(async (id: string) => {
     setLoadingId(id)
@@ -95,6 +83,71 @@ export function TaskBoard() {
       setLoadingId(null)
     }
   }, [])
+
+  const applyBoard = useCallback(
+    (payload: TaskBoardPayload) => {
+      setBoard(payload)
+      setLoadError(null)
+      const current = expandedRef.current
+      const next: ExpandedMap = { ...current }
+      const toRefetch: string[] = []
+      for (const column of TASK_COLUMNS) {
+        const id = next[column]
+        if (!id) continue
+        if (!payload[column].some((task) => task.id === id)) {
+          next[column] = null
+          continue
+        }
+        if (detailsRef.current[id]) toRefetch.push(id)
+      }
+      setExpanded(next)
+      for (const id of toRefetch) {
+        void fetchDetail(id)
+      }
+    },
+    [fetchDetail]
+  )
+
+  const refresh = useCallback(async () => {
+    const response = await fetch('/api/tasks', { cache: 'no-store' })
+    const payload = (await response.json()) as TaskBoardPayload & { error?: string }
+    if (!response.ok) {
+      throw new Error(payload.error || '无法读取任务')
+    }
+    applyBoard(payload)
+  }, [applyBoard])
+
+  useEffect(() => {
+    refresh().catch((error: unknown) => {
+      setLoadError(error instanceof Error ? error.message : '无法读取任务')
+    })
+  }, [refresh])
+
+  useEffect(() => {
+    const source = new EventSource('/api/tasks/stream')
+    const onTasks = (event: MessageEvent<string>) => {
+      try {
+        applyBoard(JSON.parse(event.data) as TaskBoardPayload)
+      } catch {
+        setLoadError('无法解析任务推送')
+      }
+    }
+    const onTasksError = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { error?: string }
+        setLoadError(payload.error || '无法读取任务')
+      } catch {
+        setLoadError('无法读取任务')
+      }
+    }
+    source.addEventListener('tasks', onTasks)
+    source.addEventListener('tasks-error', onTasksError)
+    return () => {
+      source.removeEventListener('tasks', onTasks)
+      source.removeEventListener('tasks-error', onTasksError)
+      source.close()
+    }
+  }, [applyBoard])
 
   const toggleCard = useCallback(
     (column: TaskColumn, id: string) => {
@@ -129,6 +182,37 @@ export function TaskBoard() {
       setExpanded(EMPTY_EXPANDED)
       setLoadError(null)
       await refresh()
+    },
+    [refresh]
+  )
+
+  const updateTask = useCallback(
+    async (
+      id: string,
+      input: { title: string; priority: TaskPriority; requirements: string }
+    ): Promise<boolean> => {
+      setSavingId(id)
+      try {
+        const response = await fetch(taskApiPath(id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input)
+        })
+        const payload = (await response.json()) as TaskDetail & { error?: string }
+        if (!response.ok) {
+          setLoadError(readErrorMessage(payload, '无法保存任务'))
+          return false
+        }
+        setDetails((current) => ({ ...current, [id]: payload }))
+        setLoadError(null)
+        await refresh()
+        return true
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : '无法保存任务')
+        return false
+      } finally {
+        setSavingId(null)
+      }
     },
     [refresh]
   )
@@ -203,10 +287,12 @@ export function TaskBoard() {
                 details={details}
                 loadingId={loadingId}
                 detailError={detailError}
+                savingId={savingId}
                 onToggle={toggleCard}
                 onCollapse={collapseColumn}
                 onMove={moveTask}
                 onDropTask={moveTask}
+                onUpdate={updateTask}
                 onCreate={
                   column === 'todo'
                     ? () => {

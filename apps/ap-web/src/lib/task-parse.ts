@@ -7,6 +7,18 @@ import type {
 } from './task-types'
 import { COLUMN_STATUS_TEXT } from './task-types'
 
+/** 序列化任务 markdown 所需的全部字段 */
+type TaskMarkdownFields = {
+  title: string
+  status: TaskColumn
+  priority: TaskPriority
+  dependencies: string
+  context: string
+  requirements: string
+  constraints: string
+  agentNotes: string
+}
+
 const META_TITLES = new Set(['task notes', 'human notes', 'agent notes'])
 
 /** markdown 解析出的分区 */
@@ -246,31 +258,33 @@ export function replaceTaskStatus(markdown: string, column: TaskColumn): string 
 }
 
 /**
- * 按约定拼出新建任务的 markdown（H1 为标题，Status 为 TODO）。
+ * 按约定拼出任务 markdown，保留状态、依赖与 Agent Notes。
  *
- * @param input - 创建表单
+ * @param fields - 完整字段
  * @returns 完整 markdown
  */
-export function buildTaskMarkdown(input: CreateTaskInput): string {
-  const title = input.title.trim()
-  const priority = input.priority ?? 'P1'
-  const context = input.context?.trim() || '- None'
-  const requirements = input.requirements?.trim() || '- None'
-  const constraints = input.constraints?.trim() || '- None'
+export function serializeTaskMarkdown(fields: TaskMarkdownFields): string {
+  const title = fields.title.trim()
+  const dependencies = fields.dependencies.trim() || '- None'
+  const context = fields.context.trim() || '- None'
+  const requirements = fields.requirements.trim() || '- None'
+  const constraints = fields.constraints.trim() || '- None'
+  const agentNotes = fields.agentNotes.trim()
+  const agentBlock = agentNotes ? `\n${agentNotes}\n` : '\n'
 
   return `# ${title}
 
 ## Task Status
 
-TODO
+${COLUMN_STATUS_TEXT[fields.status]}
 
 ## Task Priority
 
-${priority}
+${fields.priority}
 
 ## Task Dependencies
 
-- None
+${dependencies}
 
 # Human Notes
 
@@ -287,7 +301,26 @@ ${requirements}
 ${constraints}
 
 # Agent Notes
-`
+${agentBlock}`
+}
+
+/**
+ * 按约定拼出新建任务的 markdown（H1 为标题，Status 为 TODO）。
+ *
+ * @param input - 创建表单
+ * @returns 完整 markdown
+ */
+export function buildTaskMarkdown(input: CreateTaskInput): string {
+  return serializeTaskMarkdown({
+    title: input.title?.trim() ?? '',
+    status: 'todo',
+    priority: input.priority ?? 'P1',
+    dependencies: '- None',
+    context: input.context?.trim() || '- None',
+    requirements: input.requirements?.trim() || '- None',
+    constraints: input.constraints?.trim() || '- None',
+    agentNotes: ''
+  })
 }
 
 /**

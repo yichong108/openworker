@@ -1,10 +1,16 @@
 'use client'
 
-import type { TaskColumn, TaskDetail, TaskSummary } from '@/lib/task-types'
+import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import { columnAccent } from './CreateTaskDialog'
 import { TaskCard } from './TaskCard'
+
+type TaskUpdateInput = {
+  title: string
+  priority: TaskPriority
+  requirements: string
+}
 
 type TaskColumnProps = {
   column: TaskColumn
@@ -13,10 +19,12 @@ type TaskColumnProps = {
   details: Record<string, TaskDetail>
   loadingId: string | null
   detailError: Record<string, string>
+  savingId: string | null
   onToggle: (column: TaskColumn, id: string) => void
   onCollapse: (column: TaskColumn) => void
   onMove: (id: string, status: TaskColumn) => void
   onDropTask: (id: string, status: TaskColumn) => void
+  onUpdate: (id: string, input: TaskUpdateInput) => Promise<boolean>
   onCreate?: () => void
 }
 
@@ -30,10 +38,12 @@ export function TaskColumnView({
   details,
   loadingId,
   detailError,
+  savingId,
   onToggle,
   onCollapse,
   onMove,
   onDropTask,
+  onUpdate,
   onCreate
 }: TaskColumnProps) {
   return (
@@ -80,9 +90,11 @@ export function TaskColumnView({
               detail={details[task.id]}
               loading={loadingId === task.id}
               error={detailError[task.id] ?? null}
+              saving={savingId === task.id}
               onToggle={() => onToggle(column, task.id)}
               onCollapse={() => onCollapse(column)}
               onMove={(status) => onMove(task.id, status)}
+              onUpdate={(input) => onUpdate(task.id, input)}
             />
           ))
         )}

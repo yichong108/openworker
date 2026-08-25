@@ -30,8 +30,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       requirements?: unknown
       constraints?: unknown
     }
-    if (typeof body.title !== 'string' || !body.title.trim()) {
-      return NextResponse.json({ error: '标题不能为空' }, { status: 400 })
+    if (typeof body.requirements !== 'string' || !body.requirements.trim()) {
+      return NextResponse.json({ error: '想法不能为空' }, { status: 400 })
+    }
+    if (body.title !== undefined && typeof body.title !== 'string') {
+      return NextResponse.json({ error: '名称必须是字符串' }, { status: 400 })
     }
     if (
       body.priority !== undefined &&
@@ -40,8 +43,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: '优先级必须是 P0–P3' }, { status: 400 })
     }
 
-    const task = createTask({
-      title: body.title,
+    const task = await createTask({
+      title: typeof body.title === 'string' ? body.title : '',
       priority:
         typeof body.priority === 'string' && isTaskPriority(body.priority)
           ? body.priority
