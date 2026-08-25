@@ -27,7 +27,7 @@ pnpm dev
 
 ### AI Coding
 
-See [.agents/AGENTS.md](.agents/AGENTS.md), [.agents/ap-config/work-data/README.md](.agents/ap-config/work-data/README.md), [skills/](ap/src/skills/) . For example, running the `/ap-task-execute` skill to quickly get started with development.
+See [.agents/AGENTS.md](.agents/AGENTS.md), [.agents/ap-config/work-data/README.md](.agents/ap-config/work-data/README.md), [skills/](apps/ap-cli/src/skills/) . For example, running the `/ap-task-execute` skill to quickly get started with development.
 
 ## License
 

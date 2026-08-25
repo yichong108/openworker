@@ -39,7 +39,7 @@ pnpm ap task-create --name 用户登录
 pnpm ap task-execute --mode plan
 ```
 
-鉴权：复制 `ap/.env.example` 为 `ap/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` 不需要 Key。
+鉴权：复制 `apps/ap-cli/.env.example` 为 `apps/ap-cli/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` 不需要 Key。
 
 ## 验证构建
 
@@ -51,7 +51,7 @@ pnpm ap:start:dist help
 pnpm ap:start:dist task-create --name 构建冒烟
 ```
 
-更接近发布包时，在 `ap/` 下执行 `pnpm pack`，检查生成的 tarball 是否包含 `dist/`、`src/skills`、`src/work-data`。
+更接近发布包时，在 `apps/ap-cli/` 下执行 `pnpm pack`，检查生成的 tarball 是否包含 `dist/`、`src/skills`、`src/work-data`。
 
 ## 要求
 

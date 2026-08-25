@@ -27,7 +27,7 @@
     "build:test": "turbo run build:test",
     "landing:dev": "pnpm --filter @openworker/landing dev",
     "landing:build": "pnpm --filter @openworker/landing build",
-    "ap": "pnpm --dir ap exec tsx src/index.ts",
+    "ap": "pnpm --dir apps/ap-cli exec tsx src/index.ts",
     "ap:build": "pnpm --filter @openworker/ap build",
     "ap:start:dist": "pnpm --filter @openworker/ap start:dist",
     "ai-pipeline:task-create": "pnpm ap:start:dist task-create",

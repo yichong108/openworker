@@ -44,7 +44,7 @@ export function findWorkspaceRoot(startDir: string = process.cwd()): string {
 }
 
 /**
- * 本 CLI 包所在目录（源码仓库中的 `ap/`，或 npm 安装后的包根）。
+ * 本 CLI 包所在目录（源码仓库中的 `apps/ap-cli/`，或 npm 安装后的包根）。
  */
 export function getPackageRoot(): string {
   return packageRoot

@@ -36,4 +36,4 @@
 - P0 任务一旦阻塞，停止执行其他任务
 - 完成后移到 `done/` 并改为 DONE
 - 只有当前任务需要历史上下文时，才读取 `done/`
-- 执行流程见 `ap/src/skills/ap-task-execute/SKILL.md`
+- 执行流程见 `apps/ap-cli/src/skills/ap-task-execute/SKILL.md`

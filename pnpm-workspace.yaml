@@ -1,5 +1,4 @@
 packages:
-  - 'ap'
   - 'apps/*'
   - 'packages/*'
   - 'services/*'

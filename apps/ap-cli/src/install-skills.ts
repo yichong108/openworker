@@ -71,7 +71,7 @@ function copyWorkDataTree(source: string, dest: string): WorkDataCopyStats {
 }
 
 /**
- * 用 `ap/src/skills` 下的各个 skill 覆盖仓库根 `.agents/skills` 中的同名目录。
+ * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖仓库根 `.agents/skills` 中的同名目录。
  *
  * prepare 与每次 CLI 启动都会调用。只覆盖源目录中存在的 skill，
  * 不删除 `.agents`、`.agents/skills` 或其他无关 skill。
@@ -106,7 +106,7 @@ export function installApSkills(): string {
 }
 
 /**
- * 把 `ap/src/work-data` 补齐到仓库根 `.agents/ap-config/work-data`。
+ * 把 `apps/ap-cli/src/work-data` 补齐到仓库根 `.agents/ap-config/work-data`。
  *
  * `*-template.md` 覆盖已有文件；其余同名文件不覆盖，也不删除目标里多出来的内容。
  *

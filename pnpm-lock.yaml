@@ -82,7 +82,7 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
-  ap:
+  apps/ap-cli:
     dependencies:
       '@cursor/sdk':
         specifier: 'catalog:'

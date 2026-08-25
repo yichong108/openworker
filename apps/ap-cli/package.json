@@ -10,11 +10,11 @@
     "cli",
     "openworker"
   ],
-  "homepage": "https://github.com/yichong108/openworker/tree/main/ap",
+  "homepage": "https://github.com/yichong108/openworker/tree/main/apps/ap-cli",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yichong108/openworker.git",
-    "directory": "ap"
+    "directory": "apps/ap-cli"
   },
   "bugs": {
     "url": "https://github.com/yichong108/openworker/issues"
