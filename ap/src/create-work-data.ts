@@ -12,7 +12,7 @@ export type WorkDataKind = 'task' | 'decision'
 
 /** 创建 task / decision 所需参数 */
 export type CreateWorkDataInput = {
-  /** task 写入 active/，decision 写入 decisions/ */
+  /** task 写入 todo/，decision 写入 decisions/ */
   kind: WorkDataKind
   /** 仓库工作区根目录 */
   cwd: string
@@ -96,7 +96,7 @@ function readTemplate(kind: WorkDataKind, cwd: string): string {
 /**
  * 从模板创建一份 task 或 decision 文件。
  *
- * task 写到 `tasks/active/`，decision 写到 `decisions/`。
+ * task 写到 `tasks/todo/`，decision 写到 `decisions/`。
  * 目标已存在则报错，不覆盖。
  *
  * @param input - 类型、工作区与可选文件名
@@ -106,7 +106,7 @@ export function createWorkDataFile(input: CreateWorkDataInput): string {
   const fileName = resolveCreateFileName(input.kind, input.name)
   const destDir =
     input.kind === 'task'
-      ? join(input.cwd, '.agents', 'ap-config', 'work-data', 'tasks', 'active')
+      ? join(input.cwd, '.agents', 'ap-config', 'work-data', 'tasks', 'todo')
       : join(input.cwd, '.agents', 'ap-config', 'work-data', 'decisions')
   const dest = join(destDir, fileName)
 

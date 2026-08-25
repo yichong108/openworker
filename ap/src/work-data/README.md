@@ -7,7 +7,7 @@
 ├── README.md
 ├── tasks/
 │   ├── task-template.md   ← 模板，安装时覆盖；初始 Status 为 TODO
-│   ├── active/            ← TODO：待执行；创建任务写到这里
+│   ├── todo/              ← TODO：待执行；创建任务写到这里
 │   ├── doing/             ← DOING：开始执行后放这里
 │   ├── plan/              ← PLAN：仅人工使用
 │   ├── blocked/           ← BLOCKED：未填写、文档不合格、或 Agent 无法处理
@@ -26,7 +26,7 @@
 
 # tasks
 
-- 用 `ap task-create [--name <文件名>]` 从模板创建到 `active/`，初始 Status 为 TODO
+- 用 `ap task-create [--name <文件名>]` 从模板创建到 `todo/`，初始 Status 为 TODO
 - 未指定 `--name` 时文件名为 `task-YYYYMMDDHHmmSS.md`
 - 任务名称优先使用中文，如：实现用户登录
 - 只执行 Status 为 TODO 的任务；开始执行时移到 `doing/` 并改为 DOING

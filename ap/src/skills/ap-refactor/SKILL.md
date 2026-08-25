@@ -52,7 +52,7 @@ metadata:
 Skill 激活后：
 
 1. 阅读适用范围内的 `.agents/AGENTS.md`。
-2. 确定入口：`.agents/ap-config/work-data/tasks/active/` 中 Status 为 TODO 的重构任务，或用户指定的代码范围。
+2. 确定入口：`.agents/ap-config/work-data/tasks/todo/` 中 Status 为 TODO 的重构任务，或用户指定的代码范围。
 3. 阅读完整 TASK（若有）及相关 ADR。
 4. 摸清当前行为：调用链、公共 API、协议、类型导出、副作用。
 5. 写出不变量与明确的结构目标（见下方模板）。
@@ -138,14 +138,14 @@ Skill 激活后：
 
 ```text
 .agents/ap-config/work-data/tasks/
-├── active/     ← TODO，只领取此状态
+├── todo/     ← TODO，只领取此状态
 ├── doing/      ← DOING
 ├── plan/       ← PLAN，仅人工；本技能不读写
 ├── blocked/    ← BLOCKED
 └── done/       ← DONE
 ```
 
-处理 `.agents/ap-config/work-data/tasks/active/` 时：
+处理 `.agents/ap-config/work-data/tasks/todo/` 时：
 
 - 只领取 Status 为 TODO、目标为重构/结构调整、且依赖已满足的任务。
 - 功能实现类任务留给 `ap-task-execute`。

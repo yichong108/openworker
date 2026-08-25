@@ -90,7 +90,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
 
 内建命令:
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
-  task-create          从模板创建任务到 tasks/active/（不调用 Agent）
+  task-create          从模板创建任务到 tasks/todo/（不调用 Agent）
   decision-create      从模板创建决策到 decisions/（不调用 Agent）
   help                 显示本帮助
 
@@ -164,7 +164,7 @@ export function printCreateHelp(command: ApCreateCommand): void {
   -h, --help           显示帮助
 
 未指定 --name 时，文件名为 task-YYYYMMDDHHmmSS.md。
-写入 .agents/ap-config/work-data/tasks/active/，内容来自 task-template.md。
+写入 .agents/ap-config/work-data/tasks/todo/，内容来自 task-template.md。
 `)
     return
   }
