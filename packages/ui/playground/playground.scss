@@ -1,0 +1,101 @@
+:root {
+  --aw-chat-scrollbar-size: 15px;
+  --aw-chat-scrollbar-thumb: rgb(24 24 27 / 0.1);
+  --aw-chat-scrollbar-thumb-hover: rgb(24 24 27 / 0.19);
+  --aw-color-bg-elevated: #f4f4f5;
+  --aw-color-bg-canvas: #fafafa;
+  --aw-color-bg-layout: var(--aw-color-bg-canvas);
+  --aw-color-bg-container: #ffffff;
+  --aw-color-border: rgb(24 24 27 / 0.09);
+  --aw-color-border-secondary: rgb(24 24 27 / 0.055);
+  --aw-color-text: #18181b;
+  --aw-color-text-secondary: #52525b;
+  --aw-color-text-tertiary: #5f5f6b;
+  --aw-color-icon: rgb(24 24 27 / 0.38);
+  --aw-color-icon-hover: rgb(24 24 27 / 0.52);
+  --aw-color-icon-muted: rgb(24 24 27 / 0.3);
+  --aw-color-primary: #27272a;
+  --aw-color-accent: #0a0a0a;
+  --aw-color-accent-hover: #27272a;
+  --aw-shadow-soft: 0 1px 2px rgb(24 24 27 / 0.04);
+  --aw-shadow-card: 0 1px 2px rgb(24 24 27 / 0.05), 0 4px 14px rgb(24 24 27 / 0.04);
+  --aw-composer-surface: #ffffff;
+  --aw-composer-border: var(--aw-color-border);
+  --aw-composer-shadow: 0 10px 38px rgb(24 24 27 / 0.07), 0 2px 10px rgb(24 24 27 / 0.04);
+  --aw-composer-send: var(--aw-color-accent);
+  --aw-composer-send-hover: var(--aw-color-accent-hover);
+  --aw-composer-footer-rule: var(--aw-color-border-secondary);
+  --aw-main-content-max-width: 840px;
+  --aw-main-column-padding-x: 20px;
+  --aw-font-micro: 10px;
+  --aw-font-caption: 11px;
+  --aw-font-xs: 12px;
+  --aw-font-sm: 13px;
+  --aw-font-md: 14px;
+  --aw-font-lg: 15px;
+  --aw-font-xl: 16px;
+  --aw-font-weight-medium: 500;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--aw-color-text);
+  background: #ececec;
+}
+
+.ow-ui-playground {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ow-ui-playground-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--aw-color-border);
+}
+
+.ow-ui-playground-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ow-ui-playground-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--aw-color-text-tertiary);
+}
+
+.ow-ui-playground-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--aw-color-bg-layout);
+}
+
+.app-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--aw-color-text);
+  background: var(--aw-color-bg-layout);
+}
