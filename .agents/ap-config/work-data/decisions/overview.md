@@ -23,7 +23,6 @@
 - apps/phone 已移除。
 - services/api 已移除。
 - services/langfuse-local 已移除。
-
 - apps/desktop 目前阶段正在开发。
 - apps/landing 目前阶段正在开发。
 - packages 目前阶段正在开发。
@@ -59,6 +58,7 @@
 - Desktop采用瘦客户端架构，主要由渲染进程和Server通信，少量主进程也可以和Server通信。瘦客户端可以保持主进程的稳定性，以及对提升开发效率明显。
 - Server 负责和 Agent 进行交互，Agent不能直接和Desktop进行交互。这样后续需要不同功能的扩展服务或者在服务器运行Agent的情况下更易扩展。
 
-## Alternatives considered
+## 约束
 
-## Consequences
+- 时间处理不使用JavaScript原生API，必须使用dayjs库。
+  - dayjs库的版本全局统一。
