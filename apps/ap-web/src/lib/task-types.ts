@@ -15,6 +15,8 @@ export type TaskSummary = {
   priority: TaskPriority
   dependencies: string
   excerpt: string
+  /** 任务 markdown 文件的 mtime，ISO 8601 */
+  updatedAt: string
 }
 
 /** 列内展开后展示的完整字段 */

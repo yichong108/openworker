@@ -168,13 +168,15 @@ function makeExcerpt(parsed: ParsedSections): string {
  * @param fileName - 文件名
  * @param column - 所在列（目录）
  * @param markdown - 文件全文
+ * @param updatedAt - 文件 mtime 的 ISO 时间
  * @returns 卡片摘要
  */
 export function toTaskSummary(
   id: string,
   fileName: string,
   column: TaskColumn,
-  markdown: string
+  markdown: string,
+  updatedAt: string
 ): TaskSummary {
   const parsed = parseSections(markdown)
   const stem = fileName.replace(/\.md$/i, '')
@@ -190,7 +192,8 @@ export function toTaskSummary(
     status: column,
     priority: parsePriority(parsed.priorityText),
     dependencies: parsed.dependencies,
-    excerpt: makeExcerpt(parsed)
+    excerpt: makeExcerpt(parsed),
+    updatedAt
   }
 }
 
@@ -201,17 +204,19 @@ export function toTaskSummary(
  * @param fileName - 文件名
  * @param column - 所在列（目录）
  * @param markdown - 文件全文
+ * @param updatedAt - 文件 mtime 的 ISO 时间
  * @returns 详情
  */
 export function toTaskDetail(
   id: string,
   fileName: string,
   column: TaskColumn,
-  markdown: string
+  markdown: string,
+  updatedAt: string
 ): TaskDetail {
   const parsed = parseSections(markdown)
   return {
-    ...toTaskSummary(id, fileName, column, markdown),
+    ...toTaskSummary(id, fileName, column, markdown, updatedAt),
     context: parsed.context,
     requirements: parsed.requirements,
     constraints: parsed.constraints,

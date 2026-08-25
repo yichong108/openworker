@@ -46,6 +46,19 @@ const FIELD =
   'mt-1 w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 font-body text-[13px] outline-none ring-[var(--brass)] focus:ring-2'
 
 /**
+ * 把文件 mtime 格式成本地可读时间。
+ *
+ * @param iso - ISO 8601 时间
+ * @returns 如 2026-08-25 22:15；无效则空串
+ */
+function formatUpdatedAt(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/**
  * 卡片底部对话按钮文案。
  *
  * @param chat - 该任务会话状态
@@ -102,6 +115,8 @@ export function TaskCard({
     setEditing(true)
   }
 
+  const updatedAtLabel = formatUpdatedAt(task.updatedAt)
+
   return (
     <article
       draggable={!expanded}
@@ -130,7 +145,17 @@ export function TaskCard({
         >
           {task.priority}
         </span>
-        <span className="min-w-0 flex-1 break-words font-medium leading-snug">{task.title}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block break-words font-medium leading-snug">{task.title}</span>
+          {updatedAtLabel ? (
+            <time
+              dateTime={task.updatedAt}
+              className="mt-0.5 block text-[11px] font-normal text-[var(--ink-soft)] opacity-45"
+            >
+              {updatedAtLabel}
+            </time>
+          ) : null}
+        </span>
       </button>
 
       {expanded ? (

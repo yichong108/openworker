@@ -83,7 +83,7 @@ function scheduleOf(items: ToolboxRecord[], name: string): StoredSchedule {
 
 function PlayIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden="true">
       <path d="M8 5.2v13.6c0 .7.8 1.1 1.4.7l10.2-6.8c.6-.4.6-1.2 0-1.6L9.4 4.5C8.8 4.1 8 4.5 8 5.2z" />
     </svg>
   )
@@ -91,8 +91,24 @@ function PlayIcon() {
 
 function StopIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden="true">
       <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14M5 12h14" />
     </svg>
   )
 }
@@ -412,11 +428,9 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
         >
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--brass)]/50 px-2 py-0.5 font-display text-[11px] tracking-[0.14em] text-[var(--brass)] transition hover:border-[var(--brass)] hover:bg-[var(--brass)]/10"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brass)] px-2.5 py-1.5 text-xs font-medium text-[var(--ink)] shadow-sm transition hover:brightness-110 active:scale-[0.98]"
           >
-            <span aria-hidden className="text-sm leading-none">
-              +
-            </span>
+            <PlusIcon />
             添加工具
           </button>
           {menuOpen ? (
@@ -550,7 +564,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                         }
                         void callSkill('/api/skills/stop', name)
                       }}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--rust)] text-white disabled:opacity-40"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--rust)] text-white disabled:opacity-40"
                     >
                       <StopIcon />
                     </button>
@@ -561,7 +575,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                       title="开始"
                       disabled={busy === name}
                       onClick={() => void callSkill('/api/skills/run', name)}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--teal)] text-white disabled:opacity-40"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--teal)] text-white disabled:opacity-40"
                     >
                       <PlayIcon />
                     </button>

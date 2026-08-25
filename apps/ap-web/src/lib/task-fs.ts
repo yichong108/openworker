@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeFileSync
 } from 'node:fs'
@@ -133,6 +134,16 @@ function sortTasks(tasks: TaskSummary[]): TaskSummary[] {
 }
 
 /**
+ * 读取任务 markdown 文件的 mtime。
+ *
+ * @param abs - 文件绝对路径
+ * @returns ISO 8601 时间
+ */
+function fileUpdatedAt(abs: string): string {
+  return statSync(abs).mtime.toISOString()
+}
+
+/**
  * 列出某一列的任务摘要。
  *
  * @param column - 列名
@@ -144,7 +155,13 @@ function listColumn(column: TaskColumn): TaskSummary[] {
   const files = collectMarkdownFiles(dir, column === 'done')
   const tasks = files.map((abs) => {
     const markdown = readFileSync(abs, 'utf8')
-    return toTaskSummary(toPosixId(tasksRoot, abs), basename(abs), column, markdown)
+    return toTaskSummary(
+      toPosixId(tasksRoot, abs),
+      basename(abs),
+      column,
+      markdown,
+      fileUpdatedAt(abs)
+    )
   })
   return sortTasks(tasks)
 }
@@ -175,7 +192,7 @@ export function readTask(id: string): TaskDetail {
     throw new TaskFsError('任务不存在', 404)
   }
   const markdown = readFileSync(abs, 'utf8')
-  return toTaskDetail(id, basename(abs), columnFromId(id), markdown)
+  return toTaskDetail(id, basename(abs), columnFromId(id), markdown, fileUpdatedAt(abs))
 }
 
 /**

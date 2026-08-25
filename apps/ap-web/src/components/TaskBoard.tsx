@@ -288,7 +288,7 @@ export function TaskBoard() {
           setConfigAuthError(null)
           setConfigOpen(true)
         }}
-        className="absolute right-5 top-5 z-40 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--mist)] transition hover:bg-white/10 hover:text-[var(--brass)]"
+        className="absolute right-5 top-5 z-40 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--chrome)] transition hover:bg-white/10 hover:text-[var(--brass)]"
       >
         <svg
           viewBox="0 0 24 24"
