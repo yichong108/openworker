@@ -10,7 +10,10 @@ import { TaskFsError } from '@/lib/task-fs-error'
  */
 export function taskErrorResponse(error: unknown): NextResponse {
   if (error instanceof TaskFsError) {
-    return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    return NextResponse.json(
+      { error: error.message, ...(error.code ? { code: error.code } : {}) },
+      { status: error.statusCode }
+    )
   }
   const message = error instanceof Error ? error.message : '服务器错误'
   return NextResponse.json({ error: message }, { status: 500 })

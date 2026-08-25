@@ -6,6 +6,7 @@ import { taskApiPath } from '@/lib/task-paths'
 import type { TaskBoardPayload, TaskColumn, TaskDetail, TaskPriority } from '@/lib/task-types'
 import { TASK_COLUMNS } from '@/lib/task-types'
 
+import { ConfigDialog } from './ConfigDialog'
 import { CreateTaskDialog } from './CreateTaskDialog'
 import { TaskColumnView } from './TaskColumn'
 import { ToolsColumn } from './ToolsColumn'
@@ -51,6 +52,8 @@ export function TaskBoard() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const detailsRef = useRef(details)
   detailsRef.current = details
 
@@ -158,21 +161,36 @@ export function TaskBoard() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-start gap-3 px-6">
+      <header className="flex h-12 shrink-0 items-center justify-end px-6">
         <button
           type="button"
+          aria-label="配置"
+          title="配置"
           onClick={() => {
-            setCreateError(null)
-            setDialogOpen(true)
+            setConfigAuthError(null)
+            setConfigOpen(true)
           }}
-          className="shrink-0 rounded-xl bg-[var(--paper)] px-4 py-2 text-sm font-medium text-[var(--ink)]"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--paper)] transition hover:bg-white/10 hover:text-[var(--brass)]"
         >
-          新建任务
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+          </svg>
         </button>
-        {loadError ? (
-          <p className="min-w-0 flex-1 truncate text-sm text-[var(--rust)]">{loadError}</p>
-        ) : null}
       </header>
+
+      {loadError ? (
+        <p className="shrink-0 truncate px-6 pb-2 text-sm text-[var(--rust)]">{loadError}</p>
+      ) : null}
 
       <div className="min-h-0 flex-1 px-6 pb-6">
         <div className="grid h-full w-full grid-cols-5 gap-3">
@@ -208,10 +226,23 @@ export function TaskBoard() {
                   加载中…
                 </section>
               ))}
-          <ToolsColumn />
+          <ToolsColumn
+            onAiAuthError={(message) => {
+              setConfigAuthError(message)
+              setConfigOpen(true)
+            }}
+          />
         </div>
       </div>
 
+      <ConfigDialog
+        open={configOpen}
+        authError={configAuthError}
+        onClose={() => {
+          setConfigOpen(false)
+          setConfigAuthError(null)
+        }}
+      />
       <CreateTaskDialog
         open={dialogOpen}
         busy={createBusy}

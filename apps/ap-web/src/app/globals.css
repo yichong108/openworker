@@ -58,69 +58,13 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(196, 163, 90, 0.42) rgba(243, 234, 217, 0.06);
+  scrollbar-color: rgba(196, 163, 90, 0.55) rgba(243, 234, 217, 0.08);
 }
 
-*::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-*::-webkit-scrollbar-button,
-*::-webkit-scrollbar-button:single-button,
-*::-webkit-scrollbar-button:increment,
-*::-webkit-scrollbar-button:decrement,
-*::-webkit-scrollbar-button:vertical:start:decrement,
-*::-webkit-scrollbar-button:vertical:end:increment,
-*::-webkit-scrollbar-button:vertical:start:increment,
-*::-webkit-scrollbar-button:vertical:end:decrement,
-*::-webkit-scrollbar-button:horizontal:start:decrement,
-*::-webkit-scrollbar-button:horizontal:end:increment {
-  display: none;
-  width: 0;
-  height: 0;
-  background: none;
-  border: none;
-}
-
-*::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-track {
-  background: rgba(243, 234, 217, 0.06);
-  border-radius: 999px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(196, 163, 90, 0.78), rgba(196, 163, 90, 0.38));
-  border: 1px solid rgba(243, 234, 217, 0.12);
-  border-radius: 999px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(196, 163, 90, 0.95), rgba(196, 163, 90, 0.55));
-}
-
-*::-webkit-scrollbar-thumb:active {
-  background: var(--brass);
+*::-webkit-scrollbar-button {
+  display: none !important;
 }
 
 .column-scroll {
   padding-right: 14px;
-}
-
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:decrement,
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:increment,
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:decrement:hover,
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:increment:hover,
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:decrement:active,
-.column-scroll::-webkit-scrollbar-button:single-button:vertical:increment:active {
-  display: block;
-  width: 0;
-  height: 0;
-  background: none;
-  background-image: none;
-  border: 0;
-  border-color: transparent;
 }
