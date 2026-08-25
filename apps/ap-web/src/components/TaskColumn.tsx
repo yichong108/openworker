@@ -38,7 +38,7 @@ export function TaskColumnView({
 }: TaskColumnProps) {
   return (
     <section
-      className="flex min-h-0 min-w-0 flex-col rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] p-3"
+      className="flex min-h-0 min-w-0 flex-col rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] py-3 pl-3 pr-1"
       onDragOver={(event) => {
         event.preventDefault()
         event.dataTransfer.dropEffect = 'move'
@@ -68,7 +68,7 @@ export function TaskColumnView({
         ) : null}
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+      <div className="column-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {tasks.length === 0 ? (
           <p className="px-1 py-8 text-center text-sm text-[var(--mist)]">暂无任务</p>
         ) : (

@@ -89,3 +89,11 @@ body {
 *::-webkit-scrollbar-thumb:active {
   background: var(--brass);
 }
+
+.column-scroll {
+  padding-right: 14px;
+}
+
+.column-scroll::-webkit-scrollbar-track {
+  margin: 4px 2px 4px 0;
+}
