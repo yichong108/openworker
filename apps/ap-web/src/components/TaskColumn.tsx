@@ -68,7 +68,7 @@ export function TaskColumnView({
         ) : null}
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
         {tasks.length === 0 ? (
           <p className="px-1 py-8 text-center text-sm text-[var(--mist)]">暂无任务</p>
         ) : (

@@ -55,3 +55,37 @@ body {
 .anim-rise {
   animation: rise-in 0.45s ease-out both;
 }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(196, 163, 90, 0.42) rgba(243, 234, 217, 0.06);
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track {
+  margin: 6px 0;
+  background: rgba(243, 234, 217, 0.06);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(196, 163, 90, 0.78), rgba(196, 163, 90, 0.38));
+  border: 1px solid rgba(243, 234, 217, 0.12);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(196, 163, 90, 0.95), rgba(196, 163, 90, 0.55));
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--brass);
+}
