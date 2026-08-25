@@ -1,9 +1,22 @@
 import { NextResponse } from 'next/server'
 
 import { taskErrorResponse, taskIdFromParams } from '@/lib/task-api'
+import { recordTaskAgentError, startTaskAgent, stopTaskAgent } from '@/lib/task-agent-runner'
 import { moveTask, readTask, updateTask } from '@/lib/task-fs'
+import { TaskFsError } from '@/lib/task-fs-error'
 import { isTaskColumn, isTaskPriority } from '@/lib/task-types'
-import type { UpdateTaskInput } from '@/lib/task-types'
+import type { TaskColumn, UpdateTaskInput } from '@/lib/task-types'
+
+/**
+ * 从任务 id 读出所在列（第一段目录）。
+ *
+ * @param id - 如 todo/task-xxx.md
+ * @returns 列名；无法识别则为 null
+ */
+function columnOf(id: string): TaskColumn | null {
+  const top = id.split('/')[0]
+  return isTaskColumn(top) ? top : null
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -94,7 +107,30 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
     if (typeof body.status !== 'string' || !isTaskColumn(body.status)) {
       return NextResponse.json({ error: 'status 必须是 todo/doing/done/blocked' }, { status: 400 })
     }
-    return NextResponse.json(moveTask(currentId, body.status))
+
+    const from = columnOf(currentId)
+    const moved = moveTask(currentId, body.status)
+
+    if (from === 'doing' && body.status !== 'doing') {
+      await stopTaskAgent(moved.fileName)
+    }
+
+    if (body.status === 'doing' && from !== 'doing') {
+      try {
+        await startTaskAgent(moved)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '无法启动任务 Agent'
+        const code = error instanceof TaskFsError ? error.code : undefined
+        recordTaskAgentError(moved.fileName, message)
+        return NextResponse.json({
+          ...moved,
+          agentError: message,
+          ...(code ? { code } : {})
+        })
+      }
+    }
+
+    return NextResponse.json(moved)
   } catch (error) {
     return taskErrorResponse(error)
   }

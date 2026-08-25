@@ -3,6 +3,7 @@
 import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
+import type { ChatTranscript } from './chat/chat-types'
 import { columnAccent } from './CreateTaskDialog'
 import { TaskCard } from './TaskCard'
 
@@ -10,6 +11,37 @@ type TaskUpdateInput = {
   title: string
   priority: TaskPriority
   requirements: string
+}
+
+/**
+ * 把会话快照收成卡片按钮所需字段。
+ *
+ * @param transcript - 该文件名的会话
+ * @returns 按钮状态
+ */
+function chatHint(transcript: ChatTranscript | undefined): {
+  running: boolean
+  started: boolean
+  error?: string
+  preview: string
+} {
+  if (!transcript) {
+    return { running: false, started: false, preview: '' }
+  }
+  let preview = ''
+  for (let i = transcript.messages.length - 1; i >= 0; i -= 1) {
+    const item = transcript.messages[i]
+    if (item.role === 'assistant' && item.content.trim()) {
+      preview = item.content
+      break
+    }
+  }
+  return {
+    running: transcript.running,
+    started: transcript.started,
+    error: transcript.error,
+    preview
+  }
 }
 
 type TaskColumnProps = {
@@ -20,10 +52,12 @@ type TaskColumnProps = {
   loadingId: string | null
   detailError: Record<string, string>
   savingId: string | null
+  transcripts: Record<string, ChatTranscript>
   onToggle: (column: TaskColumn, id: string) => void
   onCollapse: (column: TaskColumn) => void
   onMove: (id: string, status: TaskColumn) => void
   onDropTask: (id: string, status: TaskColumn) => void
+  onOpenChat: (task: TaskSummary) => void
   onUpdate: (id: string, input: TaskUpdateInput) => Promise<boolean>
   onCreate?: () => void
 }
@@ -39,10 +73,12 @@ export function TaskColumnView({
   loadingId,
   detailError,
   savingId,
+  transcripts,
   onToggle,
   onCollapse,
   onMove,
   onDropTask,
+  onOpenChat,
   onUpdate,
   onCreate
 }: TaskColumnProps) {
@@ -91,9 +127,11 @@ export function TaskColumnView({
               loading={loadingId === task.id}
               error={detailError[task.id] ?? null}
               saving={savingId === task.id}
+              chat={chatHint(transcripts[task.fileName])}
               onToggle={() => onToggle(column, task.id)}
               onCollapse={() => onCollapse(column)}
               onMove={(status) => onMove(task.id, status)}
+              onOpenChat={() => onOpenChat(task)}
               onUpdate={(input) => onUpdate(task.id, input)}
             />
           ))

@@ -81,6 +81,22 @@ function scheduleOf(items: ToolboxRecord[], name: string): StoredSchedule {
   return items.find((item) => item.name === name)?.schedule ?? blankSchedule()
 }
 
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+      <path d="M8 5.2v13.6c0 .7.8 1.1 1.4.7l10.2-6.8c.6-.4.6-1.2 0-1.6L9.4 4.5C8.8 4.1 8 4.5 8 5.2z" />
+    </svg>
+  )
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
+      <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />
+    </svg>
+  )
+}
+
 /**
  * 工具集列：从 `.agents/skills` 挑选 skill，并用 Cursor SDK 开始/停止执行。
  */
@@ -396,8 +412,11 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
         >
           <button
             type="button"
-            className="rounded-lg bg-[var(--brass)] px-2.5 py-1 text-xs font-medium text-[var(--ink)]"
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--brass)]/50 px-2 py-0.5 font-display text-[11px] tracking-[0.14em] text-[var(--brass)] transition hover:border-[var(--brass)] hover:bg-[var(--brass)]/10"
           >
+            <span aria-hidden className="text-sm leading-none">
+              +
+            </span>
             添加工具
           </button>
           {menuOpen ? (
@@ -521,6 +540,8 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                   {isRunning ? (
                     <button
                       type="button"
+                      aria-label="停止"
+                      title="停止"
                       disabled={busy === name}
                       onClick={() => {
                         invalidate(name)
@@ -529,18 +550,20 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                         }
                         void callSkill('/api/skills/stop', name)
                       }}
-                      className="shrink-0 rounded-md bg-[var(--rust)] px-2 py-0.5 text-[11px] text-white disabled:opacity-40"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--rust)] text-white disabled:opacity-40"
                     >
-                      停止
+                      <StopIcon />
                     </button>
                   ) : (
                     <button
                       type="button"
+                      aria-label="开始"
+                      title="开始"
                       disabled={busy === name}
                       onClick={() => void callSkill('/api/skills/run', name)}
-                      className="shrink-0 rounded-md bg-[var(--teal)] px-2 py-0.5 text-[11px] text-white disabled:opacity-40"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--teal)] text-white disabled:opacity-40"
                     >
-                      开始
+                      <PlayIcon />
                     </button>
                   )}
                 </div>

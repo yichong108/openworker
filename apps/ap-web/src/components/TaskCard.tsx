@@ -7,6 +7,13 @@ import { COLUMN_LABELS } from '@/lib/task-types'
 
 import { columnAccent } from './CreateTaskDialog'
 
+type TaskChatHint = {
+  running: boolean
+  started: boolean
+  error?: string
+  preview: string
+}
+
 type TaskCardProps = {
   task: TaskSummary
   expanded: boolean
@@ -14,9 +21,11 @@ type TaskCardProps = {
   loading: boolean
   error: string | null
   saving: boolean
+  chat: TaskChatHint
   onToggle: () => void
   onCollapse: () => void
   onMove: (status: TaskColumn) => void
+  onOpenChat: () => void
   onUpdate: (input: {
     title: string
     priority: TaskPriority
@@ -37,6 +46,22 @@ const FIELD =
   'mt-1 w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 font-body text-[13px] outline-none ring-[var(--brass)] focus:ring-2'
 
 /**
+ * 卡片底部对话按钮文案。
+ *
+ * @param chat - 该任务会话状态
+ * @returns 按钮文字
+ */
+function chatButtonLabel(chat: TaskChatHint): string {
+  if (!chat.started) return '对话'
+  if (chat.running) {
+    const preview = chat.preview.replace(/\s+/g, ' ').trim()
+    return preview || '…'
+  }
+  if (chat.error) return chat.error
+  return 'Worked'
+}
+
+/**
  * 单张任务卡片：折叠显示标题；展开后可查看或编辑详情。
  */
 export function TaskCard({
@@ -46,9 +71,11 @@ export function TaskCard({
   loading,
   error,
   saving,
+  chat,
   onToggle,
   onCollapse,
   onMove,
+  onOpenChat,
   onUpdate
 }: TaskCardProps) {
   const [editing, setEditing] = useState(false)
@@ -79,6 +106,10 @@ export function TaskCard({
     <article
       draggable={!expanded}
       onDragStart={(event) => {
+        if ((event.target as HTMLElement).closest('[data-chat-trigger]')) {
+          event.preventDefault()
+          return
+        }
         event.dataTransfer.setData('text/plain', task.id)
         event.dataTransfer.effectAllowed = 'move'
       }}
@@ -99,17 +130,7 @@ export function TaskCard({
         >
           {task.priority}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block break-words font-medium leading-snug">{task.title}</span>
-          <span className="mt-1 block truncate font-mono text-[11px] text-[var(--ink-soft)]">
-            {task.fileName}
-          </span>
-          {!expanded && task.excerpt ? (
-            <span className="mt-1 block text-xs leading-5 text-[var(--ink-soft)]">
-              {task.excerpt}
-            </span>
-          ) : null}
-        </span>
+        <span className="min-w-0 flex-1 break-words font-medium leading-snug">{task.title}</span>
       </button>
 
       {expanded ? (
@@ -206,21 +227,6 @@ export function TaskCard({
 
           {!editing ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {(['todo', 'doing', 'done', 'blocked'] as TaskColumn[]).map((column) => (
-                <button
-                  key={column}
-                  type="button"
-                  disabled={column === task.status}
-                  onClick={() => onMove(column)}
-                  className="rounded-md px-2 py-1 text-[11px] disabled:opacity-40"
-                  style={{
-                    background: column === task.status ? columnAccent(column) : 'rgba(0,0,0,0.06)',
-                    color: column === task.status ? '#fff' : 'var(--ink-soft)'
-                  }}
-                >
-                  {COLUMN_LABELS[column]}
-                </button>
-              ))}
               <button
                 type="button"
                 className="text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline disabled:opacity-40"
@@ -238,8 +244,52 @@ export function TaskCard({
               </button>
             </div>
           ) : null}
+
+          <div className="mt-3 border-t border-black/10 pt-3">
+            <p className="truncate font-mono text-[11px] text-[var(--ink-soft)]">{task.fileName}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(['todo', 'doing', 'done', 'blocked'] as TaskColumn[]).map((column) => (
+                <button
+                  key={column}
+                  type="button"
+                  disabled={column === task.status || editing}
+                  onClick={() => onMove(column)}
+                  className="rounded-md px-2 py-1 text-[11px] disabled:opacity-40"
+                  style={{
+                    background: column === task.status ? columnAccent(column) : 'rgba(0,0,0,0.06)',
+                    color: column === task.status ? '#fff' : 'var(--ink-soft)'
+                  }}
+                >
+                  {COLUMN_LABELS[column]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : null}
+
+      <div className="px-3 pb-3">
+        <button
+          type="button"
+          data-chat-trigger
+          title={chatButtonLabel(chat)}
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenChat()
+          }}
+          className={`w-full truncate rounded-lg px-2.5 py-1.5 text-left text-[11px] font-medium transition hover:opacity-90 ${
+            chat.running
+              ? 'bg-[var(--teal)]/15 text-[var(--teal)]'
+              : chat.started && !chat.error
+                ? 'bg-[var(--sage)]/20 text-[var(--sage)]'
+                : chat.error
+                  ? 'bg-[var(--rust)]/15 text-[var(--rust)]'
+                  : 'bg-black/5 text-[var(--ink-soft)]'
+          }`}
+        >
+          {chatButtonLabel(chat)}
+        </button>
+      </div>
     </article>
   )
 }

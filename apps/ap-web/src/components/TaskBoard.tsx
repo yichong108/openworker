@@ -6,6 +6,8 @@ import { taskApiPath } from '@/lib/task-paths'
 import type { TaskBoardPayload, TaskColumn, TaskDetail, TaskPriority } from '@/lib/task-types'
 import { TASK_COLUMNS } from '@/lib/task-types'
 
+import type { ChatTranscript } from './chat/chat-types'
+import { AiChatDialog } from './chat/AiChatDialog'
 import { ConfigDialog } from './ConfigDialog'
 import { CreateTaskDialog } from './CreateTaskDialog'
 import { TaskColumnView } from './TaskColumn'
@@ -55,6 +57,10 @@ export function TaskBoard() {
   const [configOpen, setConfigOpen] = useState(false)
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [transcripts, setTranscripts] = useState<Record<string, ChatTranscript>>({})
+  const [chatTask, setChatTask] = useState<{ id: string; fileName: string; title: string } | null>(
+    null
+  )
   const detailsRef = useRef(details)
   detailsRef.current = details
   const expandedRef = useRef(expanded)
@@ -149,6 +155,23 @@ export function TaskBoard() {
     }
   }, [applyBoard])
 
+  useEffect(() => {
+    const source = new EventSource('/api/tasks/chat/stream')
+    const onSnapshot = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { transcripts?: Record<string, ChatTranscript> }
+        setTranscripts(payload.transcripts ?? {})
+      } catch {
+        /* 忽略单帧解析失败 */
+      }
+    }
+    source.addEventListener('chat-snapshot', onSnapshot)
+    return () => {
+      source.removeEventListener('chat-snapshot', onSnapshot)
+      source.close()
+    }
+  }, [])
+
   const toggleCard = useCallback(
     (column: TaskColumn, id: string) => {
       const collapsing = expanded[column] === id
@@ -174,13 +197,25 @@ export function TaskBoard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
-      const payload = (await response.json()) as { error?: string }
+      const payload = (await response.json()) as {
+        error?: string
+        agentError?: string
+        code?: string
+      }
       if (!response.ok) {
         setLoadError(readErrorMessage(payload, '无法移动任务'))
         return
       }
       setExpanded(EMPTY_EXPANDED)
-      setLoadError(null)
+      if (payload.agentError) {
+        setLoadError(payload.agentError)
+        if (payload.code === 'ai_auth') {
+          setConfigAuthError(payload.agentError)
+          setConfigOpen(true)
+        }
+      } else {
+        setLoadError(null)
+      }
       await refresh()
     },
     [refresh]
@@ -253,7 +288,7 @@ export function TaskBoard() {
           setConfigAuthError(null)
           setConfigOpen(true)
         }}
-        className="absolute right-5 top-5 z-40 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--paper)] transition hover:bg-white/10 hover:text-[var(--brass)]"
+        className="absolute right-5 top-5 z-40 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--mist)] transition hover:bg-white/10 hover:text-[var(--brass)]"
       >
         <svg
           viewBox="0 0 24 24"
@@ -288,10 +323,14 @@ export function TaskBoard() {
                 loadingId={loadingId}
                 detailError={detailError}
                 savingId={savingId}
+                transcripts={transcripts}
                 onToggle={toggleCard}
                 onCollapse={collapseColumn}
                 onMove={moveTask}
                 onDropTask={moveTask}
+                onOpenChat={(task) => {
+                  setChatTask({ id: task.id, fileName: task.fileName, title: task.title })
+                }}
                 onUpdate={updateTask}
                 onCreate={
                   column === 'todo'
@@ -333,6 +372,15 @@ export function TaskBoard() {
         error={createError}
         onClose={() => setDialogOpen(false)}
         onSubmit={createTask}
+      />
+      <AiChatDialog
+        open={Boolean(chatTask)}
+        title={chatTask?.title || '对话'}
+        messages={chatTask ? (transcripts[chatTask.fileName]?.messages ?? []) : []}
+        running={chatTask ? Boolean(transcripts[chatTask.fileName]?.running) : false}
+        composer={null}
+        emptyHint="进入进行中后会在这里展示回复过程"
+        onClose={() => setChatTask(null)}
       />
     </main>
   )
