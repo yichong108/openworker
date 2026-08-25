@@ -25,6 +25,14 @@ pnpm install
 pnpm dev
 ```
 
+### AP Web task board
+
+```bash
+pnpm ap-web:dev
+```
+
+Opens at http://localhost:3010 . Columns map to `todo` / `doing` / `done` / `blocked` under `.agents/ap-config/work-data/tasks/`.
+
 ### AI Coding
 
 See [.agents/AGENTS.md](.agents/AGENTS.md), [.agents/ap-config/work-data/README.md](.agents/ap-config/work-data/README.md), [skills/](apps/ap-cli/src/skills/) . For example, running the `/ap-task-execute` skill to quickly get started with development.
