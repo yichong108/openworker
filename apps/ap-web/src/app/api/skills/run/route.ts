@@ -11,11 +11,12 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const body = (await request.json()) as { name?: unknown }
+    const body = (await request.json()) as { name?: unknown; input?: unknown }
     if (typeof body.name !== 'string' || !body.name.trim()) {
       return NextResponse.json({ error: '缺少 skill 名' }, { status: 400 })
     }
-    await startSkill(body.name.trim())
+    const input = typeof body.input === 'string' ? body.input : undefined
+    await startSkill(body.name.trim(), input)
     return NextResponse.json({ ok: true }, { status: 202 })
   } catch (error) {
     return taskErrorResponse(error)

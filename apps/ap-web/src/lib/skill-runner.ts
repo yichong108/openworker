@@ -14,9 +14,27 @@ type SkillJob = {
   agent: AgentInstance
   run?: RunInstance
   error?: string
+  cancelled?: boolean
+}
+
+export type SkillRunLast = {
+  ok: boolean
+  error?: string
+  cancelled?: boolean
+  finishedAt: number
 }
 
 const jobs = new Map<string, SkillJob>()
+const lastResults = new Map<string, SkillRunLast>()
+
+function rememberResult(job: SkillJob): void {
+  lastResults.set(job.name, {
+    ok: !job.cancelled && !job.error,
+    ...(job.error ? { error: job.error } : {}),
+    ...(job.cancelled ? { cancelled: true } : {}),
+    finishedAt: Date.now()
+  })
+}
 
 /**
  * 当前正在执行的 skill 名列表。
@@ -28,11 +46,25 @@ export function listRunningSkills(): string[] {
 }
 
 /**
+ * 运行中的 skill 以及最近一次结束结果（供定时循环判断成败）。
+ */
+export function listSkillRunSnapshot(): {
+  running: string[]
+  last: Record<string, SkillRunLast>
+} {
+  return {
+    running: [...jobs.keys()],
+    last: Object.fromEntries(lastResults)
+  }
+}
+
+/**
  * 用 Cursor SDK 本地 Agent 启动指定 skill（后台跑完，不阻塞 HTTP）。
  *
  * @param name - `.agents/skills` 目录名
+ * @param userInput - 可选用户补充，空则按 skill 默认流程
  */
-export async function startSkill(name: string): Promise<void> {
+export async function startSkill(name: string, userInput?: string): Promise<void> {
   loadCursorEnv()
   const skill = listAgentsSkills().find((item) => item.name === name)
   if (!skill) {
@@ -44,7 +76,8 @@ export async function startSkill(name: string): Promise<void> {
 
   const workspaceRoot = getWorkspaceRoot()
   const markdown = readSkillMarkdown(name)
-  const prompt = buildSkillPrompt(name, markdown)
+  const extra = userInput?.trim()
+  const prompt = buildSkillPrompt(name, markdown, extra || undefined)
   const config = readAiConfig()
   const apiKey = config.cursor.apiKey.trim() || process.env.CURSOR_API_KEY?.trim()
   const model = config.cursor.model.trim() || resolveModelId()
@@ -98,13 +131,16 @@ export async function startSkill(name: string): Promise<void> {
       }
       await run.wait()
     } catch (error) {
-      job.error = error instanceof Error ? error.message : String(error)
+      if (!job.cancelled) {
+        job.error = error instanceof Error ? error.message : String(error)
+      }
     } finally {
       try {
         await agent[Symbol.asyncDispose]()
       } catch {
         /* 忽略释放失败 */
       }
+      rememberResult(job)
       jobs.delete(name)
     }
   })()
@@ -120,6 +156,7 @@ export async function stopSkill(name: string): Promise<void> {
   if (!job) {
     throw new TaskFsError(`${name} 未在执行`, 404)
   }
+  job.cancelled = true
   try {
     if (job.run?.supports('cancel')) {
       await job.run.cancel()
@@ -130,6 +167,7 @@ export async function stopSkill(name: string): Promise<void> {
     } catch {
       /* 忽略 */
     }
+    rememberResult(job)
     jobs.delete(name)
   }
 }

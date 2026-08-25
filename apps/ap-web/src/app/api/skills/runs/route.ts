@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { listRunningSkills } from '@/lib/skill-runner'
+import { listSkillRunSnapshot } from '@/lib/skill-runner'
 import { taskErrorResponse } from '@/lib/task-api'
 
 export const runtime = 'nodejs'
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(): Promise<NextResponse> {
   try {
-    return NextResponse.json({ running: listRunningSkills() })
+    return NextResponse.json(listSkillRunSnapshot())
   } catch (error) {
     return taskErrorResponse(error)
   }

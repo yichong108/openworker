@@ -82,15 +82,20 @@ export function readSkillMarkdown(name: string): string {
  *
  * @param skillName - skill 目录名
  * @param skillMarkdown - SKILL.md 全文
+ * @param extra - 可选用户补充（空则按 skill 默认流程）
  * @returns 发给 Agent.send 的文本
  */
-export function buildSkillPrompt(skillName: string, skillMarkdown: string): string {
+export function buildSkillPrompt(skillName: string, skillMarkdown: string, extra?: string): string {
+  const extraBlock = extra?.trim()
+    ? `\n用户补充指令：\`${extra.trim()}\`。在不违反 skill 的前提下遵从。\n`
+    : ''
+
   return `你是本仓库的 Agent。必须严格遵循下方 **${skillName}** skill，不要发明 skill 之外的流程或需求。
 
 ## 本次指令
 
 立即开始执行 ${skillName}。不要询问是否开始。skill 要求结束时就结束。
-
+${extraBlock}
 先读 \`.agents/AGENTS.md\`。
 
 项目 skill 路径：\`.agents/skills/${skillName}/\`（含 references 等附属文件）。
