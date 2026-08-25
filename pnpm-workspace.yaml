@@ -11,6 +11,7 @@ catalog:
   '@cursor/sdk': ^1.0.27
   '@types/node': ^22.15.21
   ai: ^7.0.77
+  dayjs: ^1.11.13
   highlight.js: ^11.11.1
   publint: ^0.3.24
   rxjs: 7.8.1

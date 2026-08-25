@@ -3,6 +3,7 @@
  */
 
 import type { BaseEvent } from '@ag-ui/client'
+import dayjs from 'dayjs'
 
 /**
  * Electron 壳 IPC 通道（业务数据面已迁 Native HTTP/SSE）
@@ -49,15 +50,16 @@ export type AboutAppInfo = {
 }
 
 /**
- * 将构建时刻 ISO 字符串格式化为 UTC 日历钟。
+ * 将构建时刻 ISO 字符串格式化为用户本地时区日历钟。
+ *
+ * 构建时刻在打包时定死；展示时按当前时区换算，格式为 `YYYY-MM-DD HH:mm`。
  *
  * @param iso - ISO 时间
  */
-export function formatBuildIsoUtcHuman(iso: string): string | null {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  const s = d.toISOString()
-  return `${s.slice(0, 10)} ${s.slice(11, 19)} UTC`
+export function formatBuildIsoLocalHuman(iso: string): string | null {
+  const d = dayjs(iso)
+  if (!d.isValid()) return null
+  return d.format('YYYY-MM-DD HH:mm')
 }
 
 /**
@@ -66,7 +68,7 @@ export function formatBuildIsoUtcHuman(iso: string): string | null {
  * @param info - 关于信息
  */
 export function formatAboutAppCopyText(info: AboutAppInfo): string {
-  const buildLine = (formatBuildIsoUtcHuman(info.buildIso) ?? info.buildIso) || '(未知)'
+  const buildLine = (formatBuildIsoLocalHuman(info.buildIso) ?? info.buildIso) || '(未知)'
   return [
     info.productName,
     `版本: ${info.version}`,
