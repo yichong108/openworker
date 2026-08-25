@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { installElectronLogBridge } from '@/preload/electron-log-bridge'
+import { createLogWrite } from '@/preload/log-bridge'
 import {
   type AboutAppInfo,
   IPC,
@@ -11,13 +11,8 @@ import {
   type WorkspaceFileTreePayload
 } from '@/shared/ipc-shell'
 
-installElectronLogBridge()
-
-/**
- * 精简 preload API：仅 Electron 壳能力。
- * 工作区 / 会话 / Agent / settings / skills / MCP / 终端由渲染层直连 Native。
- */
 const api = {
+  logWrite: createLogWrite(),
   /** 渲染进程用于判断是否启用 Windows 自定义标题栏菜单 */
   platform: process.platform,
   windowAction: (action: WindowChromeAction) =>

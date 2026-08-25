@@ -16,8 +16,11 @@
   },
   "dependencies": {
     "@ag-ui/client": "catalog:",
+    "@openworker/log": "workspace:*",
+    "@openworker/base-agent": "workspace:*",
     "@openworker/llm": "workspace:*",
     "@openworker/memory": "workspace:*",
+    "@openworker/mcp": "workspace:*",
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
     "@openworker/tools": "workspace:*",

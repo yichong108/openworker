@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import { app } from 'electron'
 
-import { mainLog } from '@/main/logger'
+import { mainLog, parseJsonLogLine, writeLogEntry } from '@/main/logger'
 
 /** 启动后等待 /health 的最长时间（毫秒） */
 const HEALTH_TIMEOUT_MS = 10_000
@@ -183,6 +183,26 @@ async function waitForHealthyNative(baseUrl: string, deadlineMs: number): Promis
   return false
 }
 
+function forwardNativeLine(line: string, stream: 'stdout' | 'stderr'): void {
+  const trimmed = line.trim()
+  if (!trimmed) return
+  const parsed = parseJsonLogLine(trimmed)
+  if (parsed) {
+    writeLogEntry({
+      level: parsed.level,
+      module: typeof parsed.bindings.module === 'string' ? parsed.bindings.module : 'native',
+      msg: parsed.msg || undefined,
+      bindings: parsed.bindings
+    })
+    return
+  }
+  if (stream === 'stderr') {
+    mainLog.error({ stream: 'stderr' }, trimmed)
+  } else {
+    mainLog.info({ stream: 'stdout' }, trimmed)
+  }
+}
+
 /**
  * 将子进程 stdout/stderr 接到主进程日志
  *
@@ -190,12 +210,14 @@ async function waitForHealthyNative(baseUrl: string, deadlineMs: number): Promis
  */
 function attachChildLogs(proc: ChildProcess): void {
   proc.stdout?.on('data', (buf: Buffer | string) => {
-    const line = String(buf).trimEnd()
-    if (line) mainLog.info(`[native] ${line}`)
+    for (const line of String(buf).split(/\r?\n/)) {
+      forwardNativeLine(line, 'stdout')
+    }
   })
   proc.stderr?.on('data', (buf: Buffer | string) => {
-    const line = String(buf).trimEnd()
-    if (line) mainLog.warn(`[native] ${line}`)
+    for (const line of String(buf).split(/\r?\n/)) {
+      forwardNativeLine(line, 'stderr')
+    }
   })
   proc.on('exit', (code, signal) => {
     mainLog.info(`[native] process exited code=${code} signal=${signal}`)
@@ -231,7 +253,8 @@ function resolveSpawnSpec(): {
   // 渠道表由 Native 侧 bootstrapChannelEnv 写入；此处只需保证子进程有 CHANNEL
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    CHANNEL: channel
+    CHANNEL: channel,
+    OPENWORKER_NATIVE_PIPE_LOGS: '1'
   }
 
   if (useElectronNode()) {

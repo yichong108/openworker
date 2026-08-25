@@ -4,6 +4,8 @@
 
 import type { BaseEvent } from '@ag-ui/client'
 
+import { nativeLog } from '../logger.js'
+
 /** AGENT_STREAM 载荷：AG-UI BaseEvent + sessionId 信封 */
 export type AgentStreamPayload = {
   sessionId: string
@@ -54,8 +56,8 @@ export function emitSessionStream(payload: AgentStreamPayload): void {
     try {
       listener(payload)
     } catch (error) {
-      console.warn(
-        '[native:agent-stream] listener error:',
+      nativeLog.warn(
+        'agent-stream listener error',
         error instanceof Error ? error.message : String(error)
       )
     }

@@ -179,10 +179,14 @@ export async function runReActLoop(params: RunReActLoopParams): Promise<CoreMess
     const stepStartedAt = Date.now()
 
     // messages 里不要塞 role: 'system'，避免和顶层 system 重复
-    agentLog.info(`[react-loop] llm:in step=${steps}`, {
+    agentLog.debug(`[react-loop] llm:in step=${steps}`, {
       system: systemPrompt,
       messages: working,
       tools: Object.keys(declarations)
+    })
+    agentLog.info(`[react-loop] llm:in step=${steps}`, {
+      messageCount: working.length,
+      toolCount: Object.keys(declarations).length
     })
 
     const { text, toolCalls, usage, streamedLen } = await streamChatStep({
@@ -196,10 +200,15 @@ export async function runReActLoop(params: RunReActLoopParams): Promise<CoreMess
 
     const stepDurationMs = Date.now() - stepStartedAt
 
-    agentLog.info(`[react-loop] llm:out step=${steps} durationMs=${stepDurationMs}`, {
+    agentLog.debug(`[react-loop] llm:out step=${steps} durationMs=${stepDurationMs}`, {
       text,
       toolCalls,
       usage
+    })
+    agentLog.info(`[react-loop] llm:out step=${steps} durationMs=${stepDurationMs}`, {
+      toolCallCount: toolCalls.length,
+      usage,
+      textLen: text.length
     })
 
     if (toolCalls.length > 0) {

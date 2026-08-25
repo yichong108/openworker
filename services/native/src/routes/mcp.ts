@@ -12,6 +12,7 @@ import {
   startMcpWarmup
 } from '../agent/mcp-warmup.js'
 import { fail, ok } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 
 /**
  * MCP 路由（本机单租户）
@@ -32,7 +33,7 @@ mcpRouter.post('/mcp/probe', async (req, res) => {
     const result = await probeMcpServer(entry)
     res.status(200).json(ok(result ?? { ok: false as const, error: 'MCP 未配置' }))
   } catch (error) {
-    console.error('[native] POST /mcp/probe failed', error)
+    nativeLog.error('POST /mcp/probe failed', error)
     res.status(200).json(
       ok({
         ok: false as const,
@@ -46,7 +47,7 @@ mcpRouter.get('/mcp/warmup', (_req, res) => {
   try {
     res.status(200).json(ok(getMcpWarmupStatus()))
   } catch (error) {
-    console.error('[native] GET /mcp/warmup failed', error)
+    nativeLog.error('GET /mcp/warmup failed', error)
     res.status(200).json(fail(50041, error instanceof Error ? error.message : String(error)))
   }
 })
@@ -57,7 +58,7 @@ mcpRouter.post('/mcp/warmup', async (req, res) => {
     const report = reset ? await onMcpServersChanged() : await startMcpWarmup()
     res.status(200).json(ok(report))
   } catch (error) {
-    console.error('[native] POST /mcp/warmup failed', error)
+    nativeLog.error('POST /mcp/warmup failed', error)
     res.status(200).json(fail(50042, error instanceof Error ? error.message : String(error)))
   }
 })

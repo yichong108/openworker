@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { defaultSettings, normalizeSettings, type AppSettings } from '@openworker/shared'
 
 import { getOpenworkerDir, getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
+import { nativeLog } from '../logger.js'
 import { onMcpServersChanged } from '../agent/mcp-warmup.js'
 import { getDb } from '../db/sqlite.js'
 
@@ -17,7 +18,7 @@ function syncMcpConfigFile(settings: AppSettings): void {
     const payload = { mcpServers: settings.mcpServers ?? [] }
     writeFileSync(getOpenworkerMcpConfigPath(), `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
   } catch (e) {
-    console.warn('[native] Failed to sync mcp.json:', e instanceof Error ? e.message : e)
+    nativeLog.warn('Failed to sync mcp.json', e instanceof Error ? e.message : e)
   }
 }
 

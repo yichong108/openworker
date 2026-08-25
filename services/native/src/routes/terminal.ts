@@ -7,6 +7,7 @@ import { terminalManager } from '../terminal-manager.js'
 
 import { endSse, initSseResponse, writeSseData } from '../agent/sse.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 import { getWorkspace } from '../services/workspace-service.js'
 
 /**
@@ -95,7 +96,7 @@ terminalRouter.post('/terminal/cancel', async (req, res) => {
     await terminalManager.killCommand(`right-pane:${workspaceId}`)
     res.status(200).json(ok({ ok: true }))
   } catch (error) {
-    console.error('[native] POST /terminal/cancel failed', error)
+    nativeLog.error('POST /terminal/cancel failed', error)
     res.status(200).json(fail(50051, error instanceof Error ? error.message : String(error)))
   }
 })

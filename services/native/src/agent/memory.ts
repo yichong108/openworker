@@ -22,7 +22,7 @@ import {
 } from '@openworker/memory'
 import { generateText, type LanguageModel } from 'ai'
 
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 import { getUserProfile, putUserProfile } from '../services/user-profile-service.js'
 
 /** 会话工作记忆（summary / pinned），keyed by sessionId */

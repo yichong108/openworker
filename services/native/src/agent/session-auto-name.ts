@@ -5,7 +5,7 @@
 import { ask } from '@openworker/uni-agent'
 
 import { resolveChatModel } from './chat-model.js'
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 import { getAppSettings } from '../services/settings-service.js'
 import { getSession, patchSession } from '../services/session-service.js'
 

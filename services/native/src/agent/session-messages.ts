@@ -4,7 +4,7 @@
 
 import type { Message } from '@ag-ui/client'
 
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 import {
   getSessionMessages,
   patchSession,

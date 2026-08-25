@@ -14,7 +14,7 @@ import {
 
 import { NotFoundError } from '../http/envelope.js'
 import { getWorkspace } from '../services/workspace-service.js'
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 
 export type { SkillListItem }
 

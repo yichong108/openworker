@@ -3,6 +3,7 @@ import type { PatchSessionRequest, SessionMessagesPayload } from '@openworker/sh
 
 import { clearSessionState } from '../agent/agent-service.js'
 import { fail, ok, BadRequestError, NotFoundError } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 import {
   getSessionMessages,
   patchSession,
@@ -32,7 +33,7 @@ sessionsRouter.patch('/sessions/:id', async (req, res) => {
       res.status(200).json(fail(40021, error.message))
       return
     }
-    console.error('[native] PATCH /sessions/:id failed', error)
+    nativeLog.error('PATCH /sessions/:id failed', error)
     res.status(200).json(fail(50022, error instanceof Error ? error.message : String(error)))
   }
 })
@@ -48,7 +49,7 @@ sessionsRouter.delete('/sessions/:id', async (req, res) => {
       res.status(200).json(fail(40420, error.message))
       return
     }
-    console.error('[native] DELETE /sessions/:id failed', error)
+    nativeLog.error('DELETE /sessions/:id failed', error)
     res.status(200).json(fail(50023, error instanceof Error ? error.message : String(error)))
   }
 })
@@ -62,7 +63,7 @@ sessionsRouter.get('/sessions/:id/messages', async (req, res) => {
       res.status(200).json(fail(40420, error.message))
       return
     }
-    console.error('[native] GET /sessions/:id/messages failed', error)
+    nativeLog.error('GET /sessions/:id/messages failed', error)
     res.status(200).json(fail(50024, error instanceof Error ? error.message : String(error)))
   }
 })
@@ -81,7 +82,7 @@ sessionsRouter.put('/sessions/:id/messages', async (req, res) => {
       res.status(200).json(fail(40022, error.message))
       return
     }
-    console.error('[native] PUT /sessions/:id/messages failed', error)
+    nativeLog.error('PUT /sessions/:id/messages failed', error)
     res.status(200).json(fail(50025, error instanceof Error ? error.message : String(error)))
   }
 })

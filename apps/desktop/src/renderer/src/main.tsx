@@ -8,7 +8,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 
 import { App } from '@/renderer/src/App'
-import { renderLog } from '@/renderer/src/logger' // 初始化渲染端 electron-log（IPC → 主进程落盘）
+import { renderLog } from '@/renderer/src/logger' // 初始化渲染端 logger（IPC → 主进程 openworker.log）
 
 dayjs.locale('zh-cn')
 

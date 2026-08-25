@@ -11,3 +11,9 @@ OpenWorker 桌面客户端。每个会话对应有且只有一个独立 agent；
 | `pnpm desktop:build`      | OpenWorker（正式）       | 3202      | `~/.openworker`      |
 
 Dev 与已安装的 Test 可同时运行；身份、端口、`userData` 与 Native 数据根按渠道隔离。渠道配置内联于 [`packages/shared/src/load-env.ts`](../../packages/shared/src/load-env.ts)，脚本通过 `cross-env CHANNEL=dev|test|prod` 选择。
+
+## 日志
+
+Native 与 Desktop **共用** `{数据根}/logs/openworker.log`（见 `getOpenworkerLogPath()`），例如 dev：`~/.openworker-dev/logs/openworker.log`。
+
+Electron 的 `%APPDATA%/{ProductName}/logs/` **不再**写入业务日志；`userData` 仅保留壳层状态（如 electron-store）。详见 [`docs/logging.md`](../../docs/logging.md)。

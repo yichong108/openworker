@@ -2,6 +2,8 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
+import { nativeLog } from '../logger.js'
+
 import '../config/env.js'
 
 /** 进程内单例数据库连接 */
@@ -105,8 +107,8 @@ function resolveMigrationSourceUserId(database: DatabaseSync): string | null {
  */
 function migrateFromMultiUserSchema(database: DatabaseSync): void {
   const sourceUserId = resolveMigrationSourceUserId(database)
-  console.log(
-    `[native] migrating sqlite to schema v${SCHEMA_VERSION}` +
+  nativeLog.info(
+    `migrating sqlite to schema v${SCHEMA_VERSION}` +
       (sourceUserId ? ` (source user_id=${sourceUserId})` : ' (no source user)')
   )
 
@@ -217,10 +219,10 @@ function migrateFromMultiUserSchema(database: DatabaseSync): void {
 
     setSchemaVersion(database, SCHEMA_VERSION)
     database.exec('COMMIT')
-    console.log(`[native] sqlite migration to schema v${SCHEMA_VERSION} complete`)
+    nativeLog.info(`sqlite migration to schema v${SCHEMA_VERSION} complete`)
   } catch (error) {
     database.exec('ROLLBACK')
-    console.error('[native] sqlite migration failed', error)
+    nativeLog.error('sqlite migration failed', error)
     throw error
   } finally {
     database.exec('PRAGMA foreign_keys = ON')
@@ -371,7 +373,7 @@ export function closeDb(): void {
   try {
     db.close()
   } catch (error) {
-    console.error('[native] sqlite close failed', error)
+    nativeLog.error('sqlite close failed', error)
   } finally {
     db = null
   }

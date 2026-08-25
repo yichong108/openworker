@@ -1,0 +1,22 @@
+{
+  "name": "@openworker/log",
+  "version": "0.0.0",
+  "description": "OpenWorker internal logging — pino + ALS context (hosts only)",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openworker/shared": "workspace:*",
+    "pino": "^9.9.0",
+    "pino-pretty": "^13.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

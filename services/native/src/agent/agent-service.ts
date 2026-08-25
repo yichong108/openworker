@@ -3,6 +3,7 @@
  */
 
 import { EventType, type Message, type RunErrorEvent, type RunStartedEvent } from '@ag-ui/client'
+import { runWithLogContextAsync } from '@openworker/log'
 import {
   type AgentSendOptions,
   MAX_AGENT_LOOP_STEPS,
@@ -10,7 +11,7 @@ import {
 } from '@openworker/shared'
 
 import { createSessionAgent, type SessionAguiAgent } from './agent-instance.js'
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 import { resolveChatModel } from './chat-model.js'
 import {
   clearSessionWorking,
@@ -281,155 +282,159 @@ export async function runUserMessage(
     emitPreRunError(sessionId, '会话不存在或已过期')
     return
   }
-  if (session.controller) {
-    throw new Error('当前会话已有智能体在运行，请等待完成或停止后再发送')
-  }
 
-  let workspacePath = options?.workspacePath?.trim() || ''
-  if (!workspacePath) {
-    try {
-      const ws = await getWorkspace(session.workspaceId)
-      workspacePath = ws.path?.trim() || ''
-    } catch {
-      workspacePath = ''
+  return runWithLogContextAsync({ sessionId, workspaceId: session!.workspaceId }, async () => {
+    const runtime = session!
+    if (runtime.controller) {
+      throw new Error('当前会话已有智能体在运行，请等待完成或停止后再发送')
     }
-  }
-  agentLog.info(`[runUserMessage] workspacePath: ${workspacePath}`)
 
-  if (!workspacePath) {
-    emitPreRunError(sessionId, '当前会话未绑定工作区目录，请先绑定路径')
-    return
-  }
-
-  const provider = resolveChatModel(settings)
-  try {
-    session.agent.assertReady({ provider })
-  } catch (e) {
-    emitPreRunError(sessionId, e instanceof Error ? e.message : String(e))
-    return
-  }
-
-  const editUserOrdinal = options?.editUserOrdinal
-  if (typeof editUserOrdinal === 'number' && Number.isFinite(editUserOrdinal)) {
-    session.agent.messages = truncateMessagesBeforeUserOrdinal(
-      session.agent.messages,
-      Math.floor(editUserOrdinal)
-    )
-    clearSessionWorking(sessionId)
-    await persistSessionMessages(sessionId, session.agent.messages)
-  }
-
-  const ac = new AbortController()
-  session.controller = ac
-
-  const runId = makeRunId()
-  const runStartedAt = Date.now()
-
-  const userMessage: Message = {
-    id: `u-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    role: 'user',
-    content: agentUserText
-  }
-  const fullMessages: Message[] = [...session.agent.messages, userMessage]
-  session.agent.messages = fullMessages
-
-  let memoryDroppedPrefix: Message[] = []
-  let memorySystemSection: string | undefined
-  const memorySummarizer = provider ? createMemorySummarizer(provider) : null
-  const prepared = await prepareSessionMemory({
-    sessionId,
-    messages: fullMessages,
-    ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
-  })
-  memoryDroppedPrefix = prepared.droppedPrefix
-  session.agent.messages = prepared.messages
-  memorySystemSection = prepared.systemSection?.trim() || undefined
-
-  const forwardedProps = session.agent.buildRunForwardedProps({
-    composerMode,
-    abortController: ac,
-    workspacePath,
-    terminalKey: session.terminalKey,
-    provider,
-    tavilyApiKey: settings.tavilyApiKey,
-    maxSteps: MAX_AGENT_LOOP_STEPS,
-    invokeTimeoutMs: settings.agentRunTimeoutMs,
-    ...(memorySystemSection ? { memorySystemSection } : {}),
-    ...(composerMode === 'build' && options?.planMarkdown?.trim()
-      ? { planMarkdown: options.planMarkdown.trim() }
-      : {})
-  })
-
-  /**
-   * 将 compact 丢弃的前缀拼回 run 后的 messages。
-   *
-   * @param runMessages - runAgent 之后的 agent.messages
-   * @returns 完整 AG-UI 消息列表
-   */
-  const restoreFullMessages = (runMessages: Message[]): Message[] => {
-    if (memoryDroppedPrefix.length === 0) return runMessages
-    return [...memoryDroppedPrefix, ...runMessages]
-  }
-
-  try {
-    agentLog.info(
-      `[runUserMessage] run-start: ${runId}, sessionId: ${sessionId}, timestampMs: ${runStartedAt}`
-    )
-
-    const sub = session.agent.subscribe({
-      onEvent: ({ event }) => {
-        emitSessionStream({ sessionId, event })
+    let workspacePath = options?.workspacePath?.trim() || ''
+    if (!workspacePath) {
+      try {
+        const ws = await getWorkspace(session.workspaceId)
+        workspacePath = ws.path?.trim() || ''
+      } catch {
+        workspacePath = ''
       }
-    })
-    session.subscription = sub
-
-    await session.agent.runAgent({
-      runId,
-      tools: [],
-      context: [],
-      forwardedProps
-    })
-
-    const latest = sessions.get(sessionId)
-    if (!latest) return
-    if (ac.signal.aborted && latest.controller !== null && latest.controller !== ac) return
-
-    latest.agent.messages = restoreFullMessages(latest.agent.messages)
-    await persistSessionMessages(sessionId, latest.agent.messages)
-
-    if (memorySummarizer) {
-      void refreshUserProfileFromMessages({
-        messages: latest.agent.messages,
-        summarizer: memorySummarizer
-      })
     }
-  } catch (e) {
-    const latest = sessions.get(sessionId)
-    if (ac.signal.aborted) {
-      if (!latest || (latest.controller !== null && latest.controller !== ac)) return
-      latest.agent.messages = restoreFullMessages(latest.agent.messages)
-      await persistSessionMessages(sessionId, latest.agent.messages)
+    agentLog.info(`[runUserMessage] workspacePath: ${workspacePath}`)
+
+    if (!workspacePath) {
+      emitPreRunError(sessionId, '当前会话未绑定工作区目录，请先绑定路径')
       return
     }
-    const message = e instanceof Error ? e.message : String(e)
-    const err: RunErrorEvent = {
-      type: EventType.RUN_ERROR,
-      message,
-      code: 'ERROR',
-      timestamp: Date.now()
-    }
-    emitSessionStream({ sessionId, event: err })
 
-    if (latest) {
+    const provider = resolveChatModel(settings)
+    try {
+      session.agent.assertReady({ provider })
+    } catch (e) {
+      emitPreRunError(sessionId, e instanceof Error ? e.message : String(e))
+      return
+    }
+
+    const editUserOrdinal = options?.editUserOrdinal
+    if (typeof editUserOrdinal === 'number' && Number.isFinite(editUserOrdinal)) {
+      session.agent.messages = truncateMessagesBeforeUserOrdinal(
+        session.agent.messages,
+        Math.floor(editUserOrdinal)
+      )
+      clearSessionWorking(sessionId)
+      await persistSessionMessages(sessionId, session.agent.messages)
+    }
+
+    const ac = new AbortController()
+    session.controller = ac
+
+    const runId = makeRunId()
+    const runStartedAt = Date.now()
+
+    const userMessage: Message = {
+      id: `u-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      role: 'user',
+      content: agentUserText
+    }
+    const fullMessages: Message[] = [...session.agent.messages, userMessage]
+    session.agent.messages = fullMessages
+
+    let memoryDroppedPrefix: Message[] = []
+    let memorySystemSection: string | undefined
+    const memorySummarizer = provider ? createMemorySummarizer(provider) : null
+    const prepared = await prepareSessionMemory({
+      sessionId,
+      messages: fullMessages,
+      ...(memorySummarizer ? { summarizer: memorySummarizer } : { refine: false })
+    })
+    memoryDroppedPrefix = prepared.droppedPrefix
+    session.agent.messages = prepared.messages
+    memorySystemSection = prepared.systemSection?.trim() || undefined
+
+    const forwardedProps = session.agent.buildRunForwardedProps({
+      composerMode,
+      abortController: ac,
+      workspacePath,
+      terminalKey: session.terminalKey,
+      provider,
+      tavilyApiKey: settings.tavilyApiKey,
+      maxSteps: MAX_AGENT_LOOP_STEPS,
+      invokeTimeoutMs: settings.agentRunTimeoutMs,
+      ...(memorySystemSection ? { memorySystemSection } : {}),
+      ...(composerMode === 'build' && options?.planMarkdown?.trim()
+        ? { planMarkdown: options.planMarkdown.trim() }
+        : {})
+    })
+
+    /**
+     * 将 compact 丢弃的前缀拼回 run 后的 messages。
+     *
+     * @param runMessages - runAgent 之后的 agent.messages
+     * @returns 完整 AG-UI 消息列表
+     */
+    const restoreFullMessages = (runMessages: Message[]): Message[] => {
+      if (memoryDroppedPrefix.length === 0) return runMessages
+      return [...memoryDroppedPrefix, ...runMessages]
+    }
+
+    try {
+      agentLog.info(
+        `[runUserMessage] run-start: ${runId}, sessionId: ${sessionId}, timestampMs: ${runStartedAt}`
+      )
+
+      const sub = session.agent.subscribe({
+        onEvent: ({ event }) => {
+          emitSessionStream({ sessionId, event })
+        }
+      })
+      session.subscription = sub
+
+      await session.agent.runAgent({
+        runId,
+        tools: [],
+        context: [],
+        forwardedProps
+      })
+
+      const latest = sessions.get(sessionId)
+      if (!latest) return
+      if (ac.signal.aborted && latest.controller !== null && latest.controller !== ac) return
+
       latest.agent.messages = restoreFullMessages(latest.agent.messages)
       await persistSessionMessages(sessionId, latest.agent.messages)
+
+      if (memorySummarizer) {
+        void refreshUserProfileFromMessages({
+          messages: latest.agent.messages,
+          summarizer: memorySummarizer
+        })
+      }
+    } catch (e) {
+      const latest = sessions.get(sessionId)
+      if (ac.signal.aborted) {
+        if (!latest || (latest.controller !== null && latest.controller !== ac)) return
+        latest.agent.messages = restoreFullMessages(latest.agent.messages)
+        await persistSessionMessages(sessionId, latest.agent.messages)
+        return
+      }
+      const message = e instanceof Error ? e.message : String(e)
+      const err: RunErrorEvent = {
+        type: EventType.RUN_ERROR,
+        message,
+        code: 'ERROR',
+        timestamp: Date.now()
+      }
+      emitSessionStream({ sessionId, event: err })
+
+      if (latest) {
+        latest.agent.messages = restoreFullMessages(latest.agent.messages)
+        await persistSessionMessages(sessionId, latest.agent.messages)
+      }
+    } finally {
+      const latest = sessions.get(sessionId)
+      if (latest && latest.controller === ac) {
+        latest.subscription?.unsubscribe()
+        latest.controller = null
+        latest.subscription = null
+      }
     }
-  } finally {
-    const latest = sessions.get(sessionId)
-    if (latest && latest.controller === ac) {
-      latest.subscription?.unsubscribe()
-      latest.controller = null
-      latest.subscription = null
-    }
-  }
+  })
 }

@@ -5,7 +5,7 @@
 import type { McpServerEntry } from '@openworker/shared'
 
 import { getMcpHostAgent, resetMcpHostAgent } from './agent-instance.js'
-import { agentLog } from './agent-log.js'
+import { agentLog } from '../logger.js'
 
 /** 单台 MCP 池化预热结果 */
 export type McpWarmupServerOk = { id: string; name: string; ok: true; toolCount: number }

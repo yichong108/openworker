@@ -8,6 +8,14 @@ import {
 } from 'ai'
 import { toolsLog } from './logger.js'
 
+const TOOL_LOG_TRUNCATE = 2048
+
+function truncateForLog(value: unknown): unknown {
+  const str = typeof value === 'string' ? value : JSON.stringify(value)
+  if (str.length <= TOOL_LOG_TRUNCATE) return value
+  return `${str.slice(0, TOOL_LOG_TRUNCATE)}…(${str.length} chars)`
+}
+
 /**
  * 工具执行生命周期观察（start / end）。
  *
@@ -127,10 +135,12 @@ export function defineTool<T extends FlexibleSchema>(
         timestampMs: startedAt
       })
 
-      toolsLog.info('execute tool start', { id, args })
+      toolsLog.info('execute tool start', { id })
+      toolsLog.debug('execute tool start detail', { id, args: truncateForLog(args) })
 
       const result = await execute?.(parsed, options)
       const resultStr = toolResultToObservation(result)
+      const durationMs = Date.now() - startedAt
 
       onTool({
         id,
@@ -140,7 +150,8 @@ export function defineTool<T extends FlexibleSchema>(
         timestampMs: Date.now()
       })
 
-      toolsLog.info('execute tool end', { id, result: resultStr })
+      toolsLog.info('execute tool end', { id, durationMs })
+      toolsLog.debug('execute tool end detail', { id, result: truncateForLog(resultStr) })
 
       return result
     }

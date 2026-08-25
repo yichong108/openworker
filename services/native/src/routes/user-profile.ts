@@ -2,6 +2,7 @@ import { Router, type Router as ExpressRouter } from 'express'
 import type { PutUserProfileRequest } from '@openworker/shared'
 
 import { BadRequestError, fail, ok } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 import { getUserProfile, putUserProfile } from '../services/user-profile-service.js'
 
 /**
@@ -17,7 +18,7 @@ userProfileRouter.get('/me/profile', async (_req, res) => {
     const profile = await getUserProfile()
     res.status(200).json(ok(profile))
   } catch (error) {
-    console.error('[native] GET /me/profile failed', error)
+    nativeLog.error('GET /me/profile failed', error)
     res.status(200).json(fail(50020, error instanceof Error ? error.message : String(error)))
   }
 })
@@ -32,7 +33,7 @@ userProfileRouter.put('/me/profile', async (req, res) => {
       res.status(200).json(fail(40020, error.message))
       return
     }
-    console.error('[native] PUT /me/profile failed', error)
+    nativeLog.error('PUT /me/profile failed', error)
     res.status(200).json(fail(50021, error instanceof Error ? error.message : String(error)))
   }
 })

@@ -1,56 +1,75 @@
-import { app } from 'electron'
-import log from 'electron-log/main.js'
+import { createLogger, initRootLogger, writeLogEntry, type Logger } from '@openworker/log'
+import { getOpenworkerDir, getOpenworkerLogPath } from '@openworker/shared/load-env'
+import { app, ipcMain } from 'electron'
 
-type LogLevelName = 'error' | 'warn' | 'info' | 'verbose' | 'debug' | 'silly'
-
-const LEVELS = new Set<string>(['error', 'warn', 'info', 'verbose', 'debug', 'silly'])
-
-function parseLevel(raw: string | undefined): LogLevelName | undefined {
-  if (!raw?.trim()) return undefined
-  const n = raw.trim().toLowerCase()
-  return LEVELS.has(n) ? (n as LogLevelName) : undefined
+type RendererLogPayload = {
+  level: 'debug' | 'info' | 'warn' | 'error'
+  module: string
+  msg?: string
+  bindings?: Record<string, unknown>
 }
 
 let initialized = false
 
+function registerLogIpc(): void {
+  ipcMain.on('log:write', (_event, raw: unknown) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return
+    const payload = raw as Partial<RendererLogPayload>
+    const level = payload.level
+    if (level !== 'debug' && level !== 'info' && level !== 'warn' && level !== 'error') return
+    const moduleName = typeof payload.module === 'string' ? payload.module : 'desktop:renderer'
+    writeLogEntry({
+      level,
+      module: moduleName,
+      msg: typeof payload.msg === 'string' ? payload.msg : undefined,
+      bindings:
+        payload.bindings && typeof payload.bindings === 'object' && !Array.isArray(payload.bindings)
+          ? (payload.bindings as Record<string, unknown>)
+          : undefined
+    })
+  })
+}
+
+function registerProcessErrorHandlers(log: Logger): void {
+  process.on('uncaughtException', (error) => {
+    log.error('uncaughtException', error)
+  })
+  process.on('unhandledRejection', (reason) => {
+    log.error('unhandledRejection', reason)
+  })
+}
+
 /**
- * 配置主进程日志（控制台 + 用户目录下文件，见 electron-log 默认路径）。
- * 环境变量 `OPENWORKERER_LOG_LEVEL` 可设为 error | warn | info | verbose | debug | silly。
+ * 配置主进程 pino 日志。
+ * 落盘使用 {@link getOpenworkerLogPath}（与 Native/SQLite 同数据根），不用 Electron `app.getPath('logs')`。
  */
 export function initMainLogger(): void {
   if (initialized) return
   initialized = true
 
-  log.initialize({ preload: false })
-
-  const fromEnv = parseLevel(process.env['OPENWORKERER_LOG_LEVEL'])
-  const isPackaged = app.isPackaged
-  const fileLevel: LogLevelName = fromEnv ?? (isPackaged ? 'info' : 'debug')
-  const consoleLevel: LogLevelName = fromEnv ?? (isPackaged ? 'info' : 'debug')
-
-  if (log.transports.file) {
-    log.transports.file.level = fileLevel
-  }
-  if (log.transports.console) {
-    log.transports.console.level = consoleLevel
-  }
-
-  log.errorHandler.startCatching({
-    showDialog: app.isPackaged
+  const logFile = getOpenworkerLogPath()
+  initRootLogger({
+    console: true,
+    file: logFile,
+    stdoutJson: false
   })
 
-  log.info(`主进程日志已就绪（file=${fileLevel}, console=${consoleLevel}）`)
-  logAppDirectoriesToConsole()
+  registerLogIpc()
+  const boot = createLogger('desktop:main')
+  registerProcessErrorHandlers(boot)
+  boot.info({ logFile }, '主进程日志已就绪')
+  logAppDirectoriesToConsole(boot)
 }
 
-/** 始终在终端打印，便于定位日志文件（不受 OPENWORKERER_LOG_LEVEL 影响） */
-function logAppDirectoriesToConsole(): void {
+/** 始终在终端打印，便于定位日志与数据目录（不受日志级别影响） */
+function logAppDirectoriesToConsole(log: Logger): void {
   const emit = (): void => {
     try {
-      console.log('[openworker] 用户数据目录:', app.getPath('userData'))
-      console.log('[openworker] Electron 日志目录:', app.getPath('logs'))
+      console.log('[openworker] 数据根 (日志/SQLite/MCP):', getOpenworkerDir())
+      console.log('[openworker] 日志文件:', getOpenworkerLogPath())
+      console.log('[openworker] Electron userData (壳/UI 状态):', app.getPath('userData'))
     } catch (e) {
-      console.warn('[openworker] 读取 app 路径失败:', e)
+      log.warn('读取 app 路径失败', e)
     }
   }
   if (app.isReady()) {
@@ -60,15 +79,14 @@ function logAppDirectoriesToConsole(): void {
   }
 }
 
-/** 按模块划分 scope，便于检索 */
-export function logScope(scope: string) {
-  return log.scope(scope)
-}
-
 initMainLogger()
 
-/**
- * 主进程默认记录器，写入控制台与日志文件。
- * 业务里显式记录错误：`mainLog.error('说明', err)` 或 `mainLog.error(err)`。
- */
-export const mainLog = log.scope('main')
+/** 按模块划分 scope，便于检索 */
+export function logScope(scope: string): Logger {
+  return createLogger(`desktop:${scope}`)
+}
+
+/** 主进程默认记录器 */
+export const mainLog = createLogger('desktop:main')
+
+export { writeLogEntry, parseJsonLogLine } from '@openworker/log'

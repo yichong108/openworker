@@ -21,6 +21,10 @@ pnpm native:dev
 
 默认监听 `http://127.0.0.1:3200`（仅绑定回环地址）。
 
+## 日志
+
+独立运行时日志落盘：`getOpenworkerLogPath()` → `{数据根}/logs/openworker.log`（dev 为 `~/.openworker-dev/logs/openworker.log`）。被 Desktop spawn 时经 stdout 汇总到同一文件。详见 [`docs/logging.md`](../../docs/logging.md)。
+
 ## HTTP 端点
 
 本机单租户：业务路由无需 Bearer。仅绑定 `127.0.0.1`。

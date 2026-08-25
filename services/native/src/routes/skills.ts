@@ -6,6 +6,7 @@ import { Router, type Router as ExpressRouter } from 'express'
 
 import { listUserSkills } from '../agent/skills.js'
 import { fail, ok } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 
 /**
  * 从 query 中读取单个字符串参数。
@@ -32,7 +33,7 @@ skillsRouter.get('/skills', async (req, res) => {
     const skills = await listUserSkills(workspaceId || undefined)
     res.status(200).json(ok({ skills }))
   } catch (error) {
-    console.error('[native] GET /skills failed', error)
+    nativeLog.error('GET /skills failed', error)
     res.status(200).json(fail(50040, error instanceof Error ? error.message : String(error)))
   }
 })

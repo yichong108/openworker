@@ -5,7 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@openworker/shared": ["../../packages/shared/src/index.ts"]
+      "@openworker/shared": ["../../packages/shared/src/index.ts"],
+      "@openworker/log": ["../../packages/log/src/index.ts"]
     }
   },
   "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*"]

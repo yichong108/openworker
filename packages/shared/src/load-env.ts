@@ -11,6 +11,17 @@
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+
+/** 日志级别（与 pino 对齐） */
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'
+
+const LOG_LEVELS = new Set<string>(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
+
+function parseLogLevel(raw: string | undefined, fallback: LogLevel): LogLevel {
+  const n = raw?.trim().toLowerCase()
+  if (n && LOG_LEVELS.has(n)) return n as LogLevel
+  return fallback
+}
 import { fileURLToPath } from 'node:url'
 
 /** 发行渠道键 */
@@ -114,7 +125,57 @@ export function bootstrapChannelEnv(): AppChannel {
     process.env.SQLITE_PATH = getNativeSqlitePath()
   }
 
+  // 日志级别：启动前显式设置则保留，否则 dev=debug、test/prod=info
+  if (!process.env.OPENWORKER_LOG_LEVEL?.trim()) {
+    process.env.OPENWORKER_LOG_LEVEL = channel === 'dev' ? 'debug' : 'info'
+  }
+
   return channel
+}
+
+/**
+ * 全局最低日志级别（由 `bootstrapChannelEnv` 或启动前 env 设定）。
+ */
+export function getLogLevel(): LogLevel {
+  const channel = process.env.CHANNEL?.trim()
+  const fallback: LogLevel = channel === 'dev' ? 'debug' : 'info'
+  return parseLogLevel(process.env.OPENWORKER_LOG_LEVEL, fallback)
+}
+
+/**
+ * 按 module 细调级别，形如 `native:agent:debug,@openworker/mcp:warn`。
+ */
+export function getLogModuleFilters(): Map<string, LogLevel> {
+  const raw = process.env.OPENWORKER_LOG_MODULES?.trim()
+  const out = new Map<string, LogLevel>()
+  if (!raw) return out
+
+  for (const segment of raw.split(',')) {
+    const part = segment.trim()
+    if (!part) continue
+    const colon = part.lastIndexOf(':')
+    if (colon <= 0) continue
+    const moduleName = part.slice(0, colon).trim()
+    const levelRaw = part.slice(colon + 1).trim()
+    if (!moduleName) continue
+    out.set(moduleName, parseLogLevel(levelRaw, 'debug'))
+  }
+  return out
+}
+
+/**
+ * OpenWorker 统一日志落盘路径：`{getOpenworkerDir()}/logs/openworker.log`
+ *
+ * 与 Native、SQLite、mcp.json 共用数据根；**不**使用 Electron `app.getPath('logs')`（AppData 下按应用名分的目录）。
+ */
+export function getOpenworkerLogPath(): string {
+  return join(getOpenworkerDir(), 'logs', 'openworker.log')
+}
+
+/** Desktop spawn Native 时经 stdout pipe 汇总日志，Native 侧不写文件 */
+export function isNativePipeLogsMode(): boolean {
+  const v = process.env.OPENWORKER_NATIVE_PIPE_LOGS?.trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
 }
 
 /**

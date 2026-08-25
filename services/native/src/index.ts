@@ -4,8 +4,10 @@ import { disposeMcpHostAgent } from './agent/agent-instance.js'
 import { startMcpWarmup } from './agent/mcp-warmup.js'
 import { ensureUserSkillsLayout } from './agent/skills.js'
 import { createApp } from './app.js'
+import { bootstrapNativeLogging } from './bootstrap-log.js'
 import './config/env.js'
 import { closeDb, ensureSchema } from './db/sqlite.js'
+import { nativeLog } from './logger.js'
 import { getAppSettings } from './services/settings-service.js'
 
 /**
@@ -15,27 +17,29 @@ import { getAppSettings } from './services/settings-service.js'
  * 注册 SIGTERM/SIGINT 以关闭 HTTP、MCP 宿主与 SQLite；listen 失败（如端口占用）以非零退出码结束。
  */
 function main() {
+  bootstrapNativeLogging()
+
   const port = Number(process.env.PORT ?? process.env.OPENWORKER_NATIVE_PORT)
   const sqlitePath = process.env.SQLITE_PATH!
 
   ensureSchema()
-  console.log(`[native] sqlite ready: ${sqlitePath}`)
+  nativeLog.info(`sqlite ready: ${sqlitePath}`)
 
   // 同步 mcp.json 种子 + 复制内置 skills；MCP 预热异步不阻塞 listen
   void getAppSettings()
     .then(() => ensureUserSkillsLayout())
     .then(() => startMcpWarmup())
     .catch((error) => {
-      console.warn(
-        '[native] startup skills/mcp init failed',
+      nativeLog.warn(
+        'startup skills/mcp init failed',
         error instanceof Error ? error.message : error
       )
     })
 
   const app = createApp()
   const server: Server = app.listen(port, '127.0.0.1', () => {
-    console.log(`[native] listening on http://127.0.0.1:${port}`)
-    console.log('[native] health check: GET /health')
+    nativeLog.info(`listening on http://127.0.0.1:${port}`)
+    nativeLog.info('health check: GET /health')
   })
 
   /**
@@ -58,21 +62,19 @@ function main() {
     if (error.code === 'EADDRINUSE') {
       void isPeerHealthy(port).then((healthy) => {
         if (healthy) {
-          console.log(
-            `[native] port ${port} already served by healthy peer, skip duplicate dev instance`
-          )
+          nativeLog.info(`port ${port} already served by healthy peer, skip duplicate dev instance`)
           closeDb()
           process.exit(0)
           return
         }
-        console.error('[native] listen failed', error)
+        nativeLog.error('listen failed', error)
         closeDb()
         process.exit(1)
       })
       return
     }
 
-    console.error('[native] listen failed', error)
+    nativeLog.error('listen failed', error)
     closeDb()
     process.exit(1)
   })
@@ -87,10 +89,10 @@ function main() {
   const shutdown = (signal: string) => {
     if (shuttingDown) return
     shuttingDown = true
-    console.log(`[native] received ${signal}, shutting down`)
+    nativeLog.info(`received ${signal}, shutting down`)
     server.close((closeError) => {
       if (closeError) {
-        console.error('[native] server close error', closeError)
+        nativeLog.error('server close error', closeError)
       }
       void disposeMcpHostAgent()
         .catch(() => undefined)

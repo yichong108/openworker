@@ -11,6 +11,7 @@ import { subscribeSessionStream } from '../agent/agent-stream.js'
 import { endSse, initSseResponse, writeSsePayload } from '../agent/sse.js'
 import { autoNameSessionFromFirstMessage } from '../agent/session-auto-name.js'
 import { fail, ok, NotFoundError } from '../http/envelope.js'
+import { nativeLog } from '../logger.js'
 import { getSession } from '../services/session-service.js'
 
 /**
@@ -33,7 +34,7 @@ agentRouter.post('/sessions/:id/agent/run', async (req, res) => {
       res.status(200).json(fail(40420, error.message))
       return
     }
-    console.error('[native] POST /sessions/:id/agent/run precheck failed', error)
+    nativeLog.error('POST /sessions/:id/agent/run precheck failed', error)
     res.status(200).json(fail(50030, error instanceof Error ? error.message : String(error)))
     return
   }
@@ -62,7 +63,7 @@ agentRouter.post('/sessions/:id/agent/run', async (req, res) => {
       editUserOrdinal: body.editUserOrdinal
     })
   } catch (error) {
-    console.error('[native] agent run failed', error)
+    nativeLog.error('agent run failed', error)
     if (!res.writableEnded) {
       const err: RunErrorEvent = {
         type: EventType.RUN_ERROR,
@@ -93,7 +94,7 @@ agentRouter.post('/sessions/:id/agent/cancel', async (req, res) => {
       res.status(200).json(fail(40420, error.message))
       return
     }
-    console.error('[native] POST /sessions/:id/agent/cancel failed', error)
+    nativeLog.error('POST /sessions/:id/agent/cancel failed', error)
     res.status(200).json(fail(50031, error instanceof Error ? error.message : String(error)))
   }
 })

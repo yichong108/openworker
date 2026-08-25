@@ -22,7 +22,8 @@
     "./terminal-manager": {
       "types": "./dist/terminal-manager.d.ts",
       "default": "./dist/terminal-manager.js"
-    }
+    },
+    "./logger": "./src/logger.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

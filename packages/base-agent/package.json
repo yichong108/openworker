@@ -18,7 +18,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./logger": "./src/logger.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
