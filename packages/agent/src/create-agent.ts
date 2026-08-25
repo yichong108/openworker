@@ -7,7 +7,7 @@ import path from 'node:path'
 
 import type { LanguageModel, ToolSet } from 'ai'
 import {
-  buildMcpToolsFromConfig,
+  loadMcpServersFromConfig,
   type McpProbeResult,
   type McpWarmupServerResult
 } from '@openworker/mcp'
@@ -234,28 +234,28 @@ async function loadSkillsAndMcpTools(
   await skillManager.init(onTool)
   await skillManager.addSkillRootDir('project', path.join(workspaceRoot, '.agents', 'skills'))
   const skillBundle = skillManager.toPromptAndTools()
-  const mcpResult = await buildMcpToolsFromConfig(
-    getOpenworkerMcpConfigPath(),
-    onTool,
-    getDefaultMcpManager()
-  )
+
+  const mcpManager = getDefaultMcpManager()
+  const servers = await loadMcpServersFromConfig(getOpenworkerMcpConfigPath())
+  const mcpTools = await mcpManager.buildMcpTools(servers, onTool)
+  const contextHints = await mcpManager.collectContextHints(servers)
 
   const promptExtras: WorkspacePromptExtras = {
     ...(skillBundle.hint ? { skillHint: skillBundle.hint } : {})
   }
 
-  if (mcpResult.servers.length > 0) {
-    const enabled = mcpResult.servers.filter((s) => s.enabled && s.command.trim())
-    promptExtras.mcpContextHints = mcpResult.contextHints
+  if (servers.length > 0) {
+    const enabled = servers.filter((s) => s.enabled && s.command.trim())
+    promptExtras.mcpContextHints = contextHints
     promptExtras.includeMcpMeta = true
     promptExtras.enabledMcpNames = enabled.map((s) => s.name || s.id)
     promptExtras.hasDisabledMcpEntries = enabled.length === 0
-  } else if (mcpResult.contextHints) {
-    promptExtras.mcpContextHints = mcpResult.contextHints
+  } else if (contextHints) {
+    promptExtras.mcpContextHints = contextHints
   }
 
   return {
-    tools: mergeToolSets(skillBundle.tools, mcpResult.tools),
+    tools: mergeToolSets(skillBundle.tools, mcpTools),
     promptExtras
   }
 }

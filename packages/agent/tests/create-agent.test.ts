@@ -26,11 +26,7 @@ vi.mock('@openworker/mcp', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@openworker/mcp')>()
   return {
     ...actual,
-    buildMcpToolsFromConfig: vi.fn(async () => ({
-      tools: {},
-      contextHints: '',
-      servers: []
-    }))
+    loadMcpServersFromConfig: vi.fn(async () => [])
   }
 })
 

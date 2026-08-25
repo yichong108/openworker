@@ -43,7 +43,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openworker/shared": "workspace:*",
     "@openworker/tools": "workspace:*",
-    "zod": "catalog:"
+    "ai": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

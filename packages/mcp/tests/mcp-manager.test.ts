@@ -45,4 +45,19 @@ describe('McpManager', () => {
     await expect(a.dispose()).resolves.toBeUndefined()
     await expect(b.dispose()).resolves.toBeUndefined()
   })
+
+  it('buildMcpTools：空列表或全 disabled / command 空 → {}', async () => {
+    const manager = new McpManager()
+    const onTool = () => {}
+    expect(await manager.buildMcpTools([], onTool)).toEqual({})
+    expect(
+      await manager.buildMcpTools(
+        [
+          { id: 'a', name: 'A', enabled: false, command: 'npx', args: [] },
+          { id: 'b', name: 'B', enabled: true, command: '  ', args: [] }
+        ],
+        onTool
+      )
+    ).toEqual({})
+  })
 })

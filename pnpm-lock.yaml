@@ -396,9 +396,9 @@ importers:
       '@openworker/tools':
         specifier: workspace:*
         version: link:../tools
-      zod:
+      ai:
         specifier: 'catalog:'
-        version: 4.4.3
+        version: 7.0.77(zod@4.4.3)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

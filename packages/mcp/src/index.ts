@@ -4,5 +4,4 @@
 
 export * from './load-config.js'
 export * from './mcp-manager.js'
-export * from './build-mcp-tools.js'
 export * from './types.js'

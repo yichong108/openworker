@@ -1,5 +1,11 @@
-import { tool, type Tool, type ToolExecutionOptions, type ToolSet } from 'ai'
-import type { z } from 'zod'
+import {
+  tool,
+  type FlexibleSchema,
+  type InferSchema,
+  type Tool,
+  type ToolExecutionOptions,
+  type ToolSet
+} from 'ai'
 import { toolsLog } from './logger.js'
 
 /**
@@ -25,13 +31,13 @@ export type ToolObservation = {
  */
 export type ToolOnTool = (e: ToolObservation) => void
 
-type ToolDefinition<T extends z.ZodTypeAny> = {
+type ToolDefinition<T extends FlexibleSchema> = {
   id: string
   description?: string
-  /** 对外仍使用 parameters；内部映射为 SDK inputSchema */
+  /** 对外仍使用 parameters；内部映射为 SDK inputSchema（Zod 或 jsonSchema） */
   parameters: T
   execute?: (
-    input: z.infer<T>,
+    input: InferSchema<T>,
     options: ToolExecutionOptions<unknown>
   ) => unknown | Promise<unknown>
 }
@@ -39,7 +45,7 @@ type ToolDefinition<T extends z.ZodTypeAny> = {
 /**
  * 将工具参数规范为 JSON 字符串，供时间线解析（如 path / content）。
  *
- * @param parsed - zod 解析后的入参
+ * @param parsed - 入参
  * @returns JSON 字符串；无法序列化时退回 String
  */
 function toolArgsToObservation(parsed: unknown): string {
@@ -90,7 +96,7 @@ export function filterToolSet(tools: ToolSet, predicate: (name: string) => boole
 }
 
 /**
- * 将 zod 工具定义包装为单键 AI SDK ToolSet（含生命周期观察上报）。
+ * 将工具定义包装为单键 AI SDK ToolSet（含生命周期观察上报）。
  *
  * 返回 ToolSet 而非自定义结构，可直接传给 streamText / generateText，
  * 或多个结果经 mergeToolSets 合并。
@@ -99,7 +105,7 @@ export function filterToolSet(tools: ToolSet, predicate: (name: string) => boole
  * @param onTool - 工具生命周期观察回调
  * @returns 仅含该工具一项的 ToolSet
  */
-export function defineTool<T extends z.ZodTypeAny>(
+export function defineTool<T extends FlexibleSchema>(
   def: ToolDefinition<T>,
   onTool: ToolOnTool
 ): ToolSet {
@@ -109,7 +115,7 @@ export function defineTool<T extends z.ZodTypeAny>(
     description,
     inputSchema: parameters,
     execute: async (input, options) => {
-      const parsed = input as z.infer<T>
+      const parsed = input as InferSchema<T>
       const startedAt = Date.now()
       const args = toolArgsToObservation(parsed)
 

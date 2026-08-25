@@ -12,8 +12,11 @@ import {
 } from '@modelcontextprotocol/sdk/client/stdio.js'
 import type { McpServerEntry } from '@openworker/shared'
 
+import { defineTool, mergeToolSets, type ToolOnTool, type ToolSet } from '@openworker/tools'
+
 import { loadMcpServersFromConfig } from './load-config.js'
 import { mcpLog } from './logger.js'
+import { mcpInputSchemaToParameters } from './mcp-parameters.js'
 import type { McpProbeResult, McpWarmupServerResult } from './types.js'
 
 /** OS / stdio 子进程要求 Record<string, string>；嵌套 JSON 存盘后在启动时 stringify */
@@ -56,6 +59,11 @@ async function withMcpClient<T>(
   }
 }
 
+function safeMcpSegment(s: string): string {
+  const t = s.trim().replace(/[^a-zA-Z0-9_-]/g, '_')
+  return t.slice(0, 48) || 'srv'
+}
+
 /** 无 RPC 时关闭 stdio 子进程；新一轮 list/call 会重连 */
 const MCP_POOL_IDLE_MS = 90_000
 const PROBE_TIMEOUT_MS = 22_000
@@ -78,9 +86,35 @@ function mcpLaunchSignature(entry: McpServerEntry): string {
   })
 }
 
+function formatCallToolResult(result: unknown): string {
+  if (!result || typeof result !== 'object') return String(result).slice(0, 24_000)
+  const r = result as {
+    content?: unknown[]
+    isError?: boolean
+  }
+  const parts: string[] = []
+  if (Array.isArray(r.content)) {
+    for (const block of r.content) {
+      if (block && typeof block === 'object' && 'type' in block) {
+        const b = block as { type?: string; text?: string }
+        if (b.type === 'text' && typeof b.text === 'string') parts.push(b.text)
+        else parts.push(JSON.stringify(block))
+      } else {
+        parts.push(String(block))
+      }
+    }
+  }
+  let out = parts.join('\n').slice(0, 24_000)
+  if (r.isError) out = `[MCP Tool Error] ${out}`
+  return out || '(empty)'
+}
+
 type PooledSlot = {
+  /** 启动签名；`command/args/cwd/env` 变化会丢弃旧连接并重连 */
   launchKey: string
+  /** 已连接的 MCP 客户端 */
   client: Client
+  /** 空闲定时器；空闲 `MCP_POOL_IDLE_MS` 后自动关闭子进程 */
   idleTimer: ReturnType<typeof setTimeout> | undefined
   /** 同一 stdio 会话上串行执行 MCP 请求，避免多工具并发打乱传输 */
   exclusiveTail: Promise<unknown>
@@ -329,6 +363,69 @@ export class McpManager {
     return `### ${srv.name}（id: ${srv.id}）\n${sections.join('\n\n')}`
   }
 
+  /**
+   * 为已启用的 MCP 服务器生成 Agent 工具（池化 stdio 连接，空闲自动断开）。
+   *
+   * 把各服务器 `listTools` 的结果编成 `defineTool`，执行时经本实例连接池 `callTool`。
+   * 失败的服务器跳过并打日志，不中断其余服务器。
+   *
+   * @param servers - MCP 服务器列表
+   * @param onTool - 工具生命周期观察回调
+   * @returns 合并后的 ToolSet
+   */
+  async buildMcpTools(servers: McpServerEntry[], onTool: ToolOnTool): Promise<ToolSet> {
+    const enabled = servers.filter((s) => s.enabled && s.command.trim())
+    let toolSet: ToolSet = {}
+
+    for (const srv of enabled) {
+      try {
+        await this.withPooledClient(srv, async (client) => {
+          const { tools: listed } = await client.listTools()
+
+          for (const t of listed ?? []) {
+            const mcpToolName = t.name
+            const mcpToolId = `mcp_${safeMcpSegment(srv.id)}__${safeMcpSegment(mcpToolName)}`
+
+            toolSet = mergeToolSets(
+              toolSet,
+              defineTool(
+                {
+                  id: mcpToolId,
+                  description: t.description?.trim(),
+                  parameters: mcpInputSchemaToParameters(t.inputSchema),
+                  execute: async (input) => {
+                    const args = (
+                      typeof input === 'object' && input !== null ? input : {}
+                    ) as Record<string, unknown>
+                    const result = await this.withPooledClient(srv, async (c) => {
+                      return await c.callTool({
+                        name: mcpToolName,
+                        arguments: args
+                      })
+                    })
+                    return formatCallToolResult(result)
+                  }
+                },
+                onTool
+              )
+            )
+          }
+        })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        mcpLog.warn(`[mcp] Skipping server ${srv.name} (${srv.id}): ${message}`)
+      }
+    }
+    return toolSet
+  }
+
+  /**
+   * 串行执行 MCP 请求，避免多工具并发打乱传输。
+   *
+   * @param serverId - 服务器 id
+   * @param fn - 执行的函数
+   * @returns 执行结果
+   */
   private runEnsureSerialized<T>(serverId: string, fn: () => Promise<T>): Promise<T> {
     const prev = this.ensureTailByServer.get(serverId) ?? Promise.resolve()
     const p = prev.then(() => fn())
@@ -371,6 +468,13 @@ export class McpManager {
     }, MCP_POOL_IDLE_MS)
   }
 
+  /**
+   * 按 `McpServerEntry.id` 复用一条 stdio 连接；`command/args/cwd/env` 变化会丢弃旧连接并重连。
+   * 空闲 `MCP_POOL_IDLE_MS` 后自动关闭子进程。探测接口仍用一次性 `withMcpClient`。
+   *
+   * @param entry - MCP 服务器配置
+   * @returns 已池化的 slot
+   */
   private async ensurePooledSlot(entry: McpServerEntry): Promise<PooledSlot> {
     if (!entry.command?.trim()) throw new Error('command cannot be empty')
     return this.runEnsureSerialized(entry.id, async () => {
