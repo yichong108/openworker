@@ -8,7 +8,7 @@ description: >
   纯功能实现、按需求开发任务应使用 ap-task-execute，不要用本技能代替。
 license: MIT
 metadata:
-  version: '0.1.0'
+  version: '0.1.2'
   author: Wang Zhang
 ---
 
@@ -52,24 +52,24 @@ metadata:
 Skill 激活后：
 
 1. 阅读适用范围内的 `.agents/AGENTS.md`。
-2. 确定入口：`.agents/ap-config/work-data/tasks/active/` 中的重构任务，或用户指定的代码范围。
+2. 确定入口：`.agents/ap-config/work-data/tasks/active/` 中 Status 为 TODO 的重构任务，或用户指定的代码范围。
 3. 阅读完整 TASK（若有）及相关 ADR。
 4. 摸清当前行为：调用链、公共 API、协议、类型导出、副作用。
 5. 写出不变量与明确的结构目标（见下方模板）。
 6. 确认护栏：现有测试能否失败于行为回归；不足则先补表征测试。
 7. 按小步实施重构。
 8. 每一步后运行相关测试与必要验证（`pnpm typecheck`、`pnpm lint` / `pnpm lint:fix`）。
-9. 更新 TASK 文件（若有）并归档；向用户报告做了什么、没做什么、行为为何不变。
+9. 更新 TASK 文件（若有）并移到 `done/`；向用户报告做了什么、没做什么、行为为何不变。
 
 只有在以下情况下才停止：
 
 - 没有可执行的重构范围；
-- 继续下去会改变行为，或必须改公共契约（若来自 TASK：移入 `plan/` 后继续其他可安全重构的任务）；
+- 继续下去会改变行为，或必须改公共契约（若来自 TASK：移入 `blocked/` 并改为 `BLOCKED` 后，继续其他可安全重构的 TODO）；
 - 缺少护栏，无法安全证明行为保持；
 - 任务无法安全完成；
 - 用户明确要求停止。
 
-需要用户确认架构决策、或需求/范围与 ADR 冲突：**不是**停止整个队列的条件。把该 TASK 按 executor 同样规则移到 `plan/`（`TASK-xxx-plan.md`）后，改做下一件可安全重构的任务。
+需要用户确认架构决策、或需求/范围与 ADR 冲突：**不是**停止整个队列的条件。把该 TASK 按 executor 同样规则移到 `blocked/` 并改为 `BLOCKED` 后，改做下一件可安全重构的 TODO。`plan/` 仅供人工使用，本技能不读写。
 
 ---
 
@@ -116,7 +116,7 @@ Skill 激活后：
 
 - 跑 `pnpm lint:fix`，必要时 `pnpm typecheck`。
 - 对照验收标准：结构目标达到，不变量仍成立，范围外无改动。
-- 若有 TASK：把 Status 设为 `COMPLETED`，填写 Completion，再移到 `.agents/ap-config/work-data/tasks/archive/<年份>/`。
+- 若有 TASK：开始执行时移到 `doing/` 并改为 `DOING`；完成后把 Status 设为 `DONE`，填写完成说明，再移到 `.agents/ap-config/work-data/tasks/done/`。
 - 报告中区分「结构变化」与「行为未变的证据」。
 
 ---
@@ -138,28 +138,29 @@ Skill 激活后：
 
 ```text
 .agents/ap-config/work-data/tasks/
-├── active/
-├── plan/
-├── blocked/
-└── archive/
-    └── 年份/
+├── active/     ← TODO，只领取此状态
+├── doing/      ← DOING
+├── plan/       ← PLAN，仅人工；本技能不读写
+├── blocked/    ← BLOCKED
+├── done/       ← DONE
+└── archive/    ← 历史归档（只读）
 ```
 
 处理 `.agents/ap-config/work-data/tasks/active/` 时：
 
-- 只领取目标为重构/结构调整、且依赖已满足的任务。
+- 只领取 Status 为 TODO、目标为重构/结构调整、且依赖已满足的任务。
 - 功能实现类任务留给 `ap-task-execute`。
-- 架构/数据模型/API/核心流程改变 → 进入 `plan/`。
-- 可能与其他任务产生根本性冲突 → 进入 `plan/`。
-- 需要产品/架构决策、需求冲突：移到 `plan/`，改名为 `TASK-xxx-plan.md`，写入 `Decision Needed`，然后继续下一件可安全重构的任务。不要归档 `plan/` 中的文件。
-- 依赖未完成：本轮跳过。外部环境不具备：移到 `blocked/` 并写明原因。
+- 开始执行：移到 `doing/`，Status 改为 `DOING`。
+- 架构/数据模型/API/核心流程改变、与其他任务根本性冲突、需要产品/架构决策、需求冲突：移到 `blocked/`，Status 改为 `BLOCKED`，写入 Agent Notes，然后继续下一件可安全重构的 TODO。
+- 依赖未完成：本轮跳过。外部环境不具备或文档不合格：移到 `blocked/` 并改为 `BLOCKED`。
 - 不要创造任务中没有的需求。
+- 不要读取、执行或改写 `plan/`。
 
 ---
 
 ## 完成后的说明
 
-向用户（及 TASK `Completion`）写明：
+向用户（及 TASK `Agent Notes`）写明：
 
 - **Implementation：** 做了哪些结构变换，动了哪些文件。
 - **Tests：** 跑了什么，结果如何；若补了表征测试，写明锁定的是哪段当前行为。
