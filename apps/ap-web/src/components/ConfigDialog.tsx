@@ -18,8 +18,11 @@ type ConfigDialogProps = {
 
 const MENUS = [{ id: 'ai', label: 'AI配置' }] as const
 
+const FIELD =
+  'mt-1.5 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none ring-[var(--brass)] focus:ring-2'
+
 /**
- * 配置弹窗：左侧一级菜单，右侧对应内容。当前仅有 AI 配置。
+ * 配置弹窗：夜间工作室外壳 + 奶油纸面表单。
  */
 export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const [menu, setMenu] = useState<'ai'>('ai')
@@ -103,158 +106,195 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
 
   if (!open) return null
 
+  const loggedIn = loginStatus === 'logged-in'
+  const models = provider === 'cursor' ? cursorModels : deepseekModels
+  const model = provider === 'cursor' ? cursorModel : deepseekModel
+  const setModel = provider === 'cursor' ? setCursorModel : setDeepseekModel
+  const apiKey = provider === 'cursor' ? cursorKey : deepseekKey
+  const setApiKey = provider === 'cursor' ? setCursorKey : setDeepseekKey
+  const keyHint = provider === 'cursor' ? cursorHint : deepseekHint
+  const banner = authError || modelError || saveError
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/55"
+        className="absolute inset-0 bg-black/60"
         aria-label="关闭配置"
         onClick={onClose}
       />
-      <div className="relative flex h-[min(34rem,82vh)] w-full max-w-3xl overflow-hidden rounded-2xl bg-[var(--paper)] text-[var(--ink)] shadow-lift">
-        <nav className="w-40 shrink-0 border-r border-black/10 bg-black/[0.03] py-4">
-          <p className="px-4 pb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-            设置
+      <div className="relative flex h-[min(38rem,86vh)] w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--panel-edge)] bg-[var(--panel)] text-[var(--paper)] shadow-lift">
+        <nav className="flex w-40 shrink-0 flex-col border-r border-[var(--panel-edge)] px-3 py-5">
+          <p className="px-2 font-display text-[11px] tracking-[0.22em] text-[var(--brass)]">
+            CONFIG
           </p>
-          {MENUS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setMenu(item.id)}
-              className={`block w-full px-4 py-2 text-left text-sm ${
-                menu === item.id ? 'bg-[var(--ink)] text-[var(--paper)]' : 'hover:bg-black/5'
-              }`}
-            >
-              {item.label}
-              {authError && item.id === 'ai' ? (
-                <span className="ml-2 inline-block h-1.5 w-1.5 rounded-full bg-[var(--rust)]" />
-              ) : null}
-            </button>
-          ))}
+          <div className="mt-5 flex flex-col gap-1">
+            {MENUS.map((item) => {
+              const active = menu === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setMenu(item.id)}
+                  className={`relative rounded-lg px-3 py-2.5 text-left transition ${
+                    active
+                      ? 'bg-white/[0.06] text-[var(--paper)]'
+                      : 'text-[var(--mist)] hover:bg-white/[0.04] hover:text-[var(--paper)]'
+                  }`}
+                >
+                  {active ? (
+                    <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-[var(--brass)]" />
+                  ) : null}
+                  <span className="flex items-center gap-2 text-sm">
+                    {item.label}
+                    {authError && item.id === 'ai' ? (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--rust)]" />
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </nav>
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-black/10 px-5 py-3">
-            <p className="font-display text-xl">AI配置</p>
+        <section className="flex min-w-0 flex-1 flex-col bg-[var(--paper)] text-[var(--ink)]">
+          <header className="flex items-start justify-between px-6 pt-5">
+            <div>
+              <p className="font-display text-2xl">AI 配置</p>
+              <p className="mt-1 text-sm text-[var(--ink-soft)]">选择服务商、模型和鉴权方式。</p>
+            </div>
             <button
               type="button"
-              className="text-sm text-[var(--ink-soft)] hover:text-[var(--ink)]"
+              aria-label="关闭"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--ink-soft)] hover:bg-black/5 hover:text-[var(--ink)]"
               onClick={onClose}
             >
-              关闭
+              <CloseIcon className="h-4 w-4" />
             </button>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-            {authError || modelError ? (
-              <p className="mb-4 rounded-lg border border-[var(--rust)]/30 bg-[var(--rust)]/10 px-3 py-2 text-sm text-[var(--rust)]">
-                {authError || modelError}
-              </p>
-            ) : null}
-
-            <div className="mb-4 flex gap-2">
-              {(['deepseek', 'cursor'] as const).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setProvider(item)
-                    setModelError(null)
-                    void loadModels(item)
-                  }}
-                  className={`rounded-lg px-3 py-1.5 text-sm ${
-                    provider === item ? 'bg-[var(--ink)] text-[var(--paper)]' : 'bg-black/5'
-                  }`}
-                >
-                  {item === 'deepseek' ? 'DeepSeek' : 'Cursor'}
-                </button>
-              ))}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+              服务商
+            </p>
+            <div className="mt-2 flex gap-2">
+              {(['deepseek', 'cursor'] as const).map((item) => {
+                const active = provider === item
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      setProvider(item)
+                      setModelError(null)
+                      void loadModels(item)
+                    }}
+                    className={`rounded-lg px-3.5 py-1.5 text-sm transition ${
+                      active
+                        ? 'bg-[var(--ink)] text-[var(--paper)]'
+                        : 'bg-black/[0.05] text-[var(--ink-soft)] hover:bg-black/10 hover:text-[var(--ink)]'
+                    }`}
+                  >
+                    {item === 'deepseek' ? 'DeepSeek' : 'Cursor'}
+                  </button>
+                )
+              })}
             </div>
 
-            {provider === 'deepseek' ? (
-              <div className="space-y-4">
-                <label className="block text-sm font-medium">
-                  API Key
-                  <input
-                    type="password"
-                    value={deepseekKey}
-                    onChange={(event) => setDeepseekKey(event.target.value)}
-                    placeholder={deepseekHint ? `已保存 ${deepseekHint}` : 'sk-...'}
-                    className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-                  />
-                </label>
-                <ModelSelect
-                  value={deepseekModel}
-                  options={deepseekModels}
-                  onChange={setDeepseekModel}
-                  onRefresh={() => void loadModels('deepseek', deepseekKey || undefined)}
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-black/[0.04] px-3 py-2 text-sm">
-                  <p>
-                    登录状态：
-                    {loginStatus === 'logged-in' ? (
-                      <span className="text-[var(--teal)]">
-                        已登录{loginEmail ? `（${loginEmail}）` : ''}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--ink-soft)]">未登录</span>
-                    )}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={loginBusy}
-                    onClick={() => {
-                      setLoginBusy(true)
-                      setSaveError(null)
-                      void fetch('/api/config/ai/cursor/login', { method: 'POST' })
-                        .then(async (response) => {
-                          const payload = (await response.json()) as {
-                            error?: string
-                            email?: string
-                          }
-                          if (!response.ok) {
-                            setSaveError(payload.error || '登录失败')
-                            return
-                          }
-                          await loadStatus()
-                          await loadModels('cursor')
-                        })
-                        .finally(() => setLoginBusy(false))
-                    }}
-                    className="mt-2 rounded-md bg-[var(--ink)] px-3 py-1 text-xs text-[var(--paper)] disabled:opacity-50"
-                  >
-                    {loginBusy ? '正在打开浏览器…' : '登录 Cursor'}
-                  </button>
-                </div>
-                <label className="block text-sm font-medium">
-                  API Key（可选，与登录二选一）
-                  <input
-                    type="password"
-                    value={cursorKey}
-                    onChange={(event) => setCursorKey(event.target.value)}
-                    placeholder={cursorHint ? `已保存 ${cursorHint}` : 'cursor_...'}
-                    className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-                  />
-                </label>
-                <ModelSelect
-                  value={cursorModel}
-                  options={cursorModels}
-                  onChange={setCursorModel}
-                  onRefresh={() => void loadModels('cursor', cursorKey || undefined)}
-                />
-              </div>
-            )}
+            <label className="mt-5 block text-sm font-medium">
+              模型
+              <span className="mt-1.5 flex gap-2">
+                <select
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  className={FIELD}
+                >
+                  {models.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  title="刷新模型列表"
+                  onClick={() => void loadModels(provider, apiKey || undefined)}
+                  className="shrink-0 rounded-lg border border-black/10 px-3 text-xs text-[var(--ink-soft)] hover:bg-black/5 hover:text-[var(--ink)]"
+                >
+                  刷新
+                </button>
+              </span>
+            </label>
 
-            {saveError ? <p className="mt-3 text-sm text-[var(--rust)]">{saveError}</p> : null}
+            <label className="mt-5 block text-sm font-medium">
+              API Key
+              {provider === 'cursor' ? (
+                <span className="ml-2 text-xs font-normal text-[var(--ink-soft)]">
+                  可选，与登录二选一
+                </span>
+              ) : null}
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={
+                  keyHint ? `已保存 ${keyHint}` : provider === 'cursor' ? 'cursor_...' : 'sk-...'
+                }
+                className={FIELD}
+              />
+            </label>
+
+            {provider === 'cursor' ? (
+              <div className="mt-5 flex items-center justify-between gap-4 rounded-xl bg-[var(--paper-deep)] px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Cursor 登录</p>
+                  <p className="mt-0.5 truncate text-xs text-[var(--ink-soft)]">
+                    {loggedIn
+                      ? `已登录${loginEmail ? ` · ${loginEmail}` : ''}`
+                      : '用浏览器登录后即可拉取模型'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={loginBusy}
+                  onClick={() => {
+                    setLoginBusy(true)
+                    setSaveError(null)
+                    void fetch('/api/config/ai/cursor/login', { method: 'POST' })
+                      .then(async (response) => {
+                        const payload = (await response.json()) as {
+                          error?: string
+                          email?: string
+                        }
+                        if (!response.ok) {
+                          setSaveError(payload.error || '登录失败')
+                          return
+                        }
+                        await loadStatus()
+                        await loadModels('cursor')
+                      })
+                      .finally(() => setLoginBusy(false))
+                  }}
+                  className="shrink-0 rounded-lg bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--paper)] disabled:opacity-50"
+                >
+                  {loginBusy ? '正在打开…' : loggedIn ? '重新登录' : '登录'}
+                </button>
+              </div>
+            ) : null}
           </div>
 
-          <footer className="flex justify-end gap-2 border-t border-black/10 px-5 py-3">
+          <footer className="flex items-center justify-end gap-2 px-6 pb-5">
+            {banner ? (
+              <p
+                className="mr-auto max-w-[22rem] truncate text-sm text-[var(--rust)]"
+                title={banner}
+              >
+                {banner}
+              </p>
+            ) : null}
             <button
               type="button"
-              className="rounded-lg px-4 py-2 text-sm text-[var(--ink-soft)]"
+              className="rounded-lg px-4 py-2 text-sm text-[var(--ink-soft)] hover:bg-black/5"
               onClick={onClose}
             >
               取消
@@ -301,40 +341,16 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   )
 }
 
-function ModelSelect({
-  value,
-  options,
-  onChange,
-  onRefresh
-}: {
-  value: string
-  options: string[]
-  onChange: (value: string) => void
-  onRefresh: () => void
-}) {
+function CloseIcon({ className }: { className?: string }) {
   return (
-    <label className="block text-sm font-medium">
-      模型
-      <span className="mt-1 flex gap-2">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2"
-        >
-          {options.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="shrink-0 rounded-lg border border-black/10 px-3 text-xs text-[var(--ink-soft)] hover:bg-black/5"
-        >
-          刷新
-        </button>
-      </span>
-    </label>
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
   )
 }
