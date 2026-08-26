@@ -1,0 +1,28 @@
+{
+  "name": "@openworker/ap-agent",
+  "version": "0.0.0",
+  "description": "AP product agent — createAgent + AG-UI adapter",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ag-ui/client": "catalog:",
+    "@openworker/agent": "workspace:*",
+    "@openworker/base-agent": "workspace:*",
+    "@openworker/tools": "workspace:*",
+    "ai": "catalog:",
+    "rxjs": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "^4.1.10"
+  }
+}
