@@ -129,7 +129,6 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
           <header className="flex items-start justify-between px-6 pt-5">
             <div>
               <p className="font-display text-2xl">AI 配置</p>
-              <p className="mt-1 text-sm text-[var(--ink-soft)]">DeepSeek API Key 与模型。</p>
             </div>
             <button
               type="button"
@@ -142,40 +141,13 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+            <label className="block text-sm font-medium">
               服务商
-            </p>
-            <p className="mt-2 inline-block rounded-lg bg-[var(--ink)] px-3.5 py-1.5 text-sm text-[var(--paper)]">
-              DeepSeek
-            </p>
-
-            <label className="mt-5 block text-sm font-medium">
-              模型
-              <span className="mt-1.5 flex gap-2">
-                <select
-                  value={deepseekModel}
-                  onChange={(event) => setDeepseekModel(event.target.value)}
-                  className={FIELD}
-                >
-                  {deepseekModels.map((id) => (
-                    <option key={id} value={id}>
-                      {id}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  title="刷新模型列表"
-                  onClick={() => void loadModels(deepseekKey || undefined)}
-                  className="shrink-0 rounded-lg border border-black/10 px-3 text-xs text-[var(--ink-soft)] hover:bg-black/5 hover:text-[var(--ink)]"
-                >
-                  刷新
-                </button>
-              </span>
+              <p className="mt-1.5 text-sm text-[var(--ink)]">DeepSeek</p>
             </label>
 
             <label className="mt-5 block text-sm font-medium">
-              API Key
+              <span className="font-normal">API Key</span>
               <input
                 type="password"
                 value={deepseekKey}
@@ -183,6 +155,33 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                 placeholder={deepseekHint ? `已保存 ${deepseekHint}` : 'sk-...'}
                 className={FIELD}
               />
+            </label>
+
+            <label className="mt-5 block text-sm font-medium">
+              <span className="flex items-center justify-between gap-2">
+                模型
+                <button
+                  type="button"
+                  title="刷新模型列表"
+                  aria-label="刷新模型列表"
+                  onClick={() => void loadModels(deepseekKey || undefined)}
+                  className="inline-flex items-center gap-1 text-xs font-normal text-[var(--ink-soft)] transition hover:text-[var(--brass)]"
+                >
+                  <RefreshIcon className="h-3.5 w-3.5" />
+                  刷新
+                </button>
+              </span>
+              <select
+                value={deepseekModel}
+                onChange={(event) => setDeepseekModel(event.target.value)}
+                className={FIELD}
+              >
+                {deepseekModels.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -260,6 +259,25 @@ function CloseIcon({ className }: { className?: string }) {
       strokeWidth="1.8"
     >
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  )
+}
+
+function RefreshIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 4v5h-5" />
+      <path d="M4 20v-5h5" />
+      <path d="M20 9a8 8 0 00-14.5-2.5L4 9" />
+      <path d="M4 15a8 8 0 0014.5 2.5L20 15" />
     </svg>
   )
 }
