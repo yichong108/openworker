@@ -39,11 +39,13 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   const [priority, setPriority] = useState<TaskPriority>('P1')
   const [status, setStatus] = useState<TaskColumn>(column)
+  const [requirementsError, setRequirementsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setPriority('P1')
       setStatus(column)
+      setRequirementsError(null)
     }
   }, [open, column])
 
@@ -63,13 +65,17 @@ export function CreateTaskDialog({
           const data = new FormData(form)
           const title = String(data.get('title') ?? '').trim()
           const requirements = String(data.get('requirements') ?? '').trim()
-          if (!requirements) return
+          if (!requirements) {
+            setRequirementsError('请填写事项')
+            return
+          }
+          setRequirementsError(null)
           onSubmit({ title, priority, requirements, status })
         }}
       >
         <label className="block text-sm font-medium">
           <span className="flex items-center gap-1.5">
-            想法
+            事项
             <span className="font-display text-base leading-none text-[var(--rust)]" aria-hidden>
               *
             </span>
@@ -77,13 +83,16 @@ export function CreateTaskDialog({
           </span>
           <ApTextArea
             name="requirements"
-            required
             autoFocus
             rows={5}
             className="mt-1 resize-y"
-            placeholder="我的想法..."
+            placeholder="做点什么..."
+            onChange={() => setRequirementsError(null)}
           />
         </label>
+        {requirementsError ? (
+          <p className="mt-1 text-sm text-[var(--rust)]">{requirementsError}</p>
+        ) : null}
 
         <label className="mt-4 block text-sm font-medium">
           名称
