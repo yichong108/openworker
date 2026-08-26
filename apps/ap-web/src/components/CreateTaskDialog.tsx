@@ -2,44 +2,50 @@
 
 import { useEffect, useState } from 'react'
 
-import { ApSelect } from '@/components/antd/ApSelect'
+import { ApInput } from '@/components/antd/ApInput'
+import { ApModal } from '@/components/antd/ApModal'
+import { ApPriorityRadio } from '@/components/antd/ApPriorityRadio'
+import { ApTextArea } from '@/components/antd/ApTextArea'
 import type { TaskColumn, TaskPriority } from '@/lib/task-types'
+import { columnCreateHint } from '@/lib/task-types'
 
 type CreateTaskDialogProps = {
   open: boolean
+  column: TaskColumn
   busy: boolean
   error: string | null
   onClose: () => void
   onSubmit: (input: { title: string; priority: TaskPriority; requirements: string }) => void
 }
 
-const PRIORITIES: TaskPriority[] = ['P0', 'P1', 'P2', 'P3']
-
-const FIELD =
-  'mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 outline-none ring-[var(--brass)] focus:ring-2'
-
 /**
- * 新建任务对话框。创建后始终写入 todo/。
+ * 新建任务对话框。创建后写入 column 对应目录。
  */
-export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: CreateTaskDialogProps) {
+export function CreateTaskDialog({
+  open,
+  column,
+  busy,
+  error,
+  onClose,
+  onSubmit
+}: CreateTaskDialogProps) {
   const [priority, setPriority] = useState<TaskPriority>('P1')
 
   useEffect(() => {
     if (open) setPriority('P1')
   }, [open])
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/55"
-        aria-label="关闭新建对话框"
-        onClick={onClose}
-      />
+    <ApModal
+      open={open}
+      onClose={onClose}
+      title="新建任务"
+      subtitle={columnCreateHint(column)}
+      footer={null}
+      maskClosable={!busy}
+      destroyOnClose
+    >
       <form
-        className="relative w-full max-w-lg rounded-2xl bg-[var(--paper)] p-6 text-[var(--ink)] shadow-lift"
         onSubmit={(event) => {
           event.preventDefault()
           const form = event.currentTarget
@@ -50,10 +56,7 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
           onSubmit({ title, priority, requirements })
         }}
       >
-        <p className="font-display text-2xl">新建任务</p>
-        <p className="mt-1 text-sm text-[var(--ink-soft)]">写入 todo/，文件名按时间戳生成。</p>
-
-        <label className="mt-5 block text-sm font-medium">
+        <label className="block text-sm font-medium">
           <span className="flex items-center gap-1.5">
             想法
             <span className="font-display text-base leading-none text-[var(--rust)]" aria-hidden>
@@ -61,31 +64,31 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
             </span>
             <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
           </span>
-          <textarea
+          <ApTextArea
             name="requirements"
             required
             autoFocus
             rows={5}
-            className={`${FIELD} resize-y`}
+            className="mt-1 resize-y"
             placeholder="要做什么"
           />
         </label>
 
         <label className="mt-4 block text-sm font-medium">
           名称
-          <input name="title" className={FIELD} placeholder="非必填，默认AI根据想法自动生成" />
+          <ApInput name="title" className="mt-1" placeholder="非必填，默认AI根据想法自动生成" />
         </label>
 
-        <label className="mt-4 block text-sm font-medium">
-          优先级
-          <ApSelect
+        <div className="mt-4 block text-sm font-medium">
+          <span id="create-task-priority-label">优先级</span>
+          <ApPriorityRadio
+            aria-labelledby="create-task-priority-label"
             value={priority}
-            onChange={(value) => setPriority(value as TaskPriority)}
+            onChange={setPriority}
             disabled={busy}
-            options={PRIORITIES.map((item) => ({ value: item, label: item }))}
             className="mt-1"
           />
-        </label>
+        </div>
 
         {error ? <p className="mt-3 text-sm text-[var(--rust)]">{error}</p> : null}
 
@@ -107,7 +110,7 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
           </button>
         </div>
       </form>
-    </div>
+    </ApModal>
   )
 }
 

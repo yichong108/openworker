@@ -3,10 +3,10 @@
     "name": "ap-refactor",
     "userText": "",
     "schedule": {
-      "enabled": false,
-      "time": "09:00",
-      "loops": 1,
-      "remaining": 1
+      "enabled": true,
+      "time": "16:13",
+      "loops": 9,
+      "remaining": 9
     }
   },
   {

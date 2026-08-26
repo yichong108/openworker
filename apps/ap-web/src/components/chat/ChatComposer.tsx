@@ -1,5 +1,7 @@
 'use client'
 
+import { ApTextArea } from '@/components/antd/ApTextArea'
+
 type ChatComposerProps = {
   value: string
   onChange: (value: string) => void
@@ -27,19 +29,19 @@ export function ChatComposer({
         onSubmit()
       }}
     >
-      <textarea
+      <ApTextArea
         value={value}
         disabled={disabled}
         placeholder={placeholder}
         rows={2}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={onChange}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault()
             if (!disabled) onSubmit()
           }
         }}
-        className="min-h-[2.5rem] flex-1 resize-none rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none ring-[var(--brass)] focus:ring-2 disabled:opacity-50"
+        className="min-h-[2.5rem] flex-1 resize-none"
       />
       <button
         type="submit"

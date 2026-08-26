@@ -1,7 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
+import { ApInput } from '@/components/antd/ApInput'
+import { ApDrawer } from '@/components/antd/ApDrawer'
 import { ApSelect } from '@/components/antd/ApSelect'
 
 type PublicConfig = {
@@ -16,8 +18,110 @@ type ConfigDialogProps = {
 
 const MENUS = [{ id: 'ai', label: 'AI配置' }] as const
 
-const FIELD =
-  'mt-1.5 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none ring-[var(--brass)] focus:ring-2'
+type ModelFieldProps = {
+  value: string
+  options: { value: string; label: string }[]
+  loading: boolean
+  onChange: (value: string) => void
+  onRefresh: () => void
+}
+
+/** 模型字段：刷新前记录展开状态，刷新后恢复。 */
+const ModelField = memo(function ModelField({
+  value,
+  options,
+  loading,
+  onChange,
+  onRefresh
+}: ModelFieldProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const desiredOpenRef = useRef(false)
+  const blockCloseRef = useRef(false)
+  const ignoreCloseRef = useRef(false)
+  const openWhenRefreshStartedRef = useRef(false)
+  const wasLoadingRef = useRef(false)
+  const refreshBtnRef = useRef<HTMLButtonElement>(null)
+
+  const syncOpen = useCallback((open: boolean) => {
+    desiredOpenRef.current = open
+    setDropdownOpen(open)
+  }, [])
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && (blockCloseRef.current || ignoreCloseRef.current || loading)) {
+        blockCloseRef.current = false
+        return
+      }
+      syncOpen(open)
+    },
+    [loading, syncOpen]
+  )
+
+  // 在 antd click-outside 之前，记录「点刷新时仍展开」。
+  useLayoutEffect(() => {
+    const onDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node) || !refreshBtnRef.current?.contains(target)) return
+      if (!desiredOpenRef.current) return
+      blockCloseRef.current = true
+      openWhenRefreshStartedRef.current = true
+    }
+    document.addEventListener('mousedown', onDocumentMouseDown, true)
+    return () => document.removeEventListener('mousedown', onDocumentMouseDown, true)
+  }, [])
+
+  // 刷新开始/结束时快照并恢复展开状态；options 更新后同步。
+  useLayoutEffect(() => {
+    const wasLoading = wasLoadingRef.current
+    if (!wasLoading && loading) {
+      openWhenRefreshStartedRef.current = desiredOpenRef.current
+    }
+    if (wasLoading && !loading) {
+      const shouldOpen = openWhenRefreshStartedRef.current || desiredOpenRef.current
+      desiredOpenRef.current = shouldOpen
+      setDropdownOpen(shouldOpen)
+      ignoreCloseRef.current = shouldOpen
+    }
+    wasLoadingRef.current = loading
+  }, [loading, options])
+
+  useEffect(() => {
+    if (!ignoreCloseRef.current) return
+    ignoreCloseRef.current = false
+  }, [loading, options])
+
+  return (
+    <div className="mt-5 block text-sm font-medium">
+      <div className="flex items-center justify-between gap-2">
+        <span id="deepseek-model-label">模型</span>
+        <button
+          ref={refreshBtnRef}
+          type="button"
+          title={loading ? '正在刷新模型列表' : '刷新模型列表'}
+          aria-label={loading ? '正在刷新模型列表' : '刷新模型列表'}
+          aria-busy={loading}
+          disabled={loading}
+          onClick={onRefresh}
+          className="inline-flex items-center gap-1 text-xs font-normal text-[var(--ink-soft)] transition hover:text-[var(--brass)] disabled:pointer-events-none disabled:opacity-60"
+        >
+          <RefreshIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          刷新
+        </button>
+      </div>
+      <ApSelect
+        id="deepseek-model"
+        aria-labelledby="deepseek-model-label"
+        value={value}
+        onChange={onChange}
+        options={options}
+        open={dropdownOpen}
+        onOpenChange={handleOpenChange}
+        className="mt-1.5"
+      />
+    </div>
+  )
+})
 
 /**
  * 配置抽屉：自右向左滑入，左菜单 + 右内容区。
@@ -48,7 +152,11 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
         error?: string
       }
       const models = payload.models?.length ? payload.models : ['deepseek-chat']
-      setDeepseekModels(models)
+      setDeepseekModels((current) =>
+        current.length === models.length && current.every((id, index) => id === models[index])
+          ? current
+          : models
+      )
       setDeepseekModel((current) => (models.includes(current) ? current : models[0]))
       if (payload.authError || !response.ok) {
         setModelError(payload.authError || payload.error || '无法获取模型列表')
@@ -71,6 +179,10 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
     await loadModels()
   }, [loadModels])
 
+  const handleRefreshModels = useCallback(() => {
+    void loadModels(deepseekKey || undefined)
+  }, [deepseekKey, loadModels])
+
   useEffect(() => {
     if (!open) return
     setMenu('ai')
@@ -78,28 +190,16 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
     void loadConfig()
   }, [open, loadConfig])
 
-  useEffect(() => {
-    if (!open) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
+  const modelOptions = useMemo(
+    () => deepseekModels.map((id) => ({ value: id, label: id })),
+    [deepseekModels]
+  )
 
   const banner = authError || modelError || saveError
 
   return (
-    <div className="fixed inset-0 z-[70]">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/60 anim-fade-in"
-        aria-label="关闭配置"
-        onClick={onClose}
-      />
-      <div className="absolute right-0 top-0 flex h-full w-[min(42rem,92vw)] overflow-hidden border-l border-[var(--panel-edge)] bg-[var(--panel)] text-[var(--paper)] shadow-lift anim-slide-in-right">
+    <ApDrawer open={open} onClose={onClose} destroyOnClose>
+      <div className="flex h-full overflow-hidden text-[var(--paper)]">
         <nav className="flex w-40 shrink-0 flex-col border-r border-[var(--panel-edge)] px-3 py-5">
           <p className="px-2 font-display text-[11px] tracking-[0.22em] text-[var(--brass)]">
             CONFIG
@@ -156,48 +256,32 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
 
             <label className="mt-5 block text-sm font-medium">
               <span className="font-normal">API Key</span>
-              <input
+              <ApInput
                 type="password"
                 value={deepseekKey}
-                onChange={(event) => setDeepseekKey(event.target.value)}
+                onChange={setDeepseekKey}
                 placeholder={deepseekHint ? `已保存 ${deepseekHint}` : 'sk-...'}
-                className={FIELD}
-              />
-            </label>
-
-            <label className="mt-5 block text-sm font-medium">
-              <span className="flex items-center justify-between gap-2">
-                模型
-                <button
-                  type="button"
-                  title={modelsLoading ? '正在刷新模型列表' : '刷新模型列表'}
-                  aria-label={modelsLoading ? '正在刷新模型列表' : '刷新模型列表'}
-                  aria-busy={modelsLoading}
-                  disabled={modelsLoading}
-                  onClick={() => void loadModels(deepseekKey || undefined)}
-                  className="inline-flex items-center gap-1 text-xs font-normal text-[var(--ink-soft)] transition hover:text-[var(--brass)] disabled:pointer-events-none disabled:opacity-60"
-                >
-                  <RefreshIcon className={`h-3.5 w-3.5 ${modelsLoading ? 'animate-spin' : ''}`} />
-                  刷新
-                </button>
-              </span>
-              <ApSelect
-                value={deepseekModel}
-                onChange={setDeepseekModel}
-                disabled={modelsLoading}
-                loading={modelsLoading}
-                options={deepseekModels.map((id) => ({ value: id, label: id }))}
                 className="mt-1.5"
               />
             </label>
+
+            <ModelField
+              value={deepseekModel}
+              options={modelOptions}
+              loading={modelsLoading}
+              onChange={setDeepseekModel}
+              onRefresh={handleRefreshModels}
+            />
           </div>
 
-          {banner ? (
-            <div className="flex items-start gap-2 px-6 py-3">
-              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rust)]" />
-              <p className="min-w-0 flex-1 break-all text-sm text-[var(--rust)]">{banner}</p>
-            </div>
-          ) : null}
+          <div className="min-h-[52px] px-6 py-3">
+            {banner ? (
+              <div className="flex items-start gap-2">
+                <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rust)]" />
+                <p className="min-w-0 flex-1 break-all text-sm text-[var(--rust)]">{banner}</p>
+              </div>
+            ) : null}
+          </div>
 
           <footer className="flex items-center justify-end gap-2 border-t border-black/5 px-6 pb-5 pt-4">
             <button
@@ -240,7 +324,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
           </footer>
         </section>
       </div>
-    </div>
+    </ApDrawer>
   )
 }
 

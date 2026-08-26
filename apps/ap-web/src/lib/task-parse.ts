@@ -318,7 +318,7 @@ ${agentBlock}`
 export function buildTaskMarkdown(input: CreateTaskInput): string {
   return serializeTaskMarkdown({
     title: input.title?.trim() ?? '',
-    status: 'todo',
+    status: input.status ?? 'todo',
     priority: input.priority ?? 'P1',
     dependencies: '- None',
     context: input.context?.trim() || '- None',

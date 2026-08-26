@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react'
 import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
+import { ApInput } from '@/components/antd/ApInput'
 import { ApSelect } from '@/components/antd/ApSelect'
+import { ApTextArea } from '@/components/antd/ApTextArea'
 
 import { columnAccent } from './CreateTaskDialog'
 
@@ -43,9 +45,6 @@ const PRIORITY_CLASS: Record<string, string> = {
 }
 
 const PRIORITIES: TaskPriority[] = ['P0', 'P1', 'P2', 'P3']
-
-const FIELD =
-  'mt-1 w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 font-body text-[13px] outline-none ring-[var(--brass)] focus:ring-2'
 
 /**
  * 把文件 mtime 格式成本地可读时间。
@@ -191,35 +190,36 @@ export function TaskCard({
                   </span>
                   <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
                 </span>
-                <textarea
+                <ApTextArea
                   value={requirements}
-                  onChange={(event) => setRequirements(event.target.value)}
+                  onChange={setRequirements}
                   required
                   autoFocus
                   rows={5}
-                  className={`${FIELD} resize-y`}
+                  className="mt-1 resize-y text-[13px]"
                   placeholder="要做什么"
                 />
               </label>
               <label className="block font-medium">
                 名称
-                <input
+                <ApInput
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className={FIELD}
+                  onChange={setTitle}
+                  className="mt-1 text-[13px]"
                   placeholder="非必填，留空则保留原名称"
                 />
               </label>
-              <label className="block font-medium">
-                优先级
+              <div className="block font-medium">
+                <span id={`task-priority-label-${task.id}`}>优先级</span>
                 <ApSelect
+                  aria-labelledby={`task-priority-label-${task.id}`}
                   value={priority}
                   onChange={(value) => setPriority(value as TaskPriority)}
                   disabled={saving}
                   options={PRIORITIES.map((item) => ({ value: item, label: item }))}
                   className="mt-1"
                 />
-              </label>
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"

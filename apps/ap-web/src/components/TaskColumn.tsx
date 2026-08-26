@@ -4,6 +4,7 @@ import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/ta
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import type { ChatTranscript } from './chat/chat-types'
+import { CreateTaskAction } from './CreateTaskAction'
 import { columnAccent } from './CreateTaskDialog'
 import { TaskCard } from './TaskCard'
 
@@ -59,7 +60,7 @@ type TaskColumnProps = {
   onDropTask: (id: string, status: TaskColumn) => void
   onOpenChat: (task: TaskSummary) => void
   onUpdate: (id: string, input: TaskUpdateInput) => Promise<boolean>
-  onCreate?: () => void
+  onTaskCreated?: () => void | Promise<void>
 }
 
 /**
@@ -80,7 +81,7 @@ export function TaskColumnView({
   onDropTask,
   onOpenChat,
   onUpdate,
-  onCreate
+  onTaskCreated
 }: TaskColumnProps) {
   return (
     <section
@@ -103,15 +104,7 @@ export function TaskColumnView({
             {tasks.length}
           </span>
         </div>
-        {onCreate ? (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="rounded-lg bg-[var(--brass)] px-2.5 py-1 text-xs font-medium text-[var(--ink)]"
-          >
-            新建
-          </button>
-        ) : null}
+        {onTaskCreated ? <CreateTaskAction column={column} onCreated={onTaskCreated} /> : null}
       </header>
 
       <div className="column-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">

@@ -210,9 +210,9 @@ function destinationDir(column: TaskColumn): string {
 }
 
 /**
- * 在 todo/ 创建任务文件，文件名为 task-YYYYMMDDHHmmSS.md。
+ * 在指定列目录创建任务文件，文件名为 task-YYYYMMDDHHmmSS.md。
  *
- * @param input - 名称、想法等字段
+ * @param input - 名称、想法、初始列等字段
  * @returns 新任务详情
  */
 export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
@@ -221,9 +221,10 @@ export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
     throw new TaskFsError('想法不能为空', 400)
   }
   const title = await resolveTaskTitle(input.title, requirements)
+  const column: TaskColumn = input.status ?? 'todo'
 
   const tasksRoot = getTasksRoot()
-  const destDir = join(tasksRoot, 'todo')
+  const destDir = destinationDir(column)
   mkdirSync(destDir, { recursive: true })
 
   let fileName = `task-${formatLocalTimestamp()}.md`
@@ -236,7 +237,7 @@ export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
     throw new TaskFsError('文件已存在，请重试', 409)
   }
 
-  const markdown = buildTaskMarkdown({ ...input, title, requirements })
+  const markdown = buildTaskMarkdown({ ...input, title, requirements, status: column })
   writeFileSync(dest, markdown, 'utf8')
   return readTask(toPosixId(tasksRoot, dest))
 }

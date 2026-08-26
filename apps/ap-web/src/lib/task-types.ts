@@ -44,6 +44,8 @@ export type CreateTaskInput = {
   context?: string
   requirements?: string
   constraints?: string
+  /** 初始列，默认 todo */
+  status?: TaskColumn
 }
 
 /** 编辑已有任务时可由前端提交的字段；未传的项保持原值 */
@@ -92,4 +94,17 @@ export function isTaskColumn(value: string): value is TaskColumn {
  */
 export function isTaskPriority(value: string): value is TaskPriority {
   return value === 'P0' || value === 'P1' || value === 'P2' || value === 'P3'
+}
+
+/**
+ * 新建任务对话框中的写入路径说明。
+ *
+ * @param column - 目标列
+ * @returns 提示文案
+ */
+export function columnCreateHint(column: TaskColumn): string {
+  if (column === 'done') {
+    return `写入 done/${new Date().getFullYear()}/，文件名按时间戳生成。`
+  }
+  return `写入 ${column}/，文件名按时间戳生成。`
 }

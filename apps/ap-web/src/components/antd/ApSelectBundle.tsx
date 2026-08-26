@@ -1,5 +1,6 @@
 'use client'
 
+import { memo, useCallback, useMemo } from 'react'
 import { ConfigProvider, Select } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 
@@ -12,25 +13,50 @@ export type ApSelectProps = {
   options: { value: string; label: string }[]
   disabled?: boolean
   loading?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   className?: string
   placeholder?: string
   id?: string
+  'aria-labelledby'?: string
+  getPopupContainer?: () => HTMLElement
 }
 
 /**
  * antd Select 实现层：唯一允许 static import antd 的模块。
  */
-export function ApSelectBundle({ className, onChange, ...props }: ApSelectProps) {
+export const ApSelectBundle = memo(function ApSelectBundle({
+  className,
+  onChange,
+  options,
+  getPopupContainer,
+  ...props
+}: ApSelectProps) {
+  const popupContainer = useCallback(
+    () => getPopupContainer?.() ?? document.body,
+    [getPopupContainer]
+  )
+  const selectOptions = useMemo(
+    () => options.map((option) => ({ value: option.value, label: option.label })),
+    [options]
+  )
+  const handleChange = useCallback(
+    (value: string) => {
+      onChange?.(String(value))
+    },
+    [onChange]
+  )
+
   return (
     <ConfigProvider locale={zhCN} theme={apWebAntdTheme}>
       <Select
         {...props}
-        id={props.id}
+        options={selectOptions}
         className={['w-full', className].filter(Boolean).join(' ')}
         popupClassName="ap-select-dropdown"
-        getPopupContainer={() => document.body}
-        onChange={(value) => onChange?.(String(value))}
+        getPopupContainer={popupContainer}
+        onChange={handleChange}
       />
     </ConfigProvider>
   )
-}
+})

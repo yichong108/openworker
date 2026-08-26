@@ -9,7 +9,6 @@ import { TASK_COLUMNS } from '@/lib/task-types'
 import type { ChatTranscript } from './chat/chat-types'
 import { AiChatDialog } from './chat/AiChatDialog'
 import { ConfigDialog } from './ConfigDialog'
-import { CreateTaskDialog } from './CreateTaskDialog'
 import { TaskColumnView } from './TaskColumn'
 import { ToolsColumn } from './ToolsColumn'
 
@@ -51,9 +50,6 @@ export function TaskBoard() {
   const [details, setDetails] = useState<Record<string, TaskDetail>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<Record<string, string>>({})
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [createBusy, setCreateBusy] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -252,32 +248,6 @@ export function TaskBoard() {
     [refresh]
   )
 
-  const createTask = useCallback(
-    async (input: { title: string; priority: TaskPriority; requirements: string }) => {
-      setCreateBusy(true)
-      setCreateError(null)
-      try {
-        const response = await fetch('/api/tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input)
-        })
-        const payload = (await response.json()) as { error?: string }
-        if (!response.ok) {
-          setCreateError(readErrorMessage(payload, '创建失败'))
-          return
-        }
-        setDialogOpen(false)
-        await refresh()
-      } catch (error) {
-        setCreateError(error instanceof Error ? error.message : '创建失败')
-      } finally {
-        setCreateBusy(false)
-      }
-    },
-    [refresh]
-  )
-
   return (
     <main className="relative h-screen overflow-hidden p-4">
       <button
@@ -332,14 +302,7 @@ export function TaskBoard() {
                   setChatTask({ id: task.id, fileName: task.fileName, title: task.title })
                 }}
                 onUpdate={updateTask}
-                onCreate={
-                  column === 'todo'
-                    ? () => {
-                        setCreateError(null)
-                        setDialogOpen(true)
-                      }
-                    : undefined
-                }
+                onTaskCreated={refresh}
               />
             ))
           : TASK_COLUMNS.map((column) => (
@@ -365,13 +328,6 @@ export function TaskBoard() {
           setConfigOpen(false)
           setConfigAuthError(null)
         }}
-      />
-      <CreateTaskDialog
-        open={dialogOpen}
-        busy={createBusy}
-        error={createError}
-        onClose={() => setDialogOpen(false)}
-        onSubmit={createTask}
       />
       <AiChatDialog
         open={Boolean(chatTask)}

@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { ApInputNumber } from '@/components/antd/ApInputNumber'
+import { ApSwitch } from '@/components/antd/ApSwitch'
+import { ApTextArea } from '@/components/antd/ApTextArea'
+import { ApTimePicker } from '@/components/antd/ApTimePicker'
+
 const PAGE_SIZE = 20
 const USER_TEXT_DEBOUNCE_MS = 400
 
@@ -584,11 +589,10 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                 {expanded === name ? (
                   <div className="border-t border-black/10 px-2.5 pb-2.5 pt-2">
                     <p className="text-xs leading-5 text-[var(--ink-soft)]">{description}</p>
-                    <textarea
+                    <ApTextArea
                       rows={2}
                       value={record.userText}
-                      onChange={(event) => {
-                        const userText = event.target.value
+                      onChange={(userText) => {
                         persistItemsDebounced(
                           itemsRef.current.map((item) =>
                             item.name === name ? { ...item, userText } : item
@@ -596,18 +600,16 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                         )
                       }}
                       placeholder="有想法写这儿就好"
-                      className="mt-2 w-full resize-none rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs leading-5 outline-none ring-[var(--brass)] focus:ring-2"
+                      className="mt-2 resize-none text-xs leading-5"
                     />
                     <div className="mt-2 rounded-lg bg-[var(--paper-deep)] px-2.5 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-medium">定时</span>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={schedule.enabled}
-                          onClick={() => {
+                        <ApSwitch
+                          checked={schedule.enabled}
+                          onChange={(enabled) => {
                             const current = scheduleOf(itemsRef.current, name)
-                            if (current.enabled) {
+                            if (!enabled) {
                               invalidate(name)
                               patchSchedule(name, { enabled: false, nextAt: null })
                               return
@@ -617,43 +619,28 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                             patchSchedule(name, { enabled: true, loops, remaining: loops })
                             arm(name)
                           }}
-                          className={`relative h-5 w-9 shrink-0 rounded-full transition ${
-                            schedule.enabled ? 'bg-[var(--teal)]' : 'bg-black/20'
-                          }`}
-                        >
-                          <span
-                            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
-                              schedule.enabled ? 'left-4' : 'left-0.5'
-                            }`}
-                          />
-                        </button>
+                        />
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <label className="text-[11px] text-[var(--ink-soft)]">
                           时间
-                          <input
-                            type="time"
+                          <ApTimePicker
                             value={schedule.time}
-                            onChange={(event) => {
-                              const time = event.target.value || schedule.time
-                              patchSchedule(name, { time })
+                            onChange={(time) => {
+                              const next = time || schedule.time
+                              patchSchedule(name, { time: next })
                               if (scheduleOf(itemsRef.current, name).enabled) arm(name)
                             }}
-                            className="mt-1 h-7 w-full rounded-md border border-black/10 bg-white px-1.5 text-xs text-[var(--ink)] outline-none"
+                            className="mt-1"
                           />
                         </label>
                         <label className="text-[11px] text-[var(--ink-soft)]">
                           次数
-                          <input
-                            type="number"
+                          <ApInputNumber
                             min={1}
                             max={99}
                             value={schedule.loops}
-                            onChange={(event) => {
-                              const loops = Math.max(
-                                1,
-                                Math.min(99, Number(event.target.value) || 1)
-                              )
+                            onChange={(loops) => {
                               const enabled = scheduleOf(itemsRef.current, name).enabled
                               patchSchedule(name, {
                                 loops,
@@ -662,7 +649,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                                   : (scheduleOf(itemsRef.current, name).remaining ?? loops)
                               })
                             }}
-                            className="mt-1 h-7 w-full rounded-md border border-black/10 bg-white px-1.5 text-xs text-[var(--ink)] outline-none"
+                            className="mt-1"
                           />
                         </label>
                       </div>
