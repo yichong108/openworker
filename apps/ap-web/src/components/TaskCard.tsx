@@ -54,19 +54,93 @@ function formatUpdatedAt(iso: string): string {
 }
 
 /**
- * 卡片底部对话按钮文案。
+ * 卡片底部对话按钮悬停/无障碍文案。
  *
  * @param chat - 该任务会话状态
- * @returns 按钮文字
+ * @returns 按钮说明
  */
-function chatButtonLabel(chat: TaskChatHint): string {
+function chatButtonTitle(chat: TaskChatHint): string {
   if (!chat.started) return '对话'
   if (chat.running) {
     const preview = chat.preview.replace(/\s+/g, ' ').trim()
-    return preview || '…'
+    return preview || 'Agent 执行中…'
   }
   if (chat.error) return chat.error
-  return 'Worked'
+  return '对话已完成'
+}
+
+function ChatBubbleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M7.5 8h9M7.5 12h5.5M6 4h12a2 2 0 012 2v9a2 2 0 01-2 2H9l-4 3V6a2 2 0 012-2z" />
+    </svg>
+  )
+}
+
+function ChatSpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M12 3a9 9 0 019 9" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ChatErrorIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
+function ChatDoneIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12.5l4 4L19 7" />
+    </svg>
+  )
+}
+
+function ChatButtonIcon({ chat }: { chat: TaskChatHint }) {
+  if (chat.running) {
+    return <ChatSpinnerIcon className="h-3.5 w-3.5 animate-spin" />
+  }
+  if (chat.error) {
+    return <ChatErrorIcon className="h-3.5 w-3.5" />
+  }
+  if (chat.started) {
+    return <ChatDoneIcon className="h-3.5 w-3.5" />
+  }
+  return <ChatBubbleIcon className="h-3.5 w-3.5" />
 }
 
 /**
@@ -284,16 +358,17 @@ export function TaskCard({
         </div>
       ) : null}
 
-      <div className="px-3 pb-3">
+      <div className="block px-3 pb-3">
         <button
           type="button"
           data-chat-trigger
-          title={chatButtonLabel(chat)}
+          title={chatButtonTitle(chat)}
+          aria-label={chatButtonTitle(chat)}
           onClick={(event) => {
             event.stopPropagation()
             onOpenChat()
           }}
-          className={`w-full truncate rounded-lg px-2.5 py-1.5 text-left text-[11px] font-medium transition hover:opacity-90 ${
+          className={`flex w-full items-center rounded-lg px-2.5 py-1.5 transition hover:opacity-90 ${
             chat.running
               ? 'bg-[var(--teal)]/15 text-[var(--teal)]'
               : chat.started && !chat.error
@@ -303,7 +378,7 @@ export function TaskCard({
                   : 'bg-black/5 text-[var(--ink-soft)]'
           }`}
         >
-          {chatButtonLabel(chat)}
+          <ChatButtonIcon chat={chat} />
         </button>
       </div>
     </article>
