@@ -47,7 +47,7 @@
     "build": "tsc -p tsconfig.build.json",
     "publint": "pnpm run build && publint",
     "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
-    "release": "pnpm run check-npm-auth && tsc -p tsconfig.build.json && npm publish",
+    "release": "pnpm run check-npm-auth && tsc -p tsconfig.build.json && pnpm publish --access public --no-git-checks",
     "start:dist": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

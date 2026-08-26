@@ -13,8 +13,9 @@
     "build": "next build",
     "postbuild": "node scripts/materialize-standalone.mjs",
     "prepare-standalone": "node scripts/prepare-standalone.mjs",
+    "publint": "pnpm run build && node scripts/prepare-standalone.mjs && cd .publish-staging && publint",
     "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
-    "release": "pnpm run check-npm-auth && pnpm run build && node scripts/prepare-standalone.mjs && cd .publish-staging && npm publish",
+    "release": "pnpm run check-npm-auth && pnpm run build && node scripts/prepare-standalone.mjs && cd .publish-staging && pnpm publish --access public --no-git-checks",
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit"
   },
@@ -40,6 +41,7 @@
     "autoprefixer": "^10.4.19",
     "cross-env": "^10.1.0",
     "postcss": "^8.4.38",
+    "publint": "catalog:",
     "sass": "^1.99.0",
     "tailwindcss": "^3.4.3",
     "typescript": "catalog:"
