@@ -59,8 +59,6 @@ function sanitizeGeneratedTitle(raw: string): string {
  */
 async function generateTitleWithAi(idea: string): Promise<string> {
   const config = readAiConfig()
-  if (config.provider !== 'deepseek') return ''
-
   const key = config.deepseek.apiKey.trim() || process.env.DEEPSEEK_API_KEY?.trim()
   if (!key) return ''
 

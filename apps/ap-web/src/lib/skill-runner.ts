@@ -1,18 +1,17 @@
-import { Agent, Cursor, CursorAgentError } from '@cursor/sdk'
+import { EventType, randomUUID, type BaseEvent, type RunErrorEvent } from '@ag-ui/client'
+import type { ApAgentWithAGUI } from '@openworker/ap-agent'
+import type { Subscription } from 'rxjs'
 
-import { isAiAuthFailure, readAiConfig } from './ai-config'
-import { loadCursorEnv, resolveModelId } from './load-env'
+import { createApWebAgent } from './ap-agent-runtime'
+import { isAiAuthFailure } from './ai-config'
 import { buildSkillPrompt, listAgentsSkills, readSkillMarkdown } from './skills-fs'
 import { TaskFsError } from './task-fs-error'
 import { getWorkspaceRoot } from './workspace-root'
 
-type AgentInstance = Awaited<ReturnType<typeof Agent.create>>
-type RunInstance = Awaited<ReturnType<AgentInstance['send']>>
-
 type SkillJob = {
   name: string
-  agent: AgentInstance
-  run?: RunInstance
+  agent: ApAgentWithAGUI
+  subscription?: Subscription
   error?: string
   cancelled?: boolean
 }
@@ -59,13 +58,12 @@ export function listSkillRunSnapshot(): {
 }
 
 /**
- * 用 Cursor SDK 本地 Agent 启动指定 skill（后台跑完，不阻塞 HTTP）。
+ * 用 ApAgentWithAGUI 启动指定 skill（后台跑完，不阻塞 HTTP）。
  *
  * @param name - `.agents/skills` 目录名
  * @param userInput - 可选用户补充，空则按 skill 默认流程
  */
 export async function startSkill(name: string, userInput?: string): Promise<void> {
-  loadCursorEnv()
   const skill = listAgentsSkills().find((item) => item.name === name)
   if (!skill) {
     throw new TaskFsError(`未找到 skill: ${name}`, 404)
@@ -78,41 +76,19 @@ export async function startSkill(name: string, userInput?: string): Promise<void
   const markdown = readSkillMarkdown(name)
   const extra = userInput?.trim()
   const prompt = buildSkillPrompt(name, markdown, extra || undefined)
-  const config = readAiConfig()
-  const apiKey = config.cursor.apiKey.trim() || process.env.CURSOR_API_KEY?.trim()
-  const model = config.cursor.model.trim() || resolveModelId()
 
-  if (!apiKey) {
-    try {
-      const status = await Cursor.auth.status()
-      if (status.status !== 'logged-in') {
-        throw new TaskFsError('Cursor 未登录且未填写 API Key，请先完成 AI 配置', 401, 'ai_auth')
-      }
-    } catch (error) {
-      if (error instanceof TaskFsError) throw error
-      throw new TaskFsError('Cursor 鉴权失败，请先完成 AI 配置', 401, 'ai_auth')
-    }
-  }
-
-  let agent: AgentInstance
+  let agent: ApAgentWithAGUI
   try {
-    agent = await Agent.create({
-      ...(apiKey ? { apiKey } : {}),
-      name,
-      model: { id: model },
-      mode: 'agent',
-      local: {
-        cwd: workspaceRoot,
-        settingSources: ['project']
-      }
-    })
+    agent = createApWebAgent(workspaceRoot, name)
   } catch (error) {
-    if (error instanceof CursorAgentError || isAiAuthFailure(error)) {
-      throw new TaskFsError(
-        `模型鉴权失败：${error instanceof Error ? error.message : '未知错误'}`,
-        401,
-        'ai_auth'
-      )
+    if (error instanceof TaskFsError || isAiAuthFailure(error)) {
+      throw error instanceof TaskFsError
+        ? error
+        : new TaskFsError(
+            `模型鉴权失败：${error instanceof Error ? error.message : '未知错误'}`,
+            401,
+            'ai_auth'
+          )
     }
     throw error
   }
@@ -122,24 +98,43 @@ export async function startSkill(name: string, userInput?: string): Promise<void
 
   void (async () => {
     try {
-      const run = await agent.send(prompt)
-      job.run = run
-      if (run.supports('stream')) {
-        for await (const _event of run.stream()) {
-          /* 排空流，保证 wait 能结束 */
-        }
-      }
-      await run.wait()
+      await new Promise<void>((resolve, reject) => {
+        const subscription = agent
+          .run({
+            threadId: name,
+            runId: randomUUID(),
+            state: {},
+            messages: [{ id: randomUUID(), role: 'user', content: prompt }],
+            tools: [],
+            context: [],
+            forwardedProps: {}
+          })
+          .subscribe({
+            next: (event: BaseEvent) => {
+              if (job.cancelled) return
+              if (event.type === EventType.RUN_ERROR) {
+                const e = event as RunErrorEvent
+                if (e.code !== 'CANCELLED') {
+                  job.error = e.message || '执行失败'
+                }
+              }
+            },
+            error: (error) => {
+              if (!job.cancelled) {
+                job.error = error instanceof Error ? error.message : String(error)
+              }
+              reject(error)
+            },
+            complete: resolve
+          })
+        job.subscription = subscription
+      })
     } catch (error) {
-      if (!job.cancelled) {
+      if (!job.cancelled && !job.error) {
         job.error = error instanceof Error ? error.message : String(error)
       }
     } finally {
-      try {
-        await agent[Symbol.asyncDispose]()
-      } catch {
-        /* 忽略释放失败 */
-      }
+      job.subscription?.unsubscribe()
       rememberResult(job)
       jobs.delete(name)
     }
@@ -157,17 +152,8 @@ export async function stopSkill(name: string): Promise<void> {
     throw new TaskFsError(`${name} 未在执行`, 404)
   }
   job.cancelled = true
-  try {
-    if (job.run?.supports('cancel')) {
-      await job.run.cancel()
-    }
-  } finally {
-    try {
-      await job.agent[Symbol.asyncDispose]()
-    } catch {
-      /* 忽略 */
-    }
-    rememberResult(job)
-    jobs.delete(name)
-  }
+  job.agent.abortRun()
+  job.subscription?.unsubscribe()
+  rememberResult(job)
+  jobs.delete(name)
 }

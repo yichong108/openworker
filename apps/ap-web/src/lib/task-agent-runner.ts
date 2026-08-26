@@ -1,26 +1,36 @@
-import { Agent, Cursor, CursorAgentError, type SDKMessage } from '@cursor/sdk'
+import {
+  EventType,
+  randomUUID,
+  type BaseEvent,
+  type CustomEvent,
+  type RunErrorEvent,
+  type TextMessageContentEvent,
+  type ToolCallStartEvent
+} from '@ag-ui/client'
+import type { ApAgentWithAGUI } from '@openworker/ap-agent'
+import type { Subscription } from 'rxjs'
 
 import type { ChatTranscript } from '@/components/chat/chat-types'
-import { isAiAuthFailure, readAiConfig } from './ai-config'
-import { loadCursorEnv, resolveModelId } from './load-env'
+import { createApWebAgent } from './ap-agent-runtime'
+import { isAiAuthFailure } from './ai-config'
 import { writeTaskChatFile } from './task-chat-fs'
 import { TaskFsError } from './task-fs-error'
 import type { TaskDetail } from './task-types'
 import { getWorkspaceRoot } from './workspace-root'
 
-type AgentInstance = Awaited<ReturnType<typeof Agent.create>>
-type RunInstance = Awaited<ReturnType<AgentInstance['send']>>
+const TEXT_DELTA_CUSTOM_NAME = 'openworker.text.delta'
 
 type TaskAgentJob = {
   fileName: string
   prompt: string
-  agent: AgentInstance
-  run?: RunInstance
+  agent: ApAgentWithAGUI
+  subscription?: Subscription
   cancelled?: boolean
 }
 
 const jobs = new Map<string, TaskAgentJob>()
 const transcripts = new Map<string, ChatTranscript>()
+const streamBuf = new Map<string, string>()
 const listeners = new Set<(payload: Record<string, ChatTranscript>) => void>()
 let messageSeq = 0
 
@@ -138,37 +148,64 @@ function appendSystem(fileName: string, content: string): void {
 }
 
 /**
- * 把 Cursor SDK 流事件写入会话。
+ * 将 AG-UI 流事件写入会话。
  *
  * @param fileName - 任务文件名
- * @param event - SDKMessage
+ * @param event - AG-UI BaseEvent
  */
-function applyStreamEvent(fileName: string, event: SDKMessage): void {
-  switch (event.type) {
-    case 'assistant':
-      for (const block of event.message.content) {
-        if (block.type === 'text') appendAssistantDelta(fileName, block.text)
-      }
-      break
-    case 'tool_call':
-      appendSystem(fileName, `工具 ${event.status} ${event.name}`)
-      finishAssistant(fileName)
-      break
-    default:
-      break
-  }
-}
-
-async function ensureCursorAuth(apiKey: string): Promise<void> {
-  if (apiKey) return
-  try {
-    const status = await Cursor.auth.status()
-    if (status.status !== 'logged-in') {
-      throw new TaskFsError('Cursor 未登录且未填写 API Key，请先完成 AI 配置', 401, 'ai_auth')
+function applyAguiEvent(fileName: string, event: BaseEvent): void {
+  if (event.type === EventType.CUSTOM) {
+    const custom = event as CustomEvent
+    if (custom.name === TEXT_DELTA_CUSTOM_NAME) {
+      const delta =
+        custom.value &&
+        typeof custom.value === 'object' &&
+        typeof (custom.value as { delta?: unknown }).delta === 'string'
+          ? (custom.value as { delta: string }).delta
+          : ''
+      if (!delta) return
+      const prev = streamBuf.get(fileName) ?? ''
+      streamBuf.set(fileName, prev + delta)
+      appendAssistantDelta(fileName, delta)
     }
-  } catch (error) {
-    if (error instanceof TaskFsError) throw error
-    throw new TaskFsError('Cursor 鉴权失败，请先完成 AI 配置', 401, 'ai_auth')
+    return
+  }
+
+  if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+    const e = event as TextMessageContentEvent
+    const prev = streamBuf.get(fileName) ?? ''
+    if (prev === e.delta) return
+    const next = prev.length > 0 && e.delta.startsWith(prev) ? e.delta.slice(prev.length) : e.delta
+    if (next) {
+      streamBuf.set(
+        fileName,
+        prev.length > 0 && e.delta.startsWith(prev) ? e.delta : prev + e.delta
+      )
+      appendAssistantDelta(fileName, next)
+    }
+    return
+  }
+
+  if (event.type === EventType.TOOL_CALL_START) {
+    const e = event as ToolCallStartEvent
+    appendSystem(fileName, `工具 start ${e.toolCallName}`)
+    finishAssistant(fileName)
+    return
+  }
+
+  if (event.type === EventType.RUN_ERROR) {
+    const e = event as RunErrorEvent
+    if (e.code !== 'CANCELLED') {
+      patchTranscript(fileName, {
+        running: false,
+        error: e.message || '执行失败'
+      })
+    }
+    return
+  }
+
+  if (event.type === EventType.RUN_FINISHED) {
+    patchTranscript(fileName, { running: false, error: undefined })
   }
 }
 
@@ -217,40 +254,28 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
   const fileName = task.fileName
   if (jobs.has(fileName)) return
 
-  loadCursorEnv()
   const workspaceRoot = getWorkspaceRoot()
   const prompt = buildTaskPrompt(task)
-  const config = readAiConfig()
-  const apiKey = config.cursor.apiKey.trim() || process.env.CURSOR_API_KEY?.trim() || ''
-  const model = config.cursor.model.trim() || resolveModelId()
 
-  await ensureCursorAuth(apiKey)
-
-  let agent: AgentInstance
+  let agent: ApAgentWithAGUI
   try {
-    agent = await Agent.create({
-      ...(apiKey ? { apiKey } : {}),
-      name: `task:${fileName}`,
-      model: { id: model },
-      mode: 'agent',
-      local: {
-        cwd: workspaceRoot,
-        settingSources: ['project']
-      }
-    })
+    agent = createApWebAgent(workspaceRoot, `task:${fileName}`)
   } catch (error) {
-    if (error instanceof CursorAgentError || isAiAuthFailure(error)) {
-      throw new TaskFsError(
-        `模型鉴权失败：${error instanceof Error ? error.message : '未知错误'}`,
-        401,
-        'ai_auth'
-      )
+    if (error instanceof TaskFsError || isAiAuthFailure(error)) {
+      throw error instanceof TaskFsError
+        ? error
+        : new TaskFsError(
+            `模型鉴权失败：${error instanceof Error ? error.message : '未知错误'}`,
+            401,
+            'ai_auth'
+          )
     }
     throw error
   }
 
   const job: TaskAgentJob = { fileName, prompt, agent }
   jobs.set(fileName, job)
+  streamBuf.set(fileName, '')
   patchTranscript(fileName, {
     running: true,
     started: true,
@@ -260,24 +285,34 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
 
   void (async () => {
     try {
-      const run = await agent.send(prompt)
-      job.run = run
-      if (run.supports('stream')) {
-        for await (const event of run.stream()) {
-          if (job.cancelled) break
-          applyStreamEvent(fileName, event)
+      await new Promise<void>((resolve, reject) => {
+        const subscription = agent
+          .run({
+            threadId: fileName,
+            runId: randomUUID(),
+            state: {},
+            messages: [{ id: randomUUID(), role: 'user', content: prompt }],
+            tools: [],
+            context: [],
+            forwardedProps: {}
+          })
+          .subscribe({
+            next: (event) => {
+              if (job.cancelled) return
+              applyAguiEvent(fileName, event)
+            },
+            error: reject,
+            complete: resolve
+          })
+        job.subscription = subscription
+      })
+      finishAssistant(fileName)
+      if (!job.cancelled) {
+        const current = transcripts.get(fileName)
+        if (current?.running && !current.error) {
+          patchTranscript(fileName, { running: false, error: undefined })
         }
       }
-      const result = await run.wait()
-      finishAssistant(fileName)
-      if (!job.cancelled && result.status === 'error') {
-        patchTranscript(fileName, {
-          running: false,
-          error: '执行失败'
-        })
-        return
-      }
-      patchTranscript(fileName, { running: false, error: undefined })
     } catch (error) {
       finishAssistant(fileName)
       if (!job.cancelled) {
@@ -289,12 +324,9 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
         patchTranscript(fileName, { running: false })
       }
     } finally {
-      try {
-        await agent[Symbol.asyncDispose]()
-      } catch {
-        /* 忽略释放失败 */
-      }
+      job.subscription?.unsubscribe()
       jobs.delete(fileName)
+      streamBuf.delete(fileName)
       finishAssistant(fileName)
       const current = transcripts.get(fileName)
       if (current?.running) {
@@ -316,19 +348,11 @@ export async function stopTaskAgent(fileName: string): Promise<void> {
   const job = jobs.get(fileName)
   if (!job) return
   job.cancelled = true
-  try {
-    if (job.run?.supports('cancel')) {
-      await job.run.cancel()
-    }
-  } finally {
-    try {
-      await job.agent[Symbol.asyncDispose]()
-    } catch {
-      /* 忽略 */
-    }
-    jobs.delete(fileName)
-    finishAssistant(fileName)
-    patchTranscript(fileName, { running: false })
-    persistCompletedRound(fileName, job.prompt)
-  }
+  job.agent.abortRun()
+  job.subscription?.unsubscribe()
+  jobs.delete(fileName)
+  streamBuf.delete(fileName)
+  finishAssistant(fileName)
+  patchTranscript(fileName, { running: false })
+  persistCompletedRound(fileName, job.prompt)
 }

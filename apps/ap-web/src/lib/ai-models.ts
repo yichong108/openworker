@@ -1,17 +1,9 @@
-import { Cursor } from '@cursor/sdk'
-
-import {
-  type AiProvider,
-  defaultCursorModel,
-  defaultDeepseekModel,
-  readAiConfig
-} from './ai-config'
-import { loadCursorEnv } from './load-env'
+import { defaultDeepseekModel, readAiConfig } from './ai-config'
 
 /**
  * 从未知的模型列表响应里抽出 id。
  *
- * @param payload - SDK 或 HTTP JSON
+ * @param payload - HTTP JSON
  * @returns 模型 id 列表
  */
 function extractModelIds(payload: unknown): string[] {
@@ -50,28 +42,6 @@ function withFallback(ids: string[], fallback: string): string[] {
 }
 
 /**
- * 拉取 Cursor 模型列表；失败则只返回默认模型。
- *
- * @param apiKey - 可选覆盖密钥
- * @returns 模型 id 与可选鉴权错误
- */
-export async function listCursorModels(
-  apiKey?: string
-): Promise<{ models: string[]; authError?: string }> {
-  loadCursorEnv()
-  const key =
-    apiKey?.trim() || readAiConfig().cursor.apiKey.trim() || process.env.CURSOR_API_KEY?.trim()
-  try {
-    const payload = await Cursor.models.list(key ? { apiKey: key } : {})
-    const models = withFallback(extractModelIds(payload), defaultCursorModel())
-    return { models }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '无法获取 Cursor 模型列表'
-    return { models: [defaultCursorModel()], authError: message }
-  }
-}
-
-/**
  * 拉取 DeepSeek 模型列表；失败则只返回默认模型。
  *
  * @param apiKey - 可选覆盖密钥
@@ -106,16 +76,13 @@ export async function listDeepseekModels(
 }
 
 /**
- * 按提供方拉取模型列表。
+ * 拉取 DeepSeek 模型列表（配置页使用）。
  *
- * @param provider - cursor 或 deepseek
  * @param apiKey - 可选覆盖密钥
  * @returns 模型 id 与可选鉴权错误
  */
 export async function listAiModels(
-  provider: AiProvider,
   apiKey?: string
 ): Promise<{ models: string[]; authError?: string }> {
-  if (provider === 'deepseek') return listDeepseekModels(apiKey)
-  return listCursorModels(apiKey)
+  return listDeepseekModels(apiKey)
 }

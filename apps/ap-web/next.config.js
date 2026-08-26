@@ -5,8 +5,13 @@
  */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ['@cursor/sdk']
+  transpilePackages: ['@openworker/ap-agent', '@openworker/agent', '@openworker/shared'],
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs']
+    }
+    return config
   }
 }
 

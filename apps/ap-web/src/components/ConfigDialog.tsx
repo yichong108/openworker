@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-type AiProvider = 'cursor' | 'deepseek'
-
 type PublicConfig = {
-  provider: AiProvider
-  cursor: { hasKey: boolean; keyHint: string; model: string }
   deepseek: { hasKey: boolean; keyHint: string; model: string }
 }
 
@@ -26,55 +22,29 @@ const FIELD =
  */
 export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const [menu, setMenu] = useState<'ai'>('ai')
-  const [provider, setProvider] = useState<AiProvider>('cursor')
-  const [cursorKey, setCursorKey] = useState('')
   const [deepseekKey, setDeepseekKey] = useState('')
-  const [cursorModel, setCursorModel] = useState('composer-2.5')
   const [deepseekModel, setDeepseekModel] = useState('deepseek-chat')
-  const [cursorModels, setCursorModels] = useState<string[]>(['composer-2.5'])
   const [deepseekModels, setDeepseekModels] = useState<string[]>(['deepseek-chat'])
-  const [cursorHint, setCursorHint] = useState('')
   const [deepseekHint, setDeepseekHint] = useState('')
-  const [loginStatus, setLoginStatus] = useState('logged-out')
-  const [loginEmail, setLoginEmail] = useState<string | null>(null)
   const [modelError, setModelError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [loginBusy, setLoginBusy] = useState(false)
 
-  const loadStatus = useCallback(async () => {
-    const response = await fetch('/api/config/ai/cursor/status', { cache: 'no-store' })
-    const payload = (await response.json()) as { status?: string; email?: string | null }
-    if (response.ok) {
-      setLoginStatus(payload.status ?? 'logged-out')
-      setLoginEmail(payload.email ?? null)
-    }
-  }, [])
-
-  const loadModels = useCallback(async (target: AiProvider, apiKey?: string) => {
+  const loadModels = useCallback(async (apiKey?: string) => {
     setModelError(null)
     const response = await fetch('/api/config/ai/models', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: target, ...(apiKey ? { apiKey } : {}) })
+      body: JSON.stringify({ ...(apiKey ? { apiKey } : {}) })
     })
     const payload = (await response.json()) as {
       models?: string[]
       authError?: string
       error?: string
     }
-    const models = payload.models?.length
-      ? payload.models
-      : target === 'cursor'
-        ? ['composer-2.5']
-        : ['deepseek-chat']
-    if (target === 'cursor') {
-      setCursorModels(models)
-      setCursorModel((current) => (models.includes(current) ? current : models[0]))
-    } else {
-      setDeepseekModels(models)
-      setDeepseekModel((current) => (models.includes(current) ? current : models[0]))
-    }
+    const models = payload.models?.length ? payload.models : ['deepseek-chat']
+    setDeepseekModels(models)
+    setDeepseekModel((current) => (models.includes(current) ? current : models[0]))
     if (payload.authError || !response.ok) {
       setModelError(payload.authError || payload.error || '无法获取模型列表')
     }
@@ -87,15 +57,11 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
       setSaveError(payload.error || '无法读取配置')
       return
     }
-    setProvider(payload.provider)
-    setCursorModel(payload.cursor.model)
     setDeepseekModel(payload.deepseek.model)
-    setCursorHint(payload.cursor.keyHint)
     setDeepseekHint(payload.deepseek.keyHint)
-    setCursorKey('')
     setDeepseekKey('')
-    await Promise.all([loadStatus(), loadModels(payload.provider)])
-  }, [loadModels, loadStatus])
+    await loadModels()
+  }, [loadModels])
 
   useEffect(() => {
     if (!open) return
@@ -115,13 +81,6 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
 
   if (!open) return null
 
-  const loggedIn = loginStatus === 'logged-in'
-  const models = provider === 'cursor' ? cursorModels : deepseekModels
-  const model = provider === 'cursor' ? cursorModel : deepseekModel
-  const setModel = provider === 'cursor' ? setCursorModel : setDeepseekModel
-  const apiKey = provider === 'cursor' ? cursorKey : deepseekKey
-  const setApiKey = provider === 'cursor' ? setCursorKey : setDeepseekKey
-  const keyHint = provider === 'cursor' ? cursorHint : deepseekHint
   const banner = authError || modelError || saveError
 
   return (
@@ -170,7 +129,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
           <header className="flex items-start justify-between px-6 pt-5">
             <div>
               <p className="font-display text-2xl">AI 配置</p>
-              <p className="mt-1 text-sm text-[var(--ink-soft)]">选择服务商、模型和鉴权方式。</p>
+              <p className="mt-1 text-sm text-[var(--ink-soft)]">DeepSeek API Key 与模型。</p>
             </div>
             <button
               type="button"
@@ -186,39 +145,19 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--ink-soft)]">
               服务商
             </p>
-            <div className="mt-2 flex gap-2">
-              {(['deepseek', 'cursor'] as const).map((item) => {
-                const active = provider === item
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => {
-                      setProvider(item)
-                      setModelError(null)
-                      void loadModels(item)
-                    }}
-                    className={`rounded-lg px-3.5 py-1.5 text-sm transition ${
-                      active
-                        ? 'bg-[var(--ink)] text-[var(--paper)]'
-                        : 'bg-black/[0.05] text-[var(--ink-soft)] hover:bg-black/10 hover:text-[var(--ink)]'
-                    }`}
-                  >
-                    {item === 'deepseek' ? 'DeepSeek' : 'Cursor'}
-                  </button>
-                )
-              })}
-            </div>
+            <p className="mt-2 inline-block rounded-lg bg-[var(--ink)] px-3.5 py-1.5 text-sm text-[var(--paper)]">
+              DeepSeek
+            </p>
 
             <label className="mt-5 block text-sm font-medium">
               模型
               <span className="mt-1.5 flex gap-2">
                 <select
-                  value={model}
-                  onChange={(event) => setModel(event.target.value)}
+                  value={deepseekModel}
+                  onChange={(event) => setDeepseekModel(event.target.value)}
                   className={FIELD}
                 >
-                  {models.map((id) => (
+                  {deepseekModels.map((id) => (
                     <option key={id} value={id}>
                       {id}
                     </option>
@@ -227,7 +166,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                 <button
                   type="button"
                   title="刷新模型列表"
-                  onClick={() => void loadModels(provider, apiKey || undefined)}
+                  onClick={() => void loadModels(deepseekKey || undefined)}
                   className="shrink-0 rounded-lg border border-black/10 px-3 text-xs text-[var(--ink-soft)] hover:bg-black/5 hover:text-[var(--ink)]"
                 >
                   刷新
@@ -237,59 +176,14 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
 
             <label className="mt-5 block text-sm font-medium">
               API Key
-              {provider === 'cursor' ? (
-                <span className="ml-2 text-xs font-normal text-[var(--ink-soft)]">
-                  可选，与登录二选一
-                </span>
-              ) : null}
               <input
                 type="password"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder={
-                  keyHint ? `已保存 ${keyHint}` : provider === 'cursor' ? 'cursor_...' : 'sk-...'
-                }
+                value={deepseekKey}
+                onChange={(event) => setDeepseekKey(event.target.value)}
+                placeholder={deepseekHint ? `已保存 ${deepseekHint}` : 'sk-...'}
                 className={FIELD}
               />
             </label>
-
-            {provider === 'cursor' ? (
-              <div className="mt-5 flex items-center justify-between gap-4 rounded-xl bg-[var(--paper-deep)] px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Cursor 登录</p>
-                  <p className="mt-0.5 truncate text-xs text-[var(--ink-soft)]">
-                    {loggedIn
-                      ? `已登录${loginEmail ? ` · ${loginEmail}` : ''}`
-                      : '用浏览器登录后即可拉取模型'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={loginBusy}
-                  onClick={() => {
-                    setLoginBusy(true)
-                    setSaveError(null)
-                    void fetch('/api/config/ai/cursor/login', { method: 'POST' })
-                      .then(async (response) => {
-                        const payload = (await response.json()) as {
-                          error?: string
-                          email?: string
-                        }
-                        if (!response.ok) {
-                          setSaveError(payload.error || '登录失败')
-                          return
-                        }
-                        await loadStatus()
-                        await loadModels('cursor')
-                      })
-                      .finally(() => setLoginBusy(false))
-                  }}
-                  className="shrink-0 rounded-lg bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--paper)] disabled:opacity-50"
-                >
-                  {loginBusy ? '正在打开…' : loggedIn ? '重新登录' : '登录'}
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <footer className="flex items-center justify-end gap-2 px-6 pb-5">
@@ -318,11 +212,6 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    provider,
-                    cursor: {
-                      model: cursorModel,
-                      ...(cursorKey.trim() ? { apiKey: cursorKey } : {})
-                    },
                     deepseek: {
                       model: deepseekModel,
                       ...(deepseekKey.trim() ? { apiKey: deepseekKey } : {})
