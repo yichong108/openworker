@@ -29,24 +29,30 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const [modelError, setModelError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [modelsLoading, setModelsLoading] = useState(false)
 
   const loadModels = useCallback(async (apiKey?: string) => {
+    setModelsLoading(true)
     setModelError(null)
-    const response = await fetch('/api/config/ai/models', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...(apiKey ? { apiKey } : {}) })
-    })
-    const payload = (await response.json()) as {
-      models?: string[]
-      authError?: string
-      error?: string
-    }
-    const models = payload.models?.length ? payload.models : ['deepseek-chat']
-    setDeepseekModels(models)
-    setDeepseekModel((current) => (models.includes(current) ? current : models[0]))
-    if (payload.authError || !response.ok) {
-      setModelError(payload.authError || payload.error || '无法获取模型列表')
+    try {
+      const response = await fetch('/api/config/ai/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...(apiKey ? { apiKey } : {}) })
+      })
+      const payload = (await response.json()) as {
+        models?: string[]
+        authError?: string
+        error?: string
+      }
+      const models = payload.models?.length ? payload.models : ['deepseek-chat']
+      setDeepseekModels(models)
+      setDeepseekModel((current) => (models.includes(current) ? current : models[0]))
+      if (payload.authError || !response.ok) {
+        setModelError(payload.authError || payload.error || '无法获取模型列表')
+      }
+    } finally {
+      setModelsLoading(false)
     }
   }, [])
 
@@ -162,12 +168,14 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                 模型
                 <button
                   type="button"
-                  title="刷新模型列表"
-                  aria-label="刷新模型列表"
+                  title={modelsLoading ? '正在刷新模型列表' : '刷新模型列表'}
+                  aria-label={modelsLoading ? '正在刷新模型列表' : '刷新模型列表'}
+                  aria-busy={modelsLoading}
+                  disabled={modelsLoading}
                   onClick={() => void loadModels(deepseekKey || undefined)}
-                  className="inline-flex items-center gap-1 text-xs font-normal text-[var(--ink-soft)] transition hover:text-[var(--brass)]"
+                  className="inline-flex items-center gap-1 text-xs font-normal text-[var(--ink-soft)] transition hover:text-[var(--brass)] disabled:pointer-events-none disabled:opacity-60"
                 >
-                  <RefreshIcon className="h-3.5 w-3.5" />
+                  <RefreshIcon className={`h-3.5 w-3.5 ${modelsLoading ? 'animate-spin' : ''}`} />
                   刷新
                 </button>
               </span>
