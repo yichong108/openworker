@@ -140,6 +140,13 @@ body {
   color: var(--ink-soft);
 }
 
+.ap-modal-content--chat.ant-modal-content {
+  display: flex !important;
+  flex-direction: column;
+  max-height: min(40rem, 88vh);
+  overflow: hidden;
+}
+
 .ap-modal-content--chat .ant-modal-body {
   display: flex;
   min-height: 0;
@@ -153,6 +160,80 @@ body {
   flex-shrink: 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   padding: 16px 20px;
+}
+
+/* ChatSessionView 设计 token（desktop/playground 对齐） */
+.ap-task-chat-session {
+  --aw-chat-scrollbar-size: 15px;
+  --aw-chat-scrollbar-thumb: rgb(24 24 27 / 0.1);
+  --aw-chat-scrollbar-thumb-hover: rgb(24 24 27 / 0.19);
+  --aw-color-bg-elevated: #f4f4f5;
+  --aw-color-bg-canvas: #fafafa;
+  --aw-color-bg-layout: var(--paper);
+  --aw-color-bg-container: #ffffff;
+  --aw-color-border: rgb(24 24 27 / 0.09);
+  --aw-color-border-secondary: rgb(24 24 27 / 0.055);
+  --aw-color-text: var(--ink);
+  --aw-color-text-secondary: var(--ink-soft);
+  --aw-color-text-tertiary: color-mix(in srgb, var(--ink-soft) 88%, transparent);
+  --aw-color-icon: rgb(24 24 27 / 0.38);
+  --aw-color-icon-hover: rgb(24 24 27 / 0.52);
+  --aw-color-icon-muted: rgb(24 24 27 / 0.3);
+  --aw-color-primary: #27272a;
+  --aw-color-accent: var(--ink);
+  --aw-color-accent-hover: color-mix(in srgb, var(--ink) 85%, #000);
+  --aw-shadow-soft: 0 1px 2px rgb(24 24 27 / 0.04);
+  --aw-shadow-card: 0 1px 2px rgb(24 24 27 / 0.05), 0 4px 14px rgb(24 24 27 / 0.04);
+  --aw-composer-surface: #ffffff;
+  --aw-composer-border: var(--aw-color-border);
+  --aw-composer-shadow: 0 4px 18px rgb(24 24 27 / 0.06), 0 1px 4px rgb(24 24 27 / 0.04);
+  --aw-composer-send: var(--ink);
+  --aw-composer-send-hover: color-mix(in srgb, var(--ink) 85%, #000);
+  --aw-composer-footer-rule: var(--aw-color-border-secondary);
+  --aw-main-content-max-width: 100%;
+  --aw-main-column-padding-x: 20px;
+  --aw-font-micro: 10px;
+  --aw-font-caption: 11px;
+  --aw-font-xs: 12px;
+  --aw-font-sm: 13px;
+  --aw-font-md: 14px;
+  --aw-font-lg: 15px;
+  --aw-font-xl: 16px;
+  --aw-font-weight-medium: 500;
+
+  display: flex;
+  min-height: min(28rem, 68vh);
+  height: 100%;
+  flex: 1;
+  flex-direction: column;
+  color: var(--aw-color-text);
+  background: var(--aw-color-bg-layout);
+}
+
+.ap-task-chat-session .app-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  background: var(--aw-color-bg-layout);
+}
+
+.ap-task-chat-session .app-messages-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.ap-task-chat-session .app-composer-stack {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 0 var(--aw-main-column-padding-x) 16px;
+}
+
+.ap-task-chat-session .app-composer-plus-btn {
+  display: none;
 }
 
 .ap-drawer .ant-drawer-content {

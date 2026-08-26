@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { ChatMessage } from '@/components/chat/chat-types'
@@ -15,6 +15,18 @@ export type TaskChatPersistedMessage = {
 export type TaskChatPersisted = {
   fileName: string
   messages: TaskChatPersistedMessage[]
+}
+
+let messageSeq = 0
+
+/**
+ * 生成会话消息 id。
+ *
+ * @returns 唯一 id
+ */
+function nextMessageId(): string {
+  messageSeq += 1
+  return `m${messageSeq}`
 }
 
 /**
@@ -45,23 +57,42 @@ export function getTaskChatFilePath(fileName: string): string | null {
 }
 
 /**
+ * 从落盘 JSON 恢复 user/assistant 消息（无 aguiEvents）。
+ *
+ * @param fileName - 任务文件名
+ * @returns 消息列表；无文件或解析失败时 []
+ */
+export function readTaskChatFile(fileName: string): ChatMessage[] {
+  const path = getTaskChatFilePath(fileName)
+  if (!path || !existsSync(path)) return []
+  try {
+    const raw = readFileSync(path, 'utf8')
+    const parsed = JSON.parse(raw) as TaskChatPersisted
+    if (!parsed.messages || !Array.isArray(parsed.messages)) return []
+    return parsed.messages
+      .filter((item) => item.role === 'user' || item.role === 'assistant')
+      .map((item) => ({
+        id: nextMessageId(),
+        role: item.role,
+        content: item.content
+      }))
+  } catch {
+    return []
+  }
+}
+
+/**
  * 拼出不含过程输出的对话 JSON（跳过 system / 空正文）。
  *
  * @param fileName - 任务文件名
- * @param prompt - 本轮发给 Agent 的用户侧正文
  * @param messages - 弹窗 transcript
  * @returns 落盘对象；无用户/助手内容时返回 null
  */
 export function buildTaskChatPayload(
   fileName: string,
-  prompt: string,
   messages: ChatMessage[]
 ): TaskChatPersisted | null {
   const persisted: TaskChatPersistedMessage[] = []
-  const promptText = prompt.trim()
-  if (promptText) {
-    persisted.push({ role: 'user', content: promptText })
-  }
   for (const item of messages) {
     if (item.role !== 'user' && item.role !== 'assistant') continue
     const text = item.content.trim()
@@ -76,13 +107,12 @@ export function buildTaskChatPayload(
  * 一轮对话结束后覆盖写入 chat JSON。无有效内容或路径非法则跳过。
  *
  * @param fileName - 任务文件名
- * @param prompt - 本轮 prompt
  * @param messages - 弹窗 transcript（含过程行，写入时过滤）
  */
-export function writeTaskChatFile(fileName: string, prompt: string, messages: ChatMessage[]): void {
+export function writeTaskChatFile(fileName: string, messages: ChatMessage[]): void {
   const path = getTaskChatFilePath(fileName)
   if (!path) return
-  const payload = buildTaskChatPayload(fileName, prompt, messages)
+  const payload = buildTaskChatPayload(fileName, messages)
   if (!payload) return
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')

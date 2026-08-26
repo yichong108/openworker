@@ -1,39 +1,47 @@
 'use client'
 
-import type { ReactNode } from 'react'
-
+import { ChatSessionView } from '@openworker/ui'
+import type { ChatTranscript } from '@/components/chat/chat-types'
 import { ApModal } from '@/components/antd/ApModal'
+import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
+import { App, ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 
-import { ChatComposer } from './ChatComposer'
-import { ChatMessageList } from './ChatMessageList'
-import type { ChatComposerState, ChatMessage } from './chat-types'
+import '../../../../../packages/ui/src/chat-session/chat-session.scss'
 
 type AiChatDialogProps = {
   open: boolean
   title: string
-  messages: ChatMessage[]
+  fileName: string
+  transcript: ChatTranscript | undefined
+  chatInput: string
+  onChatInputChange: (value: string) => void
   onClose: () => void
-  running?: boolean
-  composer?: ChatComposerState | null
-  headerExtra?: ReactNode
-  footer?: ReactNode
-  emptyHint?: string
+  onSend: () => void
+  onStop: () => void
+  onEditResend: (messageId: string, text: string) => void | Promise<void>
+  sendDisabled?: boolean
 }
 
 /**
- * 通用 AI 对话弹窗：遮罩、标题、消息列表、可选输入区。
+ * 任务 AI 对话弹窗：ApModal + ChatSessionView。
  */
 export function AiChatDialog({
   open,
   title,
-  messages,
+  fileName,
+  transcript,
+  chatInput,
+  onChatInputChange,
   onClose,
-  running,
-  composer = null,
-  headerExtra,
-  footer,
-  emptyHint
+  onSend,
+  onStop,
+  onEditResend,
+  sendDisabled
 }: AiChatDialogProps) {
+  const messages = transcript?.messages ?? []
+  const isRun = Boolean(transcript?.running)
+
   return (
     <ApModal
       open={open}
@@ -41,32 +49,47 @@ export function AiChatDialog({
       width={672}
       footer={null}
       destroyOnClose
-      classNames={{ content: 'ap-modal-content--chat max-h-[min(40rem,88vh)] !flex !flex-col' }}
+      classNames={{ content: 'ap-modal-content--chat' }}
       title={
-        <div className="flex min-w-0 items-start justify-between gap-3 pr-6">
-          <div className="min-w-0">
-            <p className="truncate font-display text-2xl">{title}</p>
-            {running ? <p className="mt-1 text-xs text-[var(--teal)]">正在回复</p> : null}
-          </div>
-          {headerExtra ? (
-            <div className="flex shrink-0 items-center gap-2">{headerExtra}</div>
-          ) : null}
+        <div className="min-w-0 pr-6">
+          <p className="truncate font-display text-2xl">{title}</p>
+          {isRun ? <p className="mt-1 text-xs text-[var(--teal)]">Working</p> : null}
         </div>
       }
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <ChatMessageList messages={messages} emptyHint={emptyHint} />
-      </div>
-      {footer}
-      {composer ? (
-        <ChatComposer
-          value={composer.value}
-          onChange={composer.onChange}
-          onSubmit={composer.onSubmit}
-          disabled={composer.disabled}
-          placeholder={composer.placeholder}
-        />
-      ) : null}
+      <ConfigProvider locale={zhCN} theme={apWebAntdTheme}>
+        <App>
+          <div className="ap-task-chat-session flex min-h-0 flex-1 flex-col">
+            <ChatSessionView
+              isLoading={false}
+              isEmpty={false}
+              messages={messages}
+              liveEvents={transcript?.liveEvents ?? []}
+              isRun={isRun}
+              runStats={transcript?.runStats}
+              sessionKey={fileName}
+              onStopRun={onStop}
+              onEditResend={onEditResend}
+              onOpenExternal={async (href) => {
+                window.open(href, '_blank', 'noopener,noreferrer')
+                return { ok: true }
+              }}
+              composer={{
+                value: chatInput,
+                onChange: (value) => onChatInputChange(value),
+                onSend,
+                placeholder: '输入消息，Enter 发送，Shift+Enter 换行',
+                canSend: !isRun && chatInput.trim().length > 0,
+                sendDisabled: sendDisabled || isRun,
+                composerMode: 'build',
+                onComposerModeChange: () => {
+                  /* 任务对话固定 build 模式 */
+                }
+              }}
+            />
+          </div>
+        </App>
+      </ConfigProvider>
     </ApModal>
   )
 }

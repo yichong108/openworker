@@ -57,6 +57,8 @@ export function TaskBoard() {
   const [chatTask, setChatTask] = useState<{ id: string; fileName: string; title: string } | null>(
     null
   )
+  const [chatInput, setChatInput] = useState('')
+  const [chatSending, setChatSending] = useState(false)
   const detailsRef = useRef(details)
   detailsRef.current = details
   const expandedRef = useRef(expanded)
@@ -167,6 +169,77 @@ export function TaskBoard() {
       source.close()
     }
   }, [])
+
+  useEffect(() => {
+    if (!chatTask) return
+    setChatInput('')
+    void fetch(`/api/tasks/chat/send?fileName=${encodeURIComponent(chatTask.fileName)}`, {
+      cache: 'no-store'
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          transcript?: ChatTranscript
+          error?: string
+        }
+        if (!response.ok || !payload.transcript) return
+        setTranscripts((current) => ({
+          ...current,
+          [chatTask.fileName]: payload.transcript!
+        }))
+      })
+      .catch(() => {
+        /* hydrate 失败不阻断弹窗 */
+      })
+  }, [chatTask])
+
+  const sendChatMessage = useCallback(
+    async (message: string, editMessageId?: string) => {
+      if (!chatTask) return
+      const trimmed = message.trim()
+      if (!trimmed) return
+      setChatSending(true)
+      try {
+        const response = await fetch('/api/tasks/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            taskId: chatTask.id,
+            message: trimmed,
+            ...(editMessageId ? { editMessageId } : {})
+          })
+        })
+        const payload = (await response.json()) as { error?: string; code?: string }
+        if (!response.ok) {
+          setLoadError(payload.error || '无法发送消息')
+          if (payload.code === 'ai_auth') {
+            setConfigAuthError(payload.error || '模型鉴权失败')
+            setConfigOpen(true)
+          }
+          return
+        }
+        setChatInput('')
+        setLoadError(null)
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : '无法发送消息')
+      } finally {
+        setChatSending(false)
+      }
+    },
+    [chatTask]
+  )
+
+  const stopChatRun = useCallback(async () => {
+    if (!chatTask) return
+    try {
+      await fetch('/api/tasks/chat/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: chatTask.fileName })
+      })
+    } catch {
+      /* stop 失败不阻断 UI */
+    }
+  }, [chatTask])
 
   const toggleCard = useCallback(
     (column: TaskColumn, id: string) => {
@@ -332,11 +405,22 @@ export function TaskBoard() {
       <AiChatDialog
         open={Boolean(chatTask)}
         title={chatTask?.title || '对话'}
-        messages={chatTask ? (transcripts[chatTask.fileName]?.messages ?? []) : []}
-        running={chatTask ? Boolean(transcripts[chatTask.fileName]?.running) : false}
-        composer={null}
-        emptyHint="进入进行中后会在这里展示回复过程"
-        onClose={() => setChatTask(null)}
+        fileName={chatTask?.fileName ?? ''}
+        transcript={chatTask ? transcripts[chatTask.fileName] : undefined}
+        chatInput={chatInput}
+        onChatInputChange={setChatInput}
+        sendDisabled={chatSending}
+        onClose={() => {
+          setChatTask(null)
+          setChatInput('')
+        }}
+        onSend={() => {
+          void sendChatMessage(chatInput)
+        }}
+        onStop={() => {
+          void stopChatRun()
+        }}
+        onEditResend={(messageId, text) => sendChatMessage(text, messageId)}
       />
     </main>
   )

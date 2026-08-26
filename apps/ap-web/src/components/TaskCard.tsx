@@ -378,7 +378,13 @@ export function TaskCard({
                   : 'bg-black/5 text-[var(--ink-soft)]'
           }`}
         >
-          <ChatButtonIcon chat={chat} />
+          <span className="flex w-5 shrink-0 items-center justify-start">
+            <ChatButtonIcon chat={chat} />
+          </span>
+          <span className="flex flex-1 justify-center font-mono text-[11px] tracking-wide">
+            {chat.running ? 'Working' : chat.started && !chat.error ? 'Worked' : null}
+          </span>
+          <span className="w-5 shrink-0" aria-hidden="true" />
         </button>
       </div>
     </article>

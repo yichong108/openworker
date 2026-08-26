@@ -5,7 +5,15 @@
  */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@openworker/ap-agent', '@openworker/agent', '@openworker/shared'],
+  transpilePackages: [
+    '@openworker/ap-agent',
+    '@openworker/agent',
+    '@openworker/shared',
+    '@openworker/ui'
+  ],
+  sassOptions: {
+    silenceDeprecations: ['legacy-js-api']
+  },
   webpack: (config) => {
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
