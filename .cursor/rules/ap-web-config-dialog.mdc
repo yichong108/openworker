@@ -1,0 +1,15 @@
+---
+description: ConfigDialog 失败信息区域样式约定
+globs: apps/ap-web/src/components/ConfigDialog.tsx
+alwaysApply: false
+---
+
+# ConfigDialog 失败信息
+
+底部失败信息（banner）换行使用 `break-all`，不要用 `break-words`、`truncate` 或 `overflow-wrap:anywhere`。
+
+布局约定：
+- flex 布局（不用 grid）
+- 左侧填充感叹号图标（`AlertIcon`）
+- 文本 `min-w-0 flex-1 break-all`
+- 位于底部分割线上方，按钮在分割线下方

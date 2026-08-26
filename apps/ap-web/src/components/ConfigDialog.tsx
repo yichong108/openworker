@@ -186,15 +186,14 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
             </label>
           </div>
 
-          <footer className="flex items-center justify-end gap-2 px-6 pb-5">
-            {banner ? (
-              <p
-                className="mr-auto max-w-[22rem] truncate text-sm text-[var(--rust)]"
-                title={banner}
-              >
-                {banner}
-              </p>
-            ) : null}
+          {banner ? (
+            <div className="flex items-start gap-2 px-6 py-3">
+              <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rust)]" />
+              <p className="min-w-0 flex-1 break-all text-sm text-[var(--rust)]">{banner}</p>
+            </div>
+          ) : null}
+
+          <footer className="flex items-center justify-end gap-2 border-t border-black/5 px-6 pb-5 pt-4">
             <button
               type="button"
               className="rounded-lg px-4 py-2 text-sm text-[var(--ink-soft)] hover:bg-black/5"
@@ -236,6 +235,18 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
         </section>
       </div>
     </div>
+  )
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+        clipRule="evenodd"
+      />
+    </svg>
   )
 }
 
