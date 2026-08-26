@@ -41,6 +41,8 @@ export const apWebAntdTheme: ThemeConfig = {
     },
     Radio: {
       colorPrimary: '#2a9d8f',
+      colorPrimaryHover: '#2a9d8f',
+      colorPrimaryActive: '#2a9d8f',
       wrapperMarginInlineEnd: 0
     },
     DatePicker: {
@@ -73,6 +75,10 @@ export const apWebAntdTheme: ThemeConfig = {
     Drawer: {
       colorBgElevated: '#1c1814',
       paddingLG: 0
+    },
+    Tag: {
+      defaultBg: 'transparent',
+      defaultColor: '#1b140f'
     }
   }
 }

@@ -179,54 +179,200 @@ body {
   color: var(--ink);
 }
 
-.ap-priority-radio--p0 .ant-radio-checked .ant-radio-inner {
+.ap-priority-radio-group .ant-radio-checked .ant-radio-inner::after {
+  background-color: #fff !important;
+}
+
+.ap-priority-radio--p0.ant-radio-wrapper {
+  --ap-priority-color: var(--rust);
+}
+
+.ap-priority-radio--p1.ant-radio-wrapper {
+  --ap-priority-color: var(--brass);
+}
+
+.ap-priority-radio--p2.ant-radio-wrapper {
+  --ap-priority-color: var(--teal);
+}
+
+.ap-priority-radio--p3.ant-radio-wrapper {
+  --ap-priority-color: color-mix(in srgb, #000 15%, var(--paper));
+}
+
+.ap-priority-radio--p0.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-priority-radio--p1.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-priority-radio--p2.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-priority-radio--p3.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-priority-radio--p0.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p1.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p2.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p3.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p0.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p1.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p2.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p3.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner {
+  border-color: var(--ap-priority-color) !important;
+  box-shadow: none !important;
+}
+
+.ap-priority-radio--p0.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p1.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p2.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p3.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p0.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p1.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p2.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-priority-radio--p3.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner {
+  background-color: var(--ap-priority-color) !important;
+}
+
+.ap-status-radio-group .ant-radio-wrapper {
+  margin-inline-end: 0;
+  color: var(--ink);
+}
+
+.ap-status-radio-group .ant-radio-checked .ant-radio-inner::after {
+  background-color: #fff !important;
+}
+
+.ap-status-radio--todo.ant-radio-wrapper {
+  --ap-status-color: var(--brass);
+}
+
+.ap-status-radio--doing.ant-radio-wrapper {
+  --ap-status-color: var(--teal);
+}
+
+.ap-status-radio--done.ant-radio-wrapper {
+  --ap-status-color: var(--sage);
+}
+
+.ap-status-radio--blocked.ant-radio-wrapper {
+  --ap-status-color: var(--rust);
+}
+
+.ap-status-radio--todo.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-status-radio--doing.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-status-radio--done.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-status-radio--blocked.ant-radio-wrapper:hover .ant-radio-inner,
+.ap-status-radio--todo.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--doing.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--done.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--blocked.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--todo.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--doing.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--done.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--blocked.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner {
+  border-color: var(--ap-status-color) !important;
+  box-shadow: none !important;
+}
+
+.ap-status-radio--todo.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--doing.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--done.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--blocked.ant-radio-wrapper .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--todo.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--doing.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--done.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner,
+.ap-status-radio--blocked.ant-radio-wrapper:hover .ant-radio-checked .ant-radio-inner {
+  background-color: var(--ap-status-color) !important;
+}
+
+.ap-priority-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.ap-priority-tags--disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.ap-priority-tags .ant-tag {
+  margin-inline-end: 0;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ap-priority-tag--p0.ant-tag {
   border-color: var(--rust);
-  background-color: var(--rust);
+  color: var(--ink);
+  background: transparent;
 }
 
-.ap-priority-radio--p0 .ant-radio-checked .ant-radio-inner::after {
-  background-color: #fff;
+.ap-priority-tag--p0.ant-tag-checkable-checked {
+  border-color: var(--rust);
+  background: var(--rust);
+  color: #fff;
 }
 
-.ap-priority-radio--p0 .ant-radio:hover .ant-radio-inner {
+.ap-priority-tag--p1.ant-tag {
+  border-color: var(--brass);
+  color: var(--ink);
+  background: transparent;
+}
+
+.ap-priority-tag--p1.ant-tag-checkable-checked {
+  border-color: var(--brass);
+  background: var(--brass);
+  color: var(--ink);
+}
+
+.ap-priority-tag--p2.ant-tag {
+  border-color: var(--teal);
+  color: var(--ink);
+  background: transparent;
+}
+
+.ap-priority-tag--p2.ant-tag-checkable-checked {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #fff;
+}
+
+.ap-priority-tag--p3.ant-tag {
+  border-color: color-mix(in srgb, #000 15%, var(--paper));
+  color: var(--ink);
+  background: transparent;
+}
+
+.ap-priority-tag--p3.ant-tag-checkable-checked {
+  border-color: color-mix(in srgb, #000 15%, var(--paper));
+  background: color-mix(in srgb, #000 15%, var(--paper));
+  color: var(--ink-soft);
+}
+
+.ap-priority-tag--p0.ant-tag:not(.ant-tag-checkable-checked):hover,
+.ap-priority-tag--p1.ant-tag:not(.ant-tag-checkable-checked):hover,
+.ap-priority-tag--p2.ant-tag:not(.ant-tag-checkable-checked):hover,
+.ap-priority-tag--p3.ant-tag:not(.ant-tag-checkable-checked):hover {
+  color: var(--ink);
+  background: transparent;
+}
+
+.ap-priority-tag--p0.ant-tag:not(.ant-tag-checkable-checked):hover {
   border-color: var(--rust);
 }
 
-.ap-priority-radio--p1 .ant-radio-checked .ant-radio-inner {
-  border-color: var(--brass);
-  background-color: var(--brass);
-}
-
-.ap-priority-radio--p1 .ant-radio-checked .ant-radio-inner::after {
-  background-color: var(--ink);
-}
-
-.ap-priority-radio--p1 .ant-radio:hover .ant-radio-inner {
+.ap-priority-tag--p1.ant-tag:not(.ant-tag-checkable-checked):hover {
   border-color: var(--brass);
 }
 
-.ap-priority-radio--p2 .ant-radio-checked .ant-radio-inner {
-  border-color: var(--teal);
-  background-color: var(--teal);
-}
-
-.ap-priority-radio--p2 .ant-radio-checked .ant-radio-inner::after {
-  background-color: #fff;
-}
-
-.ap-priority-radio--p2 .ant-radio:hover .ant-radio-inner {
+.ap-priority-tag--p2.ant-tag:not(.ant-tag-checkable-checked):hover {
   border-color: var(--teal);
 }
 
-.ap-priority-radio--p3 .ant-radio-checked .ant-radio-inner {
-  border-color: rgba(0, 0, 0, 0.35);
-  background-color: rgba(0, 0, 0, 0.35);
-}
-
-.ap-priority-radio--p3 .ant-radio-checked .ant-radio-inner::after {
-  background-color: #fff;
-}
-
-.ap-priority-radio--p3 .ant-radio:hover .ant-radio-inner {
-  border-color: rgba(0, 0, 0, 0.35);
+.ap-priority-tag--p3.ant-tag:not(.ant-tag-checkable-checked):hover {
+  border-color: color-mix(in srgb, #000 15%, var(--paper));
 }

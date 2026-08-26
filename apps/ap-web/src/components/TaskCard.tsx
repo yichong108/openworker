@@ -6,10 +6,11 @@ import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/ta
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import { ApInput } from '@/components/antd/ApInput'
-import { ApSelect } from '@/components/antd/ApSelect'
+import { ApPriorityRadio } from '@/components/antd/ApPriorityRadio'
 import { ApTextArea } from '@/components/antd/ApTextArea'
+import { PRIORITY_BADGE_CLASS } from '@/lib/task-priority-style'
 
-import { columnAccent } from './CreateTaskDialog'
+import { columnAccent } from '@/lib/task-column-style'
 
 type TaskChatHint = {
   running: boolean
@@ -37,14 +38,7 @@ type TaskCardProps = {
   }) => Promise<boolean>
 }
 
-const PRIORITY_CLASS: Record<string, string> = {
-  P0: 'bg-[var(--rust)] text-white',
-  P1: 'bg-[var(--brass)] text-[var(--ink)]',
-  P2: 'bg-[var(--teal)] text-white',
-  P3: 'bg-black/15 text-[var(--ink-soft)]'
-}
-
-const PRIORITIES: TaskPriority[] = ['P0', 'P1', 'P2', 'P3']
+const PRIORITY_CLASS = PRIORITY_BADGE_CLASS
 
 /**
  * 把文件 mtime 格式成本地可读时间。
@@ -211,12 +205,11 @@ export function TaskCard({
               </label>
               <div className="block font-medium">
                 <span id={`task-priority-label-${task.id}`}>优先级</span>
-                <ApSelect
+                <ApPriorityRadio
                   aria-labelledby={`task-priority-label-${task.id}`}
                   value={priority}
-                  onChange={(value) => setPriority(value as TaskPriority)}
+                  onChange={setPriority}
                   disabled={saving}
-                  options={PRIORITIES.map((item) => ({ value: item, label: item }))}
                   className="mt-1"
                 />
               </div>

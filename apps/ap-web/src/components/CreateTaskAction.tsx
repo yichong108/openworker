@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react'
 
 import type { TaskColumn, TaskPriority } from '@/lib/task-types'
 
-import { CreateTaskDialog, columnAccent } from './CreateTaskDialog'
+import { CreateTaskDialog } from './CreateTaskDialog'
+import { columnAccent } from '@/lib/task-column-style'
 
 type CreateTaskActionProps = {
   column: TaskColumn
@@ -35,14 +36,19 @@ export function CreateTaskAction({ column, onCreated }: CreateTaskActionProps) {
   const [error, setError] = useState<string | null>(null)
 
   const submit = useCallback(
-    async (input: { title: string; priority: TaskPriority; requirements: string }) => {
+    async (input: {
+      title: string
+      priority: TaskPriority
+      requirements: string
+      status: TaskColumn
+    }) => {
       setBusy(true)
       setError(null)
       try {
         const response = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...input, status: column })
+          body: JSON.stringify(input)
         })
         const payload = (await response.json()) as { error?: string }
         if (!response.ok) {
@@ -57,7 +63,7 @@ export function CreateTaskAction({ column, onCreated }: CreateTaskActionProps) {
         setBusy(false)
       }
     },
-    [column, onCreated]
+    [onCreated]
   )
 
   return (

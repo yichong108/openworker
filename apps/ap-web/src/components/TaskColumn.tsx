@@ -4,8 +4,8 @@ import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/ta
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import type { ChatTranscript } from './chat/chat-types'
+import { columnAccent } from '@/lib/task-column-style'
 import { CreateTaskAction } from './CreateTaskAction'
-import { columnAccent } from './CreateTaskDialog'
 import { TaskCard } from './TaskCard'
 
 type TaskUpdateInput = {

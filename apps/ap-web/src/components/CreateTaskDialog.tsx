@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react'
 
 import { ApInput } from '@/components/antd/ApInput'
 import { ApModal } from '@/components/antd/ApModal'
-import { ApPriorityRadio } from '@/components/antd/ApPriorityRadio'
+import { ApPriorityTags } from '@/components/antd/ApPriorityTags'
+import { ApStatusRadio } from '@/components/antd/ApStatusRadio'
 import { ApTextArea } from '@/components/antd/ApTextArea'
+import { columnAccent } from '@/lib/task-column-style'
 import type { TaskColumn, TaskPriority } from '@/lib/task-types'
-import { columnCreateHint } from '@/lib/task-types'
+
+export { columnAccent }
 
 type CreateTaskDialogProps = {
   open: boolean
@@ -15,11 +18,16 @@ type CreateTaskDialogProps = {
   busy: boolean
   error: string | null
   onClose: () => void
-  onSubmit: (input: { title: string; priority: TaskPriority; requirements: string }) => void
+  onSubmit: (input: {
+    title: string
+    priority: TaskPriority
+    requirements: string
+    status: TaskColumn
+  }) => void
 }
 
 /**
- * 新建任务对话框。创建后写入 column 对应目录。
+ * 新建任务对话框。创建后写入所选状态对应目录。
  */
 export function CreateTaskDialog({
   open,
@@ -30,17 +38,20 @@ export function CreateTaskDialog({
   onSubmit
 }: CreateTaskDialogProps) {
   const [priority, setPriority] = useState<TaskPriority>('P1')
+  const [status, setStatus] = useState<TaskColumn>(column)
 
   useEffect(() => {
-    if (open) setPriority('P1')
-  }, [open])
+    if (open) {
+      setPriority('P1')
+      setStatus(column)
+    }
+  }, [open, column])
 
   return (
     <ApModal
       open={open}
       onClose={onClose}
       title="新建任务"
-      subtitle={columnCreateHint(column)}
       footer={null}
       maskClosable={!busy}
       destroyOnClose
@@ -53,7 +64,7 @@ export function CreateTaskDialog({
           const title = String(data.get('title') ?? '').trim()
           const requirements = String(data.get('requirements') ?? '').trim()
           if (!requirements) return
-          onSubmit({ title, priority, requirements })
+          onSubmit({ title, priority, requirements, status })
         }}
       >
         <label className="block text-sm font-medium">
@@ -70,7 +81,7 @@ export function CreateTaskDialog({
             autoFocus
             rows={5}
             className="mt-1 resize-y"
-            placeholder="要做什么"
+            placeholder="我的想法..."
           />
         </label>
 
@@ -80,8 +91,19 @@ export function CreateTaskDialog({
         </label>
 
         <div className="mt-4 block text-sm font-medium">
+          <span id="create-task-status-label">状态</span>
+          <ApStatusRadio
+            aria-labelledby="create-task-status-label"
+            value={status}
+            onChange={setStatus}
+            disabled={busy}
+            className="mt-1"
+          />
+        </div>
+
+        <div className="mt-4 block text-sm font-medium">
           <span id="create-task-priority-label">优先级</span>
-          <ApPriorityRadio
+          <ApPriorityTags
             aria-labelledby="create-task-priority-label"
             value={priority}
             onChange={setPriority}
@@ -112,17 +134,4 @@ export function CreateTaskDialog({
       </form>
     </ApModal>
   )
-}
-
-/**
- * 列强调色，用于列头色条。
- *
- * @param column - 任务列
- * @returns CSS 颜色
- */
-export function columnAccent(column: TaskColumn): string {
-  if (column === 'todo') return 'var(--brass)'
-  if (column === 'doing') return 'var(--teal)'
-  if (column === 'done') return 'var(--sage)'
-  return 'var(--rust)'
 }
