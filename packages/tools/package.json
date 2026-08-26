@@ -1,6 +1,6 @@
 {
   "name": "@openworker/tools",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenWorker agent tools — defineTool, workspace fs/grep/shell/web, path-guard, terminal",
   "license": "MIT",
   "repository": {

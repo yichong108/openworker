@@ -1,6 +1,6 @@
 {
   "name": "@openworker/llm",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenWorker LLM helpers — chat model factory and streamText wrapper",
   "license": "MIT",
   "repository": {

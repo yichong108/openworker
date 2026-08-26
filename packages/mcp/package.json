@@ -1,6 +1,6 @@
 {
   "name": "@openworker/mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenWorker MCP client — stdio connection pool, probe/warmup, Agent tool binding",
   "license": "MIT",
   "repository": {
