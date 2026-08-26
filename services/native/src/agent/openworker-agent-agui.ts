@@ -1,8 +1,6 @@
 /**
- * AgentWithAGUI：将 createAgent 桥接为 AG-UI AbstractAgent。
- *
- * 导出形态与官方集成一致：继承 `AbstractAgent`，`run(input)` 返回 `Observable<BaseEvent>`，
- * 可直接用于 CopilotKit / HttpAgent 服务端或 `runAgent()` 客户端管线。
+ * OpenWorkerAgentAGUI — Native 唯一对话入口。
+ * 持有 OpenWorkerAgent，自定义实现 AG-UI AbstractAgent。
  */
 
 import {
@@ -26,73 +24,74 @@ import {
   type ToolCallResultEvent,
   type ToolCallStartEvent
 } from '@ag-ui/client'
-import type { ToolModelMessage, ToolResultPart } from 'ai'
+import type { CoreMessage } from '@openworker/base-agent'
+import {
+  OPENWORKER_PLAN_CUSTOM_NAME,
+  parsePlanArtifact,
+  type AgentRunInput
+} from '@openworker/agent'
 import { normalizeComposerMode } from '@openworker/shared'
+import type { ToolObservation } from '@openworker/tools'
+import type { LanguageModel, ToolModelMessage } from 'ai'
 import { Observable, type Subscriber } from 'rxjs'
 
-import {
-  createAgent,
-  type Agent,
-  type AgentMcp,
-  type AgentRunInput,
-  type CreateAgentOptions
-} from './create-agent.js'
-import type { CoreMessage } from '@openworker/base-agent'
-import type { ToolObservation } from '@openworker/tools'
-import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.js'
+import { OpenWorkerAgent, type AgentMcp } from './openworker-agent.js'
 
-/**
- * 每轮 createAgent.send 的默认参数（不含流式回调；回调由本适配器映射为 AG-UI 事件）。
- *
- * 注意：经 `runAgent({ forwardedProps })` 传入时，AG-UI 会对 forwardedProps 做
- * `structuredClone`。`provider`（LanguageModel，含 url 等函数）与 `abortController`
- * 不可克隆，AgentWithAGUI 会在克隆前剥离并在本轮 run 中合并回 send 选项。
- */
-export type AgentWithAGUIRunDefaults = Omit<
+/** 每轮 send 的默认参数（不含流式回调） */
+export type OpenWorkerAgentRunDefaults = Omit<
   AgentRunInput,
   'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'
 >
 
 /**
- * AgentWithAGUI 配置：AG-UI AgentConfig + createAgent 选项。
- *
- * @example
- * ```ts
- * const agent = new AgentWithAGUI({
- *   agentId: 'openworker',
- *   description: 'OpenWorker desktop agent',
- *   agent: { provider: model, local: { cwd } },
- *   runDefaults: { composerMode: 'build', workspacePath: cwd }
- * })
- * await agent.runAgent({ runId: 'r1' })
- * ```
+ * OpenWorkerAgentAGUI 配置：AG-UI AgentConfig + 产品字段。
  */
-export type CreateAgentWithAGUIOptions = AgentConfig & {
-  /** createAgent 配置（provider 必填） */
-  agent: CreateAgentOptions
+export type OpenWorkerAgentAGUIConfig = AgentConfig & {
   /**
-   * 每轮 send 的默认参数。
-   * 优先级：runDefaults < 克隆前剥离的 extras < RunAgentInput.forwardedProps
+   * 角色：
+   * - session（默认）：会话对话；dispose 为 no-op（避免误清进程级 MCP 池）
+   * - mcp-host：MCP 预热/探测宿主；dispose 会释放 MCP 连接池
    */
-  runDefaults?: AgentWithAGUIRunDefaults
+  role?: 'session' | 'mcp-host'
+  /** 工作区根目录 */
+  cwd?: string
+  /** 对话模型（可在 create 占位，run 时经 forwardedProps.provider 覆盖） */
+  provider?: LanguageModel | null
+  runDefaults?: OpenWorkerAgentRunDefaults
+}
+
+/** 宿主组装本轮 run 参数时的统一输入 */
+export type OpenWorkerAgentRunInput = {
+  composerMode?: OpenWorkerAgentRunDefaults['composerMode']
+  abortController?: AbortController
+  workspacePath?: string
+  terminalKey?: string
+  provider?: LanguageModel | null
+  tavilyApiKey?: string
+  maxSteps?: number
+  invokeTimeoutMs?: number
+  /** 会话记忆压缩段落 */
+  memorySystemSection?: string
+  /** 用户已批准的实施计划（Build 执行阶段注入） */
+  planMarkdown?: string
 }
 
 /**
- * 从 RunAgentInput.forwardedProps 解析可覆盖的 Agent 运行参数。
+ * 从 RunAgentInput.forwardedProps 解析可覆盖的运行参数。
  *
  * @param forwarded - AG-UI forwardedProps
- * @returns 部分 AgentWithAGUIRunDefaults
+ * @returns 部分 OpenWorkerAgentRunDefaults
  */
-function parseForwardedProps(forwarded: unknown): AgentWithAGUIRunDefaults {
+function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
   if (!forwarded || typeof forwarded !== 'object') return {}
   const src = forwarded as Record<string, unknown>
-  const out: AgentWithAGUIRunDefaults = {}
+  const out: OpenWorkerAgentRunDefaults = {}
 
   if (typeof src.composerMode === 'string') {
-    out.composerMode = src.composerMode as AgentWithAGUIRunDefaults['composerMode']
+    out.composerMode = src.composerMode as OpenWorkerAgentRunDefaults['composerMode']
   }
   if (src.provider != null) {
-    out.provider = src.provider as AgentWithAGUIRunDefaults['provider']
+    out.provider = src.provider as OpenWorkerAgentRunDefaults['provider']
   }
   if (src.abortController instanceof AbortController) {
     out.abortController = src.abortController
@@ -104,7 +103,7 @@ function parseForwardedProps(forwarded: unknown): AgentWithAGUIRunDefaults {
     out.terminalKey = src.terminalKey
   }
   if (src.tavily != null && typeof src.tavily === 'object') {
-    out.tavily = src.tavily as AgentWithAGUIRunDefaults['tavily']
+    out.tavily = src.tavily as OpenWorkerAgentRunDefaults['tavily']
   }
   if (typeof src.maxSteps === 'number') {
     out.maxSteps = src.maxSteps
@@ -123,28 +122,24 @@ function parseForwardedProps(forwarded: unknown): AgentWithAGUIRunDefaults {
 }
 
 /**
- * 在 AG-UI structuredClone(forwardedProps) 之前剥离不可克隆字段。
- *
- * AI SDK OpenAI LanguageModel 内含 `url: ({ path }) => \`${baseURL}${path}\``，
- * 直接克隆会报 “could not be cloned”。AbortController 克隆后与原实例断开，
- * 宿主侧 abort() 将失效，故一并保留原引用。
+ * 在 AG-UI structuredClone 之前剥离不可克隆字段。
  *
  * @param forwarded - 原始 forwardedProps
- * @returns cloneable（可安全 structuredClone）与 extras（本轮合并回 send）
+ * @returns cloneable 与 extras
  */
 function detachNonCloneableForwardedProps(forwarded: unknown): {
   cloneable: Record<string, unknown>
-  extras: AgentWithAGUIRunDefaults
+  extras: OpenWorkerAgentRunDefaults
 } {
   if (!forwarded || typeof forwarded !== 'object') {
     return { cloneable: {}, extras: {} }
   }
 
   const cloneable = { ...(forwarded as Record<string, unknown>) }
-  const extras: AgentWithAGUIRunDefaults = {}
+  const extras: OpenWorkerAgentRunDefaults = {}
 
   if ('provider' in cloneable && cloneable.provider != null) {
-    extras.provider = cloneable.provider as AgentWithAGUIRunDefaults['provider']
+    extras.provider = cloneable.provider as OpenWorkerAgentRunDefaults['provider']
     delete cloneable.provider
   }
 
@@ -156,23 +151,6 @@ function detachNonCloneableForwardedProps(forwarded: unknown): {
   }
 
   return { cloneable, extras }
-}
-
-function toolResultOutputToString(output: ToolResultPart['output']): string {
-  if (output.type === 'text' || output.type === 'error-text') return output.value
-  if (output.type === 'json' || output.type === 'error-json') {
-    try {
-      return JSON.stringify(output.value ?? '')
-    } catch {
-      return String(output.value)
-    }
-  }
-  if (output.type === 'execution-denied') return output.reason ?? ''
-  try {
-    return JSON.stringify(output)
-  } catch {
-    return String(output)
-  }
 }
 
 /**
@@ -202,93 +180,12 @@ function aguiContentToText(content: Message['content']): string {
 }
 
 /**
- * 将 AI SDK CoreMessage 列表转换为 AG-UI Message 列表。
- *
- * 与 `aguiMessagesToCore` 对称，供宿主组装 `RunAgentInput.messages`。
- * 跳过 system（createAgent 使用独立 system prompt）。
- *
- * @param messages - AI SDK CoreMessage 列表
- * @returns AG-UI Message 列表
- */
-export function coreMessagesToAgui(messages: CoreMessage[]): Message[] {
-  const result: Message[] = []
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      const content =
-        typeof message.content === 'string'
-          ? message.content
-          : message.content.map((part) => (part.type === 'text' ? part.text : '')).join('')
-      result.push({
-        id: randomUUID(),
-        role: 'user',
-        content
-      })
-      continue
-    }
-
-    if (message.role === 'assistant') {
-      if (typeof message.content === 'string') {
-        result.push({
-          id: randomUUID(),
-          role: 'assistant',
-          content: message.content
-        })
-        continue
-      }
-
-      let text = ''
-      const toolCalls: NonNullable<Extract<Message, { role: 'assistant' }>['toolCalls']> = []
-      for (const part of message.content) {
-        if (part.type === 'text') {
-          text += part.text
-          continue
-        }
-        if (part.type === 'tool-call') {
-          toolCalls.push({
-            id: part.toolCallId,
-            type: 'function',
-            function: {
-              name: part.toolName,
-              arguments: JSON.stringify(part.input ?? {})
-            }
-          })
-        }
-      }
-      result.push({
-        id: randomUUID(),
-        role: 'assistant',
-        content: text || undefined,
-        ...(toolCalls.length > 0 ? { toolCalls } : {})
-      })
-      continue
-    }
-
-    if (message.role === 'tool') {
-      for (const part of message.content) {
-        if (part.type !== 'tool-result') continue
-        result.push({
-          id: randomUUID(),
-          role: 'tool',
-          toolCallId: part.toolCallId,
-          content: toolResultOutputToString(part.output)
-        })
-      }
-    }
-  }
-
-  return result
-}
-
-/**
  * 将 AG-UI Message 列表转换为 AI SDK CoreMessage 列表。
- *
- * 跳过 system / developer / activity / reasoning（createAgent 使用独立 system prompt）。
  *
  * @param messages - AG-UI 消息
  * @returns CoreMessage 列表
  */
-export function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
+function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
   const result: CoreMessage[] = []
 
   for (const message of messages) {
@@ -351,13 +248,11 @@ export function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
 /**
  * 从 AG-UI messages 提取本轮用户文本，并得到 send 前应写入底层 agent 的历史。
  *
- * createAgent.send 会自行追加 userText，因此历史不含最后一条 user。
- *
  * @param messages - AG-UI 消息列表
  * @returns userText 与历史 CoreMessage
  * @throws 无有效用户消息时抛出
  */
-export function extractUserTurn(messages: Message[]): {
+function extractUserTurn(messages: Message[]): {
   userText: string
   history: CoreMessage[]
 } {
@@ -426,46 +321,86 @@ function formatRunError(error: unknown): string {
 }
 
 /**
- * AG-UI AbstractAgent 实现：内部委托 createAgent。
- *
- * 与官方 `VercelAISDKAgent` / `ClaudeAgentAdapter` 相同契约：
- * - `run(input): Observable<BaseEvent>`
- * - 支持 `runAgent()` / `subscribe()` / `abortRun()` / `clone()`
+ * Native AG-UI Agent：持有 OpenWorkerAgent，自行映射事件流。
  */
-export class AgentWithAGUI extends AbstractAgent {
-  /** CopilotKit Runtime 可能注入的 per-request headers（本适配器暂不转发至 LLM） */
+export class OpenWorkerAgentAGUI extends AbstractAgent {
+  /** CopilotKit Runtime 可能注入的 per-request headers */
   public headers?: Record<string, string>
 
-  private readonly config: CreateAgentWithAGUIOptions
-  private readonly inner: Agent
-  private readonly runDefaults: AgentWithAGUIRunDefaults
+  private readonly config: OpenWorkerAgentAGUIConfig
+  private readonly inner: OpenWorkerAgent
+  private readonly role: 'session' | 'mcp-host'
+  private readonly runDefaults: OpenWorkerAgentRunDefaults
   private activeAbort: AbortController | null = null
-  /**
-   * 自 forwardedProps 剥离、供本轮 run 合并的不可克隆字段（provider / abortController）。
-   * 由 prepareRunAgentInput 写入，translateRun 结束后清空。
-   */
-  private pendingForwardedExtras: AgentWithAGUIRunDefaults = {}
+  private pendingForwardedExtras: OpenWorkerAgentRunDefaults = {}
 
   /**
-   * 创建 AgentWithAGUI。
+   * 创建 OpenWorker AG-UI Agent。
    *
-   * @param config - AgentConfig + createAgent 选项与 run 默认参数
+   * @param config - AG-UI 与产品配置
    */
-  constructor(config: CreateAgentWithAGUIOptions) {
-    const { agent: agentOptions, runDefaults, ...rest } = config
-    super(rest)
+  constructor(config: OpenWorkerAgentAGUIConfig) {
+    const { role, cwd, provider, runDefaults, ...agui } = config
+    super(agui)
     this.config = config
-    this.inner = createAgent(agentOptions)
+    this.role = role ?? 'session'
     this.runDefaults = runDefaults ?? {}
+    this.inner = new OpenWorkerAgent({
+      cwd,
+      provider
+    })
   }
 
   /**
-   * 克隆当前 agent（新 createAgent 实例，复制 AG-UI 消息与 state）。
-   *
-   * @returns 新的 AgentWithAGUI
+   * MCP 宿主能力（probe / warmup / dispose）。
    */
-  public clone(): AgentWithAGUI {
-    const cloned = new AgentWithAGUI({
+  public get mcp(): AgentMcp {
+    return this.inner.mcp
+  }
+
+  /**
+   * 校验当前是否具备开跑条件（密钥等）。
+   *
+   * @param options - 本轮可用的 provider
+   * @throws 缺少必要凭据时抛出 Error
+   */
+  public assertReady(options?: { provider?: LanguageModel | null }): void {
+    const provider = options?.provider ?? this.config.provider
+    if (!provider) {
+      throw new Error('请先在设置中配置 API Key')
+    }
+  }
+
+  /**
+   * 组装本轮 forwardedProps。
+   *
+   * @param input - 统一 run 参数
+   * @returns 可交给 runAgent({ forwardedProps }) 的对象
+   */
+  public buildRunForwardedProps(input: OpenWorkerAgentRunInput): OpenWorkerAgentRunDefaults {
+    return {
+      composerMode: input.composerMode,
+      abortController: input.abortController,
+      workspacePath: input.workspacePath,
+      provider: input.provider ?? this.config.provider ?? undefined,
+      terminalKey: input.terminalKey,
+      tavily: input.tavilyApiKey != null ? { apiKey: input.tavilyApiKey } : undefined,
+      maxSteps: input.maxSteps,
+      invokeTimeoutMs: input.invokeTimeoutMs,
+      ...(input.memorySystemSection != null
+        ? { memorySystemSection: input.memorySystemSection }
+        : {}),
+      ...(input.planMarkdown != null ? { planMarkdown: input.planMarkdown } : {})
+    }
+  }
+
+  /**
+   * 克隆当前 agent（新 OpenWorkerAgent，复制 AG-UI 消息与 state）。
+   *
+   * @returns 新的 OpenWorkerAgentAGUI
+   */
+  public clone(): OpenWorkerAgentAGUI {
+    const cloned = new OpenWorkerAgentAGUI({
       ...this.config,
       threadId: this.threadId,
       initialMessages: structuredClone(this.messages),
@@ -478,7 +413,7 @@ export class AgentWithAGUI extends AbstractAgent {
   }
 
   /**
-   * 取消当前进行中的 run（中断底层 createAgent.send）。
+   * 取消当前进行中的 run。
    */
   public abortRun(): void {
     this.activeAbort?.abort()
@@ -486,23 +421,19 @@ export class AgentWithAGUI extends AbstractAgent {
   }
 
   /**
-   * MCP 宿主侧能力（probe / warmup / dispose）。
+   * 释放后端资源。
    *
-   * 供 Desktop 等宿主管理连接池；勿经此绕过 AG-UI 去调用底层 send。
-   */
-  public get mcp(): AgentMcp {
-    return this.inner.mcp
-  }
-
-  /**
-   * 释放底层 MCP 连接池（进程退出或宿主销毁时调用）。
+   * - mcp-host：释放 MCP 连接池
+   * - session：no-op（避免误清进程级 MCP 池）
    */
   public async dispose(): Promise<void> {
-    await this.inner.mcp.dispose()
+    if (this.role === 'mcp-host') {
+      await this.inner.dispose()
+    }
   }
 
   /**
-   * 组装 RunAgentInput：在 AG-UI structuredClone 之前剥离不可克隆的 forwardedProps。
+   * 组装 RunAgentInput：剥离不可克隆的 forwardedProps。
    *
    * @param parameters - runAgent 入参
    * @returns 可安全克隆的 RunAgentInput
@@ -518,8 +449,6 @@ export class AgentWithAGUI extends AbstractAgent {
 
   /**
    * 按 AG-UI 协议执行一轮，产出事件 Observable。
-   *
-   * 典型序列：`RUN_STARTED` → (`CUSTOM(openworker.text.delta|revoke)` | `CUSTOM(cursor.thinking)` | `TOOL_CALL_*`)* → `TEXT_MESSAGE_*` → `RUN_FINISHED` | `RUN_ERROR`
    *
    * @param input - AG-UI RunAgentInput
    * @returns BaseEvent 流
@@ -548,7 +477,7 @@ export class AgentWithAGUI extends AbstractAgent {
   }
 
   /**
-   * 将 createAgent.send 回调翻译为 AG-UI 事件并推入 subscriber。
+   * 将 OpenWorkerAgent.send 回调翻译为 AG-UI 事件并推入 subscriber。
    *
    * @param input - AG-UI 入参
    * @param abortController - 本轮取消控制器
@@ -577,7 +506,6 @@ export class AgentWithAGUI extends AbstractAgent {
     const messageId = randomUUID()
     let textStarted = false
     let textEnded = false
-    /** 本步推测性 Result 缓冲；工具步 revoke 清空，收尾步再一次性写入 TEXT_MESSAGE_* */
     let pendingResultText = ''
 
     const ensureTextStart = () => {
@@ -603,10 +531,6 @@ export class AgentWithAGUI extends AbstractAgent {
       emit(end)
     }
 
-    /**
-     * 将确认后的最终回答写入 AG-UI TEXT_MESSAGE（供 AbstractAgent.apply / 落盘）。
-     * 运行中的打字机预览走 CUSTOM，避免工具步过程叙述污染 messages。
-     */
     const flushResultText = (text: string) => {
       const trimmed = text.trim()
       if (!trimmed) return
@@ -620,7 +544,7 @@ export class AgentWithAGUI extends AbstractAgent {
       emit(content)
     }
 
-    const merged: AgentWithAGUIRunDefaults = {
+    const merged: OpenWorkerAgentRunDefaults = {
       ...this.runDefaults,
       ...this.pendingForwardedExtras,
       ...parseForwardedProps(input.forwardedProps),
@@ -636,7 +560,6 @@ export class AgentWithAGUI extends AbstractAgent {
         onTextDelta: (text) => {
           if (!text) return
           pendingResultText += text
-          // UI 打字机预览；不写入 TEXT_MESSAGE，以免工具步污染 AG-UI messages
           const preview: CustomEvent = {
             type: EventType.CUSTOM,
             name: 'openworker.text.delta',
@@ -721,7 +644,6 @@ export class AgentWithAGUI extends AbstractAgent {
         }
       })
 
-      // 确认后的最终回答写入 TEXT_MESSAGE（apply / 落盘）；预览已由 CUSTOM delta 展示
       const finalText =
         typeof runResult.result === 'string' && runResult.result.trim()
           ? runResult.result
@@ -729,7 +651,6 @@ export class AgentWithAGUI extends AbstractAgent {
       flushResultText(finalText)
       ensureTextEnd()
 
-      // Plan 模式：解析终稿中的计划工件并发 CUSTOM(openworker.plan)
       const planMode = normalizeComposerMode(merged.composerMode) === 'plan'
       if (planMode && finalText.trim()) {
         const artifact = parsePlanArtifact(finalText)

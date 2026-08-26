@@ -24,10 +24,11 @@
     "@openworker/shared": "workspace:*",
     "@openworker/skills": "workspace:*",
     "@openworker/tools": "workspace:*",
-    "@openworker/uni-agent": "workspace:*",
+    "@openworker/agent": "workspace:*",
     "ai": "catalog:",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "rxjs": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 /**
- * 工作区路径安全解析（Desktop 主进程本地实现，不依赖 uni-agent）
+ * 工作区路径安全解析（Desktop 主进程本地实现，不依赖 @openworker/agent）
  */
 
 import fs from 'node:fs'

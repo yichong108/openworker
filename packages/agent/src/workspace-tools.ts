@@ -1,5 +1,4 @@
 import { type AgentComposerMode } from '@openworker/shared'
-import { getOpenworkerMcpConfigPath } from '@openworker/shared/load-env'
 import type { ToolSet } from 'ai'
 import {
   buildFsTools,
@@ -30,7 +29,7 @@ export function isReadonlyComposerMode(mode?: AgentComposerMode): boolean {
  */
 export type BuildWorkspaceToolsOptions = {
   root: string
-  /** Tavily API Key；未配置时不注册 web_search（仍可读环境变量） */
+  /** Tavily API Key；未配置时不注册 web_search */
   tavilyApiKey?: string
   /** 工具生命周期观察回调 */
   onTool: ToolOnTool
@@ -45,7 +44,6 @@ export type BuildWorkspaceToolsOptions = {
  * 构建工作区内置工具列表。
  *
  * 这是 agent 内建能力：读写文件、搜索、shell、可选联网搜索。
- * MCP 由 send 内部从 ~/.openworker/mcp.json 叠加；意图筛选由宿主增强。
  *
  * @param options - 工作区、Tavily 与观察回调
  * @returns AI SDK ToolSet
@@ -72,14 +70,8 @@ export function buildWorkspaceTools(options: BuildWorkspaceToolsOptions): ToolSe
 export type WorkspacePromptExtras = {
   /** skills 摘要 */
   skillHint?: string
-  /** MCP 上下文提示 */
-  mcpContextHints?: string
-  /** 是否在 prompt 中声明 MCP 元工具 */
-  includeMcpMeta?: boolean
-  /** 已启用的 MCP 名称 */
-  enabledMcpNames?: string[]
-  /** 是否存在未启用的 MCP 条目 */
-  hasDisabledMcpEntries?: boolean
+  /** 产品层附加段落（如 MCP 上下文），原样拼入 prompt */
+  extraPrompt?: string
 }
 
 /**
@@ -124,7 +116,7 @@ function buildMarkdownReplyStylePrompt(): string {
  * @param mode - ask / plan / build
  * @param root - 工作区根目录
  * @param tavilyApiKey - 可选 Tavily API Key（影响 web_search 相关提示）
- * @param extras - 宿主增强片段（skills / MCP）
+ * @param extras - 宿主增强片段
  * @returns 完整 system prompt
  */
 export function buildWorkspaceRunPrompt(
@@ -133,24 +125,26 @@ export function buildWorkspaceRunPrompt(
   tavilyApiKey?: string,
   extras?: WorkspacePromptExtras
 ): string {
-  // Node 侧无浏览器地理定位；用系统时区作为本地上下文
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'
   const common = [
     `当前日期时间：${new Date().toLocaleString()}；时区：${timeZone}；`,
-    `mcp 配置文件路径：${getOpenworkerMcpConfigPath()}；`,
     `工作区根目录：${root}；`
   ].join('\n')
   if (mode === 'ask') {
-    return [common, buildAskSystemPrompt(root, tavilyApiKey)].filter(Boolean).join('\n\n')
+    return [common, buildAskSystemPrompt(root, tavilyApiKey), extras?.extraPrompt]
+      .filter(Boolean)
+      .join('\n\n')
   }
   if (mode === 'plan') {
-    return [common, buildPlanSystemPrompt(root, tavilyApiKey)].filter(Boolean).join('\n\n')
+    return [common, buildPlanSystemPrompt(root, tavilyApiKey), extras?.extraPrompt]
+      .filter(Boolean)
+      .join('\n\n')
   }
   return [
     common,
     buildBuildSystemPrompt(root, tavilyApiKey, extras),
     extras?.skillHint,
-    extras?.mcpContextHints
+    extras?.extraPrompt
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -162,43 +156,25 @@ function buildBuildSystemPrompt(
   extras?: WorkspacePromptExtras
 ): string {
   const web = isTavilyConfigured(tavilyApiKey)
-  const includeMcp = Boolean(extras?.includeMcpMeta)
-  const mcpMeta = includeMcp
-    ? '\n- **MCP 管理（元工具）**：`mcp_list_servers` 列出已配置的 MCP（环境变量已脱敏）；`mcp_inspect_server` 探测指定 MCP 暴露的工具。需要连接信息或工具名时优先使用；不要向用户索要应用中已保存的密码。'
-    : ''
-
-  let mcpNote = ''
-  if (includeMcp) {
-    const names = extras?.enabledMcpNames ?? []
-    if (names.length > 0) {
-      mcpNote = `${mcpMeta}\n- 已启用的 MCP（stdio）服务：${names.join(', ')}。以 mcp_ 开头的工具来自各 MCP；调用时传入 JSON，键名需符合该工具的 inputSchema。`
-    } else if (extras?.hasDisabledMcpEntries) {
-      mcpNote = `${mcpMeta}\n- 当前 MCP 条目未启用或 command 为空；用户启用后才会出现 mcp_* 工具。`
-    } else {
-      mcpNote = mcpMeta
-    }
-  }
-
-  const mcpToolNames = includeMcp ? '、mcp_list_servers、mcp_inspect_server' : ''
   const toolLine = web
-    ? `read_file、write_file、delete_file、glob、grep、shell、web_search（Tavily 联网搜索）${mcpToolNames}`
-    : `read_file、write_file、delete_file、glob、grep、shell${mcpToolNames}（未配置 Tavily API Key 时无 web_search）`
+    ? 'read_file、write_file、delete_file、glob、grep、shell、web_search（Tavily 联网搜索）'
+    : 'read_file、write_file、delete_file、glob、grep、shell（未配置 Tavily API Key 时无 web_search）'
 
   const webRule = web
     ? '- 用户询问**天气、气温、降雨、实时新闻、股价、政策**等需要外部信息时，必须先调用 **web_search** 再回答；不要编造天气或声称「搜索失败」。'
     : '- 未配置 Tavily，**web_search 不可用**：若用户需要今日天气等实时信息，明确告知在应用设置中填写「Tavily API Key」或配置环境变量 TAVILY_API_KEY；可建议天气网站/App；不要声称「搜索引擎坏了」或「无法联网」。'
 
-  const followTools = includeMcp
-    ? 'read_file、glob、grep、shell、mcp_*'
-    : 'read_file、glob、grep、shell'
-  const skillRule =
-    '- **优先 readSkillFile**：用户意图明显匹配某 skill 描述时，必须先调用 readSkillFile 获取完整指令，再按需 readSkillRelativeFile 读取附属文件，然后使用 ' +
-    followTools +
-    '；不要跳过匹配的技能而用泛化工具猜测。'
+  const hasSkills = Boolean(extras?.skillHint?.trim())
+  const skillTools = hasSkills
+    ? '，以及 readSkillFile、readSkillRelativeFile（渐进加载 skills）'
+    : ''
+  const skillRule = hasSkills
+    ? '- **优先 readSkillFile**：用户意图明显匹配某 skill 描述时，必须先调用 readSkillFile 获取完整指令，再按需 readSkillRelativeFile 读取附属文件，然后使用 read_file、glob、grep、shell；不要跳过匹配的技能而用泛化工具猜测。'
+    : ''
 
   return `你是协助办公与软件开发的智能体。
 - 工具中使用**相对于工作区根目录**的路径（如 src/index.ts）；不要用 ../ 逃出工作区。
-- 可用工具：${toolLine}，以及 readSkillFile、readSkillRelativeFile（渐进加载 skills）。${mcpNote}
+- 可用工具：${toolLine}${skillTools}。
 ${skillRule}
 - shell 在工作区根目录沙箱中执行命令并等待结束，返回 stdout/stderr；Windows 使用 cmd 风格。
 - 用户要「查看/读取工作区文件」时，优先 read_file；按文件名/路径模式查找时用 glob（如 **/*.ts）。

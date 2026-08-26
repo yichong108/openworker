@@ -1,11 +1,11 @@
 /**
- * 简单问答：临时创建 UniAgent，跑一轮后返回助手纯文本。
+ * 简单问答：临时创建 OpenWorkerAgentAGUI，跑一轮后返回助手纯文本。
  */
 
 import { randomUUID, type Message } from '@ag-ui/client'
 import type { LanguageModel } from 'ai'
 
-import { UniAgent } from './uni-agent.js'
+import { OpenWorkerAgentAGUI } from './openworker-agent-agui.js'
 
 /**
  * `ask` 运行选项。
@@ -20,7 +20,7 @@ export type AskOptions = {
   cwd?: string
   /** 本轮取消控制器 */
   abortController?: AbortController
-  /** AG-UI agentId（默认 uni-ask） */
+  /** AG-UI agentId（默认 openworker-ask） */
   agentId?: string
   /** AG-UI threadId */
   threadId?: string
@@ -74,7 +74,7 @@ function extractLastAssistantText(messages: Message[]): string {
 }
 
 /**
- * 简单问答：创建临时 UniAgent，发送 question，返回助手 answer。
+ * 简单问答：创建临时 OpenWorkerAgentAGUI，发送 question，返回助手 answer。
  *
  * 内部以 `composerMode: 'ask'` 跑一轮 `runAgent`，结束后 dispose 临时实例。
  * 不维护会话历史；适合一次性问答场景。
@@ -93,12 +93,14 @@ export async function ask(question: string, options: AskOptions): Promise<string
     throw new Error('请先配置 provider')
   }
 
-  const agent = new UniAgent({
+  const cwd = options.cwd?.trim() || process.cwd()
+
+  const agent = new OpenWorkerAgentAGUI({
     role: 'session',
-    agentId: options.agentId ?? 'uni-ask',
+    agentId: options.agentId ?? 'openworker-ask',
     description: 'OpenWorker simple ask',
     provider: options.provider,
-    ...(options.cwd?.trim() ? { cwd: options.cwd.trim() } : {}),
+    cwd,
     ...(options.threadId ? { threadId: options.threadId } : {})
   })
 
@@ -115,7 +117,7 @@ export async function ask(question: string, options: AskOptions): Promise<string
     const forwardedProps = agent.buildRunForwardedProps({
       composerMode: 'ask',
       abortController: options.abortController,
-      workspacePath: options.cwd?.trim() || undefined,
+      workspacePath: cwd,
       provider: options.provider,
       ...(options.maxSteps != null ? { maxSteps: options.maxSteps } : {})
     })

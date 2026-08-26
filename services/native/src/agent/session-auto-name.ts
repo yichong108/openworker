@@ -1,8 +1,8 @@
 /**
- * 会话自动命名：根据用户首条消息，经 uni-agent `ask`（ask 模式、单步）生成短标题并重命名。
+ * 会话自动命名：根据用户首条消息，经 ask（ask 模式、单步）生成短标题并重命名。
  */
 
-import { ask } from '@openworker/uni-agent'
+import { ask } from './ask.js'
 
 import { resolveChatModel } from './chat-model.js'
 import { agentLog } from '../logger.js'

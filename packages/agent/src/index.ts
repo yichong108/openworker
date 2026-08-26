@@ -1,26 +1,20 @@
 /**
- * @openworker/agent 公共 API — 宿主入口为 AgentWithAGUI（AG-UI），勿直接使用 createAgent。
+ * @openworker/agent 公共 API — 通用产品能力 agent（createAgent）。
  *
- * createAgent 为包内实现细节，仅由 AgentWithAGUI 委托；外部应经 AG-UI runAgent / 事件流交互。
- * MCP 宿主能力经 AgentWithAGUI.mcp（probe / warmup / dispose）。
+ * 不含 MCP、不含 AG-UI；产品约定与事件流由宿主装配。
  */
 
-/** AG-UI AbstractAgent 适配（宿主唯一对话入口） */
 export {
-  AgentWithAGUI,
-  aguiMessagesToCore,
-  coreMessagesToAgui,
-  extractUserTurn,
-  type CreateAgentWithAGUIOptions,
-  type AgentWithAGUIRunDefaults
-} from './agent-with-agui.js'
-
-export {
-  type AgentMcp,
+  createAgent,
+  type Agent,
+  type AgentCapabilities,
+  type AgentRunInput,
   type AgentRunResult,
   type AgentRunTavilyOptions,
   type CreateAgentLocalOptions,
-  type CreateAgentOptions
+  type CreateAgentOptions,
+  type ResolveAgentCapabilities,
+  type ResolveAgentCapabilitiesContext
 } from './create-agent.js'
 
 export {
@@ -38,22 +32,6 @@ export {
   findLastAssistantMessage,
   userMessage
 } from '@openworker/base-agent'
-
-export { disposeSingleSkillManager, getSingleSkillManager } from './single-skill-manager.js'
-
-export {
-  getDefaultGlobalAgentsSkillsDir,
-  listSkillsFromPaths,
-  loadSkillsFromPaths,
-  parseSkillFrontmatter,
-  sanitizeSkillToolName,
-  SkillManager,
-  type LoadedSkillsBundle,
-  type ManagedSkill,
-  type SkillListItem,
-  type SkillRootDirs,
-  type SkillWatchEvent
-} from '@openworker/skills'
 
 /** 工作区工具组装与 ReAct system prompt */
 export {
