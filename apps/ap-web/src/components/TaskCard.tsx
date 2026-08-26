@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
+import { ApSelect } from '@/components/antd/ApSelect'
+
 import { columnAccent } from './CreateTaskDialog'
 
 type TaskChatHint = {
@@ -210,17 +212,13 @@ export function TaskCard({
               </label>
               <label className="block font-medium">
                 优先级
-                <select
+                <ApSelect
                   value={priority}
-                  onChange={(event) => setPriority(event.target.value as TaskPriority)}
-                  className={FIELD}
-                >
-                  {PRIORITIES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setPriority(value as TaskPriority)}
+                  disabled={saving}
+                  options={PRIORITIES.map((item) => ({ value: item, label: item }))}
+                  className="mt-1"
+                />
               </label>
               <div className="flex justify-end gap-2">
                 <button

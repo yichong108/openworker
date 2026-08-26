@@ -17,6 +17,7 @@
     "@ag-ui/client": "catalog:",
     "@openworker/ap-agent": "workspace:*",
     "@openworker/llm": "workspace:*",
+    "antd": "^5.24.6",
     "dotenv": "^17.4.2",
     "next": "^14.0.0",
     "react": "^18.3.1",

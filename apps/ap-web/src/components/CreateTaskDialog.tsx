@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
+import { ApSelect } from '@/components/antd/ApSelect'
 import type { TaskColumn, TaskPriority } from '@/lib/task-types'
 
 type CreateTaskDialogProps = {
@@ -19,6 +22,12 @@ const FIELD =
  * 新建任务对话框。创建后始终写入 todo/。
  */
 export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: CreateTaskDialogProps) {
+  const [priority, setPriority] = useState<TaskPriority>('P1')
+
+  useEffect(() => {
+    if (open) setPriority('P1')
+  }, [open])
+
   if (!open) return null
 
   return (
@@ -36,7 +45,6 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
           const form = event.currentTarget
           const data = new FormData(form)
           const title = String(data.get('title') ?? '').trim()
-          const priority = String(data.get('priority') ?? 'P1') as TaskPriority
           const requirements = String(data.get('requirements') ?? '').trim()
           if (!requirements) return
           onSubmit({ title, priority, requirements })
@@ -70,13 +78,13 @@ export function CreateTaskDialog({ open, busy, error, onClose, onSubmit }: Creat
 
         <label className="mt-4 block text-sm font-medium">
           优先级
-          <select name="priority" defaultValue="P1" className={FIELD}>
-            {PRIORITIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+          <ApSelect
+            value={priority}
+            onChange={(value) => setPriority(value as TaskPriority)}
+            disabled={busy}
+            options={PRIORITIES.map((item) => ({ value: item, label: item }))}
+            className="mt-1"
+          />
         </label>
 
         {error ? <p className="mt-3 text-sm text-[var(--rust)]">{error}</p> : null}

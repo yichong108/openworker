@@ -95,3 +95,7 @@ body {
 .column-scroll {
   padding-right: 14px;
 }
+
+.ap-select-dropdown .ant-select-item-option-selected {
+  font-weight: 500;
+}

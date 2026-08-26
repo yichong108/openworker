@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
+import { ApSelect } from '@/components/antd/ApSelect'
+
 type PublicConfig = {
   deepseek: { hasKey: boolean; keyHint: string; model: string }
 }
@@ -179,17 +181,14 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                   刷新
                 </button>
               </span>
-              <select
+              <ApSelect
                 value={deepseekModel}
-                onChange={(event) => setDeepseekModel(event.target.value)}
-                className={FIELD}
-              >
-                {deepseekModels.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                  </option>
-                ))}
-              </select>
+                onChange={setDeepseekModel}
+                disabled={modelsLoading}
+                loading={modelsLoading}
+                options={deepseekModels.map((id) => ({ value: id, label: id }))}
+                className="mt-1.5"
+              />
             </label>
           </div>
 
