@@ -11,12 +11,12 @@ import {
   type RunAgentInput,
   type RunAgentParameters
 } from '@ag-ui/client'
-import { OpenWorkerAgent, type AgentMcp, type OpenWorkerAgentRunDefaults } from '@openworker/agent'
+import { AgentWithAGUI, type AgentMcp, type AgentWithAGUIRunDefaults } from '@openworker/agent'
 import type { LanguageModel } from 'ai'
 import { Observable } from 'rxjs'
 
 /** 统一 run 转发参数 */
-export type UniAgentRunDefaults = OpenWorkerAgentRunDefaults
+export type UniAgentRunDefaults = AgentWithAGUIRunDefaults
 
 /**
  * UniAgent 配置：AG-UI AgentConfig + OpenWorker 后端字段。
@@ -37,7 +37,7 @@ export type UniAgentConfig = AgentConfig & {
 
 /** 宿主组装本轮 run 参数时的统一输入 */
 export type UniAgentRunInput = {
-  composerMode?: OpenWorkerAgentRunDefaults['composerMode']
+  composerMode?: AgentWithAGUIRunDefaults['composerMode']
   abortController?: AbortController
   workspacePath?: string
   terminalKey?: string
@@ -99,7 +99,7 @@ export class UniAgent extends AbstractAgent {
   public headers?: Record<string, string>
 
   private readonly config: UniAgentConfig
-  private readonly backend: OpenWorkerAgent
+  private readonly backend: AgentWithAGUI
   private readonly role: 'session' | 'mcp-host'
   private pendingForwardedExtras: Record<string, unknown> = {}
 
@@ -262,12 +262,12 @@ export class UniAgent extends AbstractAgent {
   }
 
   /**
-   * 创建底层 OpenWorker AG-UI 后端实例。
+   * 创建底层 AgentWithAGUI 后端实例。
    *
    * @param config - UniAgentConfig
-   * @returns OpenWorkerAgent
+   * @returns AgentWithAGUI
    */
-  private createBackend(config: UniAgentConfig): OpenWorkerAgent {
+  private createBackend(config: UniAgentConfig): AgentWithAGUI {
     const cwd = config.cwd?.trim() || undefined
     const common = {
       ...(config.threadId ? { threadId: config.threadId } : {}),
@@ -275,7 +275,7 @@ export class UniAgent extends AbstractAgent {
       ...(config.initialState != null ? { initialState: config.initialState } : {})
     }
 
-    return new OpenWorkerAgent({
+    return new AgentWithAGUI({
       agentId: config.agentId ?? 'uni-openworker',
       description: config.description ?? 'OpenWorker uni ReAct agent',
       ...common,
@@ -283,9 +283,7 @@ export class UniAgent extends AbstractAgent {
         provider: config.provider ?? PLACEHOLDER_PROVIDER,
         ...(cwd ? { local: { cwd } } : {})
       },
-      ...(config.runDefaults
-        ? { runDefaults: config.runDefaults as OpenWorkerAgentRunDefaults }
-        : {})
+      ...(config.runDefaults ? { runDefaults: config.runDefaults as AgentWithAGUIRunDefaults } : {})
     })
   }
 }

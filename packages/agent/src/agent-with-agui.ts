@@ -1,5 +1,5 @@
 /**
- * OpenWorker AG-UI 适配器：将 createAgent 桥接为 AG-UI AbstractAgent。
+ * AgentWithAGUI：将 createAgent 桥接为 AG-UI AbstractAgent。
  *
  * 导出形态与官方集成一致：继承 `AbstractAgent`，`run(input)` 返回 `Observable<BaseEvent>`，
  * 可直接用于 CopilotKit / HttpAgent 服务端或 `runAgent()` 客户端管线。
@@ -46,19 +46,19 @@ import { OPENWORKER_PLAN_CUSTOM_NAME, parsePlanArtifact } from './plan-artifact.
  *
  * 注意：经 `runAgent({ forwardedProps })` 传入时，AG-UI 会对 forwardedProps 做
  * `structuredClone`。`provider`（LanguageModel，含 url 等函数）与 `abortController`
- * 不可克隆，OpenWorkerAgent 会在克隆前剥离并在本轮 run 中合并回 send 选项。
+ * 不可克隆，AgentWithAGUI 会在克隆前剥离并在本轮 run 中合并回 send 选项。
  */
-export type OpenWorkerAgentRunDefaults = Omit<
+export type AgentWithAGUIRunDefaults = Omit<
   AgentRunInput,
   'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'
 >
 
 /**
- * OpenWorkerAgent 配置：AG-UI AgentConfig + createAgent 选项。
+ * AgentWithAGUI 配置：AG-UI AgentConfig + createAgent 选项。
  *
  * @example
  * ```ts
- * const agent = new OpenWorkerAgent({
+ * const agent = new AgentWithAGUI({
  *   agentId: 'openworker',
  *   description: 'OpenWorker desktop agent',
  *   agent: { provider: model, local: { cwd } },
@@ -67,32 +67,32 @@ export type OpenWorkerAgentRunDefaults = Omit<
  * await agent.runAgent({ runId: 'r1' })
  * ```
  */
-export type OpenWorkerAgentConfig = AgentConfig & {
+export type CreateAgentWithAGUIOptions = AgentConfig & {
   /** createAgent 配置（provider 必填） */
   agent: CreateAgentOptions
   /**
    * 每轮 send 的默认参数。
    * 优先级：runDefaults < 克隆前剥离的 extras < RunAgentInput.forwardedProps
    */
-  runDefaults?: OpenWorkerAgentRunDefaults
+  runDefaults?: AgentWithAGUIRunDefaults
 }
 
 /**
  * 从 RunAgentInput.forwardedProps 解析可覆盖的 Agent 运行参数。
  *
  * @param forwarded - AG-UI forwardedProps
- * @returns 部分 OpenWorkerAgentRunDefaults
+ * @returns 部分 AgentWithAGUIRunDefaults
  */
-function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
+function parseForwardedProps(forwarded: unknown): AgentWithAGUIRunDefaults {
   if (!forwarded || typeof forwarded !== 'object') return {}
   const src = forwarded as Record<string, unknown>
-  const out: OpenWorkerAgentRunDefaults = {}
+  const out: AgentWithAGUIRunDefaults = {}
 
   if (typeof src.composerMode === 'string') {
-    out.composerMode = src.composerMode as OpenWorkerAgentRunDefaults['composerMode']
+    out.composerMode = src.composerMode as AgentWithAGUIRunDefaults['composerMode']
   }
   if (src.provider != null) {
-    out.provider = src.provider as OpenWorkerAgentRunDefaults['provider']
+    out.provider = src.provider as AgentWithAGUIRunDefaults['provider']
   }
   if (src.abortController instanceof AbortController) {
     out.abortController = src.abortController
@@ -104,7 +104,7 @@ function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
     out.terminalKey = src.terminalKey
   }
   if (src.tavily != null && typeof src.tavily === 'object') {
-    out.tavily = src.tavily as OpenWorkerAgentRunDefaults['tavily']
+    out.tavily = src.tavily as AgentWithAGUIRunDefaults['tavily']
   }
   if (typeof src.maxSteps === 'number') {
     out.maxSteps = src.maxSteps
@@ -134,17 +134,17 @@ function parseForwardedProps(forwarded: unknown): OpenWorkerAgentRunDefaults {
  */
 function detachNonCloneableForwardedProps(forwarded: unknown): {
   cloneable: Record<string, unknown>
-  extras: OpenWorkerAgentRunDefaults
+  extras: AgentWithAGUIRunDefaults
 } {
   if (!forwarded || typeof forwarded !== 'object') {
     return { cloneable: {}, extras: {} }
   }
 
   const cloneable = { ...(forwarded as Record<string, unknown>) }
-  const extras: OpenWorkerAgentRunDefaults = {}
+  const extras: AgentWithAGUIRunDefaults = {}
 
   if ('provider' in cloneable && cloneable.provider != null) {
-    extras.provider = cloneable.provider as OpenWorkerAgentRunDefaults['provider']
+    extras.provider = cloneable.provider as AgentWithAGUIRunDefaults['provider']
     delete cloneable.provider
   }
 
@@ -432,26 +432,26 @@ function formatRunError(error: unknown): string {
  * - `run(input): Observable<BaseEvent>`
  * - 支持 `runAgent()` / `subscribe()` / `abortRun()` / `clone()`
  */
-export class OpenWorkerAgent extends AbstractAgent {
+export class AgentWithAGUI extends AbstractAgent {
   /** CopilotKit Runtime 可能注入的 per-request headers（本适配器暂不转发至 LLM） */
   public headers?: Record<string, string>
 
-  private readonly config: OpenWorkerAgentConfig
+  private readonly config: CreateAgentWithAGUIOptions
   private readonly inner: Agent
-  private readonly runDefaults: OpenWorkerAgentRunDefaults
+  private readonly runDefaults: AgentWithAGUIRunDefaults
   private activeAbort: AbortController | null = null
   /**
    * 自 forwardedProps 剥离、供本轮 run 合并的不可克隆字段（provider / abortController）。
    * 由 prepareRunAgentInput 写入，translateRun 结束后清空。
    */
-  private pendingForwardedExtras: OpenWorkerAgentRunDefaults = {}
+  private pendingForwardedExtras: AgentWithAGUIRunDefaults = {}
 
   /**
-   * 创建 OpenWorker AG-UI Agent。
+   * 创建 AgentWithAGUI。
    *
    * @param config - AgentConfig + createAgent 选项与 run 默认参数
    */
-  constructor(config: OpenWorkerAgentConfig) {
+  constructor(config: CreateAgentWithAGUIOptions) {
     const { agent: agentOptions, runDefaults, ...rest } = config
     super(rest)
     this.config = config
@@ -462,10 +462,10 @@ export class OpenWorkerAgent extends AbstractAgent {
   /**
    * 克隆当前 agent（新 createAgent 实例，复制 AG-UI 消息与 state）。
    *
-   * @returns 新的 OpenWorkerAgent
+   * @returns 新的 AgentWithAGUI
    */
-  public clone(): OpenWorkerAgent {
-    const cloned = new OpenWorkerAgent({
+  public clone(): AgentWithAGUI {
+    const cloned = new AgentWithAGUI({
       ...this.config,
       threadId: this.threadId,
       initialMessages: structuredClone(this.messages),
@@ -620,7 +620,7 @@ export class OpenWorkerAgent extends AbstractAgent {
       emit(content)
     }
 
-    const merged: OpenWorkerAgentRunDefaults = {
+    const merged: AgentWithAGUIRunDefaults = {
       ...this.runDefaults,
       ...this.pendingForwardedExtras,
       ...parseForwardedProps(input.forwardedProps),

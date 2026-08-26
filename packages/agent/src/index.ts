@@ -1,19 +1,19 @@
 /**
- * @openworker/agent 公共 API — 宿主入口为 OpenWorkerAgent（AG-UI），勿直接使用 createAgent。
+ * @openworker/agent 公共 API — 宿主入口为 AgentWithAGUI（AG-UI），勿直接使用 createAgent。
  *
- * createAgent 为包内实现细节，仅由 OpenWorkerAgent 委托；外部应经 AG-UI runAgent / 事件流交互。
- * MCP 宿主能力经 OpenWorkerAgent.mcp（probe / warmup / dispose）。
+ * createAgent 为包内实现细节，仅由 AgentWithAGUI 委托；外部应经 AG-UI runAgent / 事件流交互。
+ * MCP 宿主能力经 AgentWithAGUI.mcp（probe / warmup / dispose）。
  */
 
 /** AG-UI AbstractAgent 适配（宿主唯一对话入口） */
 export {
-  OpenWorkerAgent,
+  AgentWithAGUI,
   aguiMessagesToCore,
   coreMessagesToAgui,
   extractUserTurn,
-  type OpenWorkerAgentConfig,
-  type OpenWorkerAgentRunDefaults
-} from './createAGUIAgent.js'
+  type CreateAgentWithAGUIOptions,
+  type AgentWithAGUIRunDefaults
+} from './agent-with-agui.js'
 
 export {
   type AgentMcp,

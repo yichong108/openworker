@@ -1,5 +1,5 @@
 /**
- * @file OpenWorkerAgent AG-UI 适配器单元测试
+ * @file AgentWithAGUI AG-UI 适配器单元测试
  */
 
 import { EventType, type BaseEvent, type RunAgentInput } from '@ag-ui/client'
@@ -21,8 +21,8 @@ import {
   aguiMessagesToCore,
   coreMessagesToAgui,
   extractUserTurn,
-  OpenWorkerAgent
-} from '../src/createAGUIAgent.js'
+  AgentWithAGUI
+} from '../src/agent-with-agui.js'
 
 const stubModel = { modelId: 'test-model' } as LanguageModel
 
@@ -80,15 +80,15 @@ function createStubAgent(handlers?: { send?: Agent['send'] }): Agent {
 /**
  * 收集 Observable 全部事件。
  *
- * @param agent - OpenWorkerAgent
+ * @param agent - AgentWithAGUI
  * @param input - RunAgentInput
  * @returns 事件列表
  */
-async function collectEvents(agent: OpenWorkerAgent, input: RunAgentInput): Promise<BaseEvent[]> {
+async function collectEvents(agent: AgentWithAGUI, input: RunAgentInput): Promise<BaseEvent[]> {
   return firstValueFrom(agent.run(input).pipe(toArray()))
 }
 
-describe('OpenWorkerAgent helpers', () => {
+describe('AgentWithAGUI helpers', () => {
   it('extractUserTurn 提取最后一条 user 并保留历史', () => {
     const { userText, history } = extractUserTurn([
       { id: '1', role: 'user', content: 'hi' },
@@ -184,14 +184,14 @@ describe('OpenWorkerAgent helpers', () => {
   })
 })
 
-describe('OpenWorkerAgent', () => {
+describe('AgentWithAGUI', () => {
   beforeEach(() => {
     createAgentMock.mockReset()
     createAgentMock.mockImplementation(() => createStubAgent())
   })
 
   it('run 产出与 AG-UI 一致的事件序列', async () => {
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agentId: 'ow',
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } },
       runDefaults: { composerMode: 'ask', terminalKey: 'term:t' }
@@ -268,7 +268,7 @@ describe('OpenWorkerAgent', () => {
       })
     )
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } }
     })
     const events = await collectEvents(agent, baseInput())
@@ -316,7 +316,7 @@ describe('OpenWorkerAgent', () => {
       })
     )
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } }
     })
     const events = await collectEvents(agent, baseInput())
@@ -364,7 +364,7 @@ describe('OpenWorkerAgent', () => {
       })
     )
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } }
     })
     const events = await collectEvents(agent, baseInput())
@@ -394,7 +394,7 @@ describe('OpenWorkerAgent', () => {
       })
     )
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } }
     })
     const events = await collectEvents(agent, baseInput())
@@ -407,7 +407,7 @@ describe('OpenWorkerAgent', () => {
   })
 
   it('无用户消息时产出 RUN_ERROR', async () => {
-    const agent = new OpenWorkerAgent({ agent: { provider: stubModel } })
+    const agent = new AgentWithAGUI({ agent: { provider: stubModel } })
     const events = await collectEvents(
       agent,
       baseInput({
@@ -435,7 +435,7 @@ describe('OpenWorkerAgent', () => {
     })
     createAgentMock.mockImplementation(() => createStubAgent({ send }))
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } },
       runDefaults: { composerMode: 'ask' }
     })
@@ -474,7 +474,7 @@ describe('OpenWorkerAgent', () => {
       })
     )
 
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } },
       runDefaults: { composerMode: 'plan', terminalKey: 'term:t' }
     })
@@ -517,7 +517,7 @@ describe('OpenWorkerAgent', () => {
     } as unknown as LanguageModel
 
     const abortController = new AbortController()
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agent: { provider: stubModel, local: { cwd: '/tmp/ws' } }
     })
     agent.messages = [{ id: 'u1', role: 'user', content: 'ping' }]
@@ -546,18 +546,18 @@ describe('OpenWorkerAgent', () => {
   })
 
   it('clone 返回独立实例', () => {
-    const agent = new OpenWorkerAgent({
+    const agent = new AgentWithAGUI({
       agentId: 'ow',
       agent: { provider: stubModel }
     })
     const cloned = agent.clone()
-    expect(cloned).toBeInstanceOf(OpenWorkerAgent)
+    expect(cloned).toBeInstanceOf(AgentWithAGUI)
     expect(cloned).not.toBe(agent)
     expect(cloned.mcp).not.toBe(agent.mcp)
   })
 
   it('暴露与 AG-UI AbstractAgent 一致的 API', () => {
-    const agent = new OpenWorkerAgent({ agent: { provider: stubModel } })
+    const agent = new AgentWithAGUI({ agent: { provider: stubModel } })
     expect(typeof agent.run).toBe('function')
     expect(typeof agent.runAgent).toBe('function')
     expect(typeof agent.abortRun).toBe('function')

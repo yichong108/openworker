@@ -1,5 +1,5 @@
 /**
- * createAgent 是包内底层工厂，由 OpenWorkerAgent 委托；宿主勿直接调用。
+ * createAgent 是包内底层工厂，由 AgentWithAGUI 委托；宿主勿直接调用。
  * send 时按 `OPENWORKER_HOME` 加载 Skills / MCP，合并系统 prompt 后委托 createBaseAgent。
  */
 
