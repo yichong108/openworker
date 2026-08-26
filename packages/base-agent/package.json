@@ -41,9 +41,11 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@ag-ui/client": "catalog:",
     "@openworker/llm": "workspace:*",
     "@openworker/tools": "workspace:*",
     "ai": "catalog:",
+    "rxjs": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

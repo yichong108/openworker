@@ -5,7 +5,7 @@
 
 import type { LanguageModel, ToolSet } from 'ai'
 
-import { buildShellTool, type ToolObservation } from '@openworker/tools'
+import { buildShellTool, mergeToolSets, type ToolObservation } from '@openworker/tools'
 import {
   contentToText,
   findLastAssistantMessage,
@@ -89,10 +89,13 @@ export type BaseAgentSendOptions = {
    */
   abortController?: AbortController
   /**
-   * 本轮工具（AI SDK ToolSet）；可选。
-   * 传入时作为完整工具集（调用方需自行包含 shell）；未传则仅注册内置 shell。
+   * 本轮额外工具（AI SDK ToolSet）；可选。
+   * 未传则仅注册内置 shell；传入时默认与内置 shell 合并（同名后者覆盖）。
+   * 若需完全替换工具集，设置 `toolsMode: 'replace'`（调用方需自行包含 shell，若需要）。
    */
   tools?: ToolSet
+  /** 工具合并策略；默认 merge（与内置 shell 合并） */
+  toolsMode?: 'merge' | 'replace'
   /**
    * 流式文本增量回调；可选。
    * 每步生成时都会增量触发；若本步最终伴有 tool calls，随后会调用 `onTextRevoke` 撤回。
@@ -187,14 +190,13 @@ export function createBaseAgent(options: CreateBaseAgentOptions = {}): BaseAgent
     // 取消控制器
     const abortController = input.abortController ?? new AbortController()
 
-    // 未传 tools 时仅内置 shell；传入则为完整工具集
+    const shellTools = buildShellTool({ root: cwd, onTool })
     const tools: ToolSet =
-      input.tools != null
-        ? input.tools
-        : buildShellTool({
-            root: cwd,
-            onTool: onTool
-          })
+      input.tools == null
+        ? shellTools
+        : input.toolsMode === 'replace'
+          ? input.tools
+          : mergeToolSets(shellTools, input.tools)
 
     const systemPrompt =
       extractedPrompt ??

@@ -380,6 +380,9 @@ importers:
 
   packages/base-agent:
     dependencies:
+      '@ag-ui/client':
+        specifier: 'catalog:'
+        version: 0.0.57
       '@openworker/llm':
         specifier: workspace:*
         version: link:../llm
@@ -389,6 +392,9 @@ importers:
       ai:
         specifier: 'catalog:'
         version: 7.0.77(zod@4.4.3)
+      rxjs:
+        specifier: 'catalog:'
+        version: 7.8.1
       zod:
         specifier: 'catalog:'
         version: 4.4.3

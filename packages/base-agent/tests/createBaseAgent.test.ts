@@ -12,7 +12,7 @@ vi.mock('../src/react-loop.js', () => ({
   ])
 }))
 
-import { createBaseAgent } from '../src/createBaseAgent.js'
+import { createBaseAgent } from '../src/create-base-agent.js'
 import { runReActLoop } from '../src/react-loop.js'
 
 const stubModel = { modelId: 'test-model' } as LanguageModel
@@ -48,10 +48,19 @@ describe('createBaseAgent', () => {
     expect(result.messages.some((m) => m.role === 'system')).toBe(false)
   })
 
-  it('传入 tools 时作为完整工具集，不合并内置 shell', async () => {
+  it('传入 tools 时默认与内置 shell 合并', async () => {
     const agent = createBaseAgent({ cwd: '/tmp/ws' })
     const custom = { ping: { description: 'ping' } } as unknown as ToolSet
     await agent.send('hi', { provider: stubModel, tools: custom })
+
+    const [{ tools }] = vi.mocked(runReActLoop).mock.calls[0]!
+    expect(Object.keys(tools as ToolSet).sort()).toEqual(['ping', 'shell'])
+  })
+
+  it('toolsMode replace 时作为完整工具集，不合并内置 shell', async () => {
+    const agent = createBaseAgent({ cwd: '/tmp/ws' })
+    const custom = { ping: { description: 'ping' } } as unknown as ToolSet
+    await agent.send('hi', { provider: stubModel, tools: custom, toolsMode: 'replace' })
 
     const [{ tools }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(Object.keys(tools as ToolSet)).toEqual(['ping'])
