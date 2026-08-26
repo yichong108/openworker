@@ -196,7 +196,7 @@ export function PlaygroundApp() {
           onChange={(value) => applyScene(value as PlaygroundScene)}
           options={PLAYGROUND_SCENES.map((item) => ({ label: item.label, value: item.id }))}
         />
-        <span className="ow-ui-playground-hint">模拟数据 · 输入 / 可打开技能菜单</span>
+        <span className="ow-ui-playground-hint">500×600 · 模拟数据 · 输入 / 可打开技能菜单</span>
       </header>
       <div className="ow-ui-playground-stage app-shell">
         <ChatSessionView
