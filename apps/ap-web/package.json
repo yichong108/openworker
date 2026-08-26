@@ -1,6 +1,6 @@
 {
   "name": "@openworker/ap-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OpenWorker 本地任务看板 — Next.js + TypeScript",
   "type": "module",
   "private": true,
@@ -8,8 +8,10 @@
     "preinstall": "npx only-allow pnpm",
     "predev": "turbo run build --filter=@openworker/llm --filter=@openworker/tools --filter=@openworker/base-agent",
     "pretypecheck": "turbo run build --filter=@openworker/llm --filter=@openworker/tools --filter=@openworker/base-agent",
-    "dev": "cross-env BROWSER=none next dev --port 3011",
+    "dev": "cross-env BROWSER=none next dev",
     "build": "next build",
+    "prepare-standalone": "node scripts/prepare-standalone.mjs",
+    "release": "next build",
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit"
   },
@@ -23,7 +25,7 @@
     "antd": "^5.24.6",
     "dayjs": "catalog:",
     "dotenv": "^17.4.2",
-    "next": "^14.0.0",
+    "next": "14.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rxjs": "catalog:"

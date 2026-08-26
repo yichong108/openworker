@@ -19,3 +19,15 @@ pnpm ap-web:dev
 已添加工具写在该 `.agents/ap-config/web-data/toolbox.json`。任务 markdown 在 `.agents/ap-config/work-data/tasks/`。后端监听 `.agents`，四列任务文件变化时通过 SSE `/api/tasks/stream` 推送给看板。
 
 执行 skill / 任务 Agent 需要 DeepSeek API Key：在配置抽屉填写，或设置 `DEEPSEEK_API_KEY`（`apps/ap-web/.env`、仓库根 `.env` 或 `apps/ap-cli/.env`）。`pnpm dev` 前会通过 turbo 自动 build 上游 workspace 包。
+
+## 发布（standalone）
+
+`next build` 产出 standalone，由 `scripts/prepare-standalone.mjs` 组装 `.publish-staging/`（含 `bin/ap-web.mjs` 与临时 `package.json`），再 `npm publish`：
+
+```bash
+pnpm release:ap-web
+```
+
+发布后用户通过 `ap view` 启动（默认端口 10000–10099，由 `INIT_CWD` 对齐项目 `.agents/`）。开发仍用 `pnpm ap-web:dev`（:3011）。
+
+探活：`GET /api/health` 返回 `{ ok, launchDir }`，供 `ap view` 识别多实例。

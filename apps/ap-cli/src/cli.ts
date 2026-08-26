@@ -8,7 +8,13 @@ import { DEFAULT_AP_MODE, parseConversationMode, type ApConversationMode } from 
 import { resolveAgentsSkill, skillShortName, type AgentsSkill } from './skills-fs.js'
 
 /** 与 skill 目录名冲突时优先的内建命令 */
-export const AP_RESERVED_COMMANDS = ['login', 'help', 'task-create', 'decision-create'] as const
+export const AP_RESERVED_COMMANDS = [
+  'login',
+  'help',
+  'task-create',
+  'decision-create',
+  'view'
+] as const
 
 /** 从模板创建 work-data 文件的内建命令 */
 export type ApCreateCommand = 'task-create' | 'decision-create'
@@ -30,6 +36,15 @@ export type ApCliCommand =
       cwd: string
       /** 文件名（可带或不带 .md）；省略则按时间戳命名 */
       name?: string
+    }
+  | {
+      command: 'view'
+      /** 用户项目根（INIT_CWD） */
+      cwd: string
+      /** 显式端口；省略时自动分配 10000..10099 */
+      port?: number
+      /** 就绪后是否打开浏览器 */
+      open: boolean
     }
   | {
       command: 'skill'
@@ -80,6 +95,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
   ap <skill> [options] [extra...]
   ap task-create [--name <文件名>]
   ap decision-create [--name <文件名>]
+  ap view [--port <n>] [--no-open]
   ap login
   ap help [skill]
 
@@ -92,6 +108,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
   task-create          从模板创建任务到 tasks/todo/（不调用 Agent）
   decision-create      从模板创建决策到 decisions/（不调用 Agent）
+  view                 启动 ap-web 看板（发布后 standalone；本地开发请用 pnpm ap-web:dev）
   help                 显示本帮助
 
 已发现的 skill:
@@ -111,11 +128,16 @@ ${skillLines}
   ap task-create --name 用户登录
   ap decision-create
   ap decision-create --name module-map
+  ap view
+  ap view --no-open
+  ap view --port 10050
 
 环境变量:
   CURSOR_API_KEY       Cursor API Key（也可用 ap login）
   CURSOR_MODEL         默认模型（composer-2.5）
   AP_MODE              默认 SDK 对话模式（agent 或 plan）
+  AP_WEB_PORT_MIN      ap view 端口扫描起始（默认 10000）
+  AP_WEB_PORT_MAX      ap view 端口扫描结束（默认 10099）
 `)
 }
 
@@ -182,6 +204,86 @@ export function printCreateHelp(command: ApCreateCommand): void {
 未指定 --name 时，文件名为 decision-YYYYMMDDHHmmSS.md。
 写入 .agents/ap-config/work-data/decisions/，内容来自 decision-template.md。
 `)
+}
+
+/**
+ * 打印 ap view 的用法。
+ */
+export function printViewHelp(): void {
+  console.log(`ap view — 启动 ap-web 任务看板（standalone）
+
+用法:
+  ap view
+  ap view --no-open
+  ap view --port <端口>
+  ap view -C <项目根>
+
+选项:
+  --port <n>           显式端口（默认自动分配 10000..10099）
+  --no-open            不打开浏览器
+  -C, --cwd <path>     项目根目录（默认 git/pnpm 仓库根）
+  -h, --help           显示帮助
+
+多项目并行时各目录独立端口，记录在 .agents/ap-config/web-data/ap-web.port。
+本地 monorepo 开发看板请用: pnpm ap-web:dev
+
+环境变量:
+  AP_WEB_PORT_MIN      扫描起始端口（默认 10000）
+  AP_WEB_PORT_MAX      扫描结束端口（默认 10099）
+`)
+}
+
+/**
+ * 解析 ap view 的选项。
+ *
+ * @param argv - 子命令之后的参数
+ * @param defaults - cwd 默认值
+ */
+export function parseViewArgs(
+  argv: string[],
+  defaults: { cwd: string }
+): { help: true } | { help: false; cwd: string; port?: number; open: boolean } {
+  let cwd = defaults.cwd
+  let port: number | undefined
+  let open = true
+  let help = false
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg === '-h' || arg === '--help') {
+      help = true
+      continue
+    }
+    if (arg === '-C' || arg === '--cwd') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要路径参数`)
+      cwd = resolve(next)
+      continue
+    }
+    if (arg === '--port') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要端口号`)
+      port = Number.parseInt(next, 10)
+      if (!Number.isFinite(port)) throw new Error(`无效端口: ${next}`)
+      continue
+    }
+    if (arg === '--no-open') {
+      open = false
+      continue
+    }
+    if (arg.startsWith('-')) {
+      throw new Error(`未知选项: ${arg}`)
+    }
+    throw new Error(`不接受额外参数: ${arg}`)
+  }
+
+  if (help) return { help: true }
+  return {
+    help: false,
+    cwd,
+    open,
+    ...(port !== undefined ? { port } : {})
+  }
 }
 
 /**
@@ -315,7 +417,7 @@ export function parseCreateArgs(
 /**
  * 解析 process.argv（跳过 node / 脚本路径）为 ap 子命令。
  *
- * 第一段是 login/help/task-create/decision-create 走内建命令；
+ * 第一段是 login/help/view/task-create/decision-create 走内建命令；
  * 是已发现的 skill 名（含 ap- 短名）则执行该 skill；
  * 否则整段当作用户提问（ask）。提问可用 --skill 钉死 skill。
  * --mode 传给 Cursor SDK（agent | plan，默认 agent）。
@@ -349,6 +451,19 @@ export function parseArgs(
       throw new Error(`login 不接受额外参数: ${args.slice(1).join(' ')}`)
     }
     return { command: 'login' }
+  }
+
+  if (first === 'view') {
+    const parsed = parseViewArgs(args.slice(1), { cwd: defaults.cwd })
+    if (parsed.help) {
+      return { command: 'help', topic: 'view' }
+    }
+    return {
+      command: 'view',
+      cwd: parsed.cwd,
+      open: parsed.open,
+      ...(parsed.port !== undefined ? { port: parsed.port } : {})
+    }
   }
 
   if (first === 'task-create' || first === 'decision-create') {

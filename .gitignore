@@ -33,3 +33,4 @@ coverage
 
 # Local AI credentials (ap-web 配置弹窗写入)
 **/.agents/ap-config/ai-config.local.json
+**/.agents/ap-config/web-data/ap-web.port

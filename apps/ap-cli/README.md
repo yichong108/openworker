@@ -20,7 +20,10 @@ ap task-create --name 用户登录
 ap task-execute
 ap decision-create
 ap decision-create --name module-map
+ap view
 ```
+
+`ap view` 启动已发布的 `@openworker/ap-web` standalone 看板（端口自动分配 10000–10099，多项目可并行）。本地 monorepo 开发看板请用 `pnpm ap-web:dev`。
 
 也可以不全局安装，直接：
 
@@ -39,7 +42,23 @@ pnpm ap task-create --name 用户登录
 pnpm ap task-execute --mode plan
 ```
 
-鉴权：复制 `apps/ap-cli/.env.example` 为 `apps/ap-cli/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` 不需要 Key。
+鉴权：复制 `apps/ap-cli/.env.example` 为 `apps/ap-cli/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` / `view` 不需要 Key。
+
+### ap view（发布后）
+
+全局安装 `@openworker/ap` 后，在项目根执行：
+
+```bash
+ap view
+ap view --no-open
+ap view --port 10050
+```
+
+- 自动启动 `@openworker/ap-web`（可选依赖或 npx 兜底）
+- 多项目并行时各目录独立端口，记录在 `.agents/ap-config/web-data/ap-web.port`
+- 环境变量：`AP_WEB_PORT_MIN`（默认 10000）、`AP_WEB_PORT_MAX`（默认 10099）
+
+本仓库内验证 standalone：先 `pnpm ap-web:build && pnpm --filter @openworker/ap-web prepare-standalone`，再 `pnpm ap view`（会读取 `apps/ap-web/.publish-staging/`）。
 
 ## 验证构建
 

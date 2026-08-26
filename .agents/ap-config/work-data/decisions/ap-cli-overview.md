@@ -33,6 +33,7 @@
 │ login/help    │  │ runApSkill    │  │ install-skills.ts     │
 │ task-create   │  │ runApAsk      │  │ skills + work-data    │
 │ decision-create│ │ (Cursor SDK)  │  │ 种子拷贝               │
+│ view          │  │               │  │                       │
 └───────────────┘  └───────────────┘  └───────────────────────┘
         │                   │                   │
         └───────────────────┴───────────────────┘
@@ -57,6 +58,7 @@ apps/ap-cli/
 │   ├── install-skills.ts   # skill + work-data 种子安装
 │   ├── create-work-data.ts # task-create / decision-create
 │   ├── env.ts              # 仓库根、环境变量、模型/模式
+│   ├── view.ts             # ap view：启动 ap-web standalone
 │   ├── skills/             # skill 源（安装到 .agents/skills）
 │   │   ├── ap-task-execute/
 │   │   └── ap-refactor/
@@ -69,14 +71,15 @@ apps/ap-cli/
 
 ### 子命令体系
 
-| 类型  | 命令                          | 说明                                                      |
-| ----- | ----------------------------- | --------------------------------------------------------- |
-| 内建  | `ap login`                    | 浏览器登录 Cursor SDK，凭证写入 `~/.cursor/sdk/auth.json` |
-| 内建  | `ap help [topic]`             | 顶层帮助或单个 skill 帮助                                 |
-| 内建  | `ap task-create [--name]`     | 从模板创建任务到 `tasks/todo/`，不调用 Agent              |
-| 内建  | `ap decision-create [--name]` | 从模板创建决策到 `decisions/`，不调用 Agent               |
-| Skill | `ap <skill> [options]`        | 执行 `.agents/skills/<skill>/SKILL.md`                    |
-| 提问  | `ap "<提问>" [--skill]`       | Agent 从已发现 skill 中选一个执行                         |
+| 类型  | 命令                           | 说明                                                                |
+| ----- | ------------------------------ | ------------------------------------------------------------------- |
+| 内建  | `ap login`                     | 浏览器登录 Cursor SDK，凭证写入 `~/.cursor/sdk/auth.json`           |
+| 内建  | `ap help [topic]`              | 顶层帮助或单个 skill 帮助                                           |
+| 内建  | `ap task-create [--name]`      | 从模板创建任务到 `tasks/todo/`，不调用 Agent                        |
+| 内建  | `ap decision-create [--name]`  | 从模板创建决策到 `decisions/`，不调用 Agent                         |
+| 内建  | `ap view [--port] [--no-open]` | 启动 `@openworker/ap-web` standalone 看板（10000–10099 自动选端口） |
+| Skill | `ap <skill> [options]`         | 执行 `.agents/skills/<skill>/SKILL.md`                              |
+| 提问  | `ap "<提问>" [--skill]`        | Agent 从已发现 skill 中选一个执行                                   |
 
 Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-execute`）。
 

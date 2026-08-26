@@ -10,10 +10,10 @@ AI-PIPELINE 是 OpenWorker 中面向本地 AI 软件生产的工具链，由 CLI
 
 ### 系统定位
 
-| 端  | 包名                 | 入口                      | 职责                                                |
-| --- | -------------------- | ------------------------- | --------------------------------------------------- |
-| CLI | `@openworker/ap`     | `ap` / `pnpm ap`          | Skill 执行、任务/决策创建、work-data 种子安装       |
-| Web | `@openworker/ap-web` | `pnpm ap-web:dev` → :3011 | 任务看板、拖拽改状态、任务 Agent 对话、Skill 工具集 |
+| 端  | 包名                 | 入口                                                  | 职责                                                          |
+| --- | -------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
+| CLI | `@openworker/ap`     | `ap` / `pnpm ap`                                      | Skill 执行、任务/决策创建、work-data 种子、`ap view` 启动看板 |
+| Web | `@openworker/ap-web` | `pnpm ap-web:dev` → :3011；发布后 `ap view` → :10000+ | 任务看板、拖拽改状态、任务 Agent 对话、Skill 工具集           |
 
 ### 共享数据层（`.agents/`）
 
@@ -28,6 +28,7 @@ AI-PIPELINE 是 OpenWorker 中面向本地 AI 软件生产的工具链，由 CLI
     │   └── decisions/                   ← 架构决策
     ├── web-data/
     │   ├── toolbox.json                 ← ap-web 工具集配置
+    │   ├── ap-web.port                  ← ap view 记录的本地端口（可不 commit）
     │   └── chat/                        ← ap-web 任务对话历史
     └── ai-config.local.json             ← ap-web DeepSeek 配置
 ```
@@ -80,7 +81,7 @@ AI-PIPELINE 是 OpenWorker 中面向本地 AI 软件生产的工具链，由 CLI
 ### 典型工作流
 
 1. `ap task-create --name 实现某某功能` → 在 `todo/` 创建任务
-2. `pnpm ap-web:dev` → 浏览器查看看板、编辑优先级与需求
+2. **发布后** `ap view` → 浏览器打开 standalone 看板（:10000+）；**monorepo 开发**用 `pnpm ap-web:dev`（:3011）
 3. 拖入 `doing` → ap-web 自动启动任务 Agent（DeepSeek）
 4. 或 `ap task-execute` → ap-cli 串行执行 TODO 队列（Cursor SDK）
 5. 完成后任务在 `done/`，两端均可看到

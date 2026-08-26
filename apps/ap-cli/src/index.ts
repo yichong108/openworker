@@ -5,7 +5,7 @@
 
 import { Cursor } from '@cursor/sdk'
 
-import { parseArgs, printCreateHelp, printHelp, printSkillHelp } from './cli.js'
+import { parseArgs, printCreateHelp, printHelp, printSkillHelp, printViewHelp } from './cli.js'
 import { createWorkDataFile } from './create-work-data.js'
 import {
   findWorkspaceRoot,
@@ -17,6 +17,7 @@ import {
 import { installApWorkspace } from './install-skills.js'
 import { loginCursorSdk, runApAsk, runApSkill } from './run.js'
 import { findAgentsSkill, listAgentsSkills } from './skills-fs.js'
+import { runApView } from './view.js'
 
 /**
  * 确认已有 CURSOR_API_KEY 或 Cursor SDK 登录态，否则提示后退出。
@@ -71,6 +72,10 @@ async function main(): Promise<void> {
       printCreateHelp(command.topic)
       return
     }
+    if (command.topic === 'view') {
+      printViewHelp()
+      return
+    }
     if (command.topic) {
       const skill = findAgentsSkill(workspaceRoot, command.topic)
       if (!skill) {
@@ -88,6 +93,21 @@ async function main(): Promise<void> {
 
   if (command.command === 'login') {
     await loginCursorSdk()
+    return
+  }
+
+  if (command.command === 'view') {
+    try {
+      process.exitCode = await runApView({
+        cwd: command.cwd,
+        open: command.open,
+        ...(command.port !== undefined ? { port: command.port } : {})
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(message)
+      process.exitCode = 1
+    }
     return
   }
 
