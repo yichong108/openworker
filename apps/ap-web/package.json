@@ -9,9 +9,12 @@
     "predev": "turbo run build --filter=@openworker/llm --filter=@openworker/tools --filter=@openworker/base-agent",
     "pretypecheck": "turbo run build --filter=@openworker/llm --filter=@openworker/tools --filter=@openworker/base-agent",
     "dev": "cross-env BROWSER=none next dev",
+    "prebuild": "node scripts/clean-next.mjs",
     "build": "next build",
+    "postbuild": "node scripts/materialize-standalone.mjs",
     "prepare-standalone": "node scripts/prepare-standalone.mjs",
-    "release": "next build",
+    "check-npm-auth": "npm whoami --registry=https://registry.npmjs.org/",
+    "release": "pnpm run check-npm-auth && pnpm run build && node scripts/prepare-standalone.mjs && cd .publish-staging && npm publish",
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit"
   },

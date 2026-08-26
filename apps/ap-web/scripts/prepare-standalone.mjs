@@ -1,11 +1,16 @@
 /**
  * 组装 npm 发布 staging：standalone 产物 + bin + 临时 package.json。
  * 需在 pnpm build（next build）之后执行。
+ *
+ * 不用 fs.cpSync / fs.rmSync：Windows 上 pnpm/Next standalone 里的
+ * SYMLINKD/junction 指向仓库真实 node_modules，递归删除或按链接拷贝会写穿/删掉依赖。
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { cpSafe, rmSafe } from './fs-safe.mjs'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const stagingDir = join(packageRoot, '.publish-staging')
@@ -14,52 +19,66 @@ const staticSrc = join(packageRoot, '.next', 'static')
 const publicSrc = join(packageRoot, 'public')
 const binSrc = join(packageRoot, 'bin', 'ap-web.mjs')
 
-if (!existsSync(standaloneSrc)) {
-  console.error('[prepare-standalone] 未找到 .next/standalone，请先运行 pnpm build')
-  process.exit(1)
+/**
+ * @param {string} path
+ * @param {string} message
+ */
+function assertExists(path, message) {
+  try {
+    lstatSync(path)
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') {
+      console.error(`[prepare-standalone] ${message}`)
+      process.exit(1)
+    }
+    throw err
+  }
 }
 
-if (!existsSync(staticSrc)) {
-  console.error('[prepare-standalone] 未找到 .next/static，请先运行 pnpm build')
-  process.exit(1)
-}
+assertExists(standaloneSrc, '未找到 .next/standalone，请先运行 pnpm build')
+assertExists(staticSrc, '未找到 .next/static，请先运行 pnpm build')
+assertExists(binSrc, '未找到 bin/ap-web.mjs')
 
-if (!existsSync(binSrc)) {
-  console.error('[prepare-standalone] 未找到 bin/ap-web.mjs')
-  process.exit(1)
-}
-
-rmSync(stagingDir, { recursive: true, force: true })
+rmSafe(stagingDir)
 mkdirSync(stagingDir, { recursive: true })
 
 const distDir = join(stagingDir, 'standalone-dist')
-cpSync(standaloneSrc, distDir, { recursive: true })
+cpSafe(standaloneSrc, distDir, { skipRoots: [stagingDir] })
 
 /** @param {string} targetDir */
 function copyStaticInto(targetDir) {
   const staticDest = join(targetDir, '.next', 'static')
   mkdirSync(dirname(staticDest), { recursive: true })
-  cpSync(staticSrc, staticDest, { recursive: true })
+  cpSafe(staticSrc, staticDest, { skipRoots: [stagingDir] })
 }
 
 /** @param {string} targetDir */
 function copyPublicInto(targetDir) {
-  if (!existsSync(publicSrc)) return
-  cpSync(publicSrc, join(targetDir, 'public'), { recursive: true })
+  try {
+    lstatSync(publicSrc)
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return
+    throw err
+  }
+  cpSafe(publicSrc, join(targetDir, 'public'), { skipRoots: [stagingDir] })
 }
 
 copyStaticInto(distDir)
 
 const monorepoAppDir = join(distDir, 'apps', 'ap-web')
-if (existsSync(monorepoAppDir)) {
-  copyStaticInto(monorepoAppDir)
-  copyPublicInto(monorepoAppDir)
-} else {
+try {
+  const appStat = lstatSync(monorepoAppDir)
+  if (appStat.isDirectory() || appStat.isSymbolicLink()) {
+    copyStaticInto(monorepoAppDir)
+    copyPublicInto(monorepoAppDir)
+  }
+} catch (err) {
+  if (/** @type {NodeJS.ErrnoException} */ (err).code !== 'ENOENT') throw err
   copyPublicInto(distDir)
 }
 
 mkdirSync(join(stagingDir, 'bin'), { recursive: true })
-cpSync(binSrc, join(stagingDir, 'bin', 'ap-web.mjs'))
+cpSafe(binSrc, join(stagingDir, 'bin', 'ap-web.mjs'), { skipRoots: [stagingDir] })
 
 const sourcePkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'))
 const publishPkg = {
