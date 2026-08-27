@@ -1,6 +1,6 @@
 {
   "name": "@openworker/ap-web",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "OpenWorker 本地任务看板 — Next.js + TypeScript",
   "type": "module",
   "private": true,
