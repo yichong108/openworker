@@ -1,6 +1,6 @@
 # 目录说明
 
-本目录是 work-data **种子**。`ap` 启动时拷贝到 `.agents/ap-config/work-data`；`*-template.md` 会覆盖已有文件，其余同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
+本目录是 work-data **种子**。`ap init` 时拷贝到 `.agents/ap-config/work-data`；`*-template.md` 会覆盖已有文件，其余同名文件不覆盖。AI 只处理 `.agents/ap-config/work-data`。
 
 ```text
 .agents/ap-config/work-data/

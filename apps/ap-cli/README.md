@@ -10,9 +10,10 @@ npm i -g @openworker/ap
 pnpm add -g @openworker/ap
 ```
 
-安装后即可使用 `ap`：
+安装后先在项目根初始化，再使用 `ap`：
 
 ```bash
+ap init
 ap help
 ap login
 ap task-create
@@ -36,13 +37,14 @@ npx @openworker/ap help
 本仓库已把 `@openworker/ap` 作为 workspace 包，**不要**在仓库根再安装一份。根目录 `pnpm install` 后，用 `pnpm ap` 直接跑源码（`tsx`，不经过 `dist`）：
 
 ```bash
+pnpm ap init
 pnpm ap help
 pnpm ap login
 pnpm ap task-create --name 用户登录
 pnpm ap task-execute --mode plan
 ```
 
-鉴权：复制 `apps/ap-cli/.env.example` 为 `apps/ap-cli/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`help` / `task-create` / `decision-create` / `view` 不需要 Key。
+鉴权：复制 `apps/ap-cli/.env.example` 为 `apps/ap-cli/.env` 并填入 `CURSOR_API_KEY`，或运行 `pnpm ap login`。`init` / `help` / `task-create` / `decision-create` / `view` 不需要 Key。
 
 ### ap view（发布后）
 

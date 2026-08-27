@@ -42,7 +42,6 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "prepare": "tsx src/install-skills.ts",
     "start": "tsx src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "publint": "pnpm run build && publint",

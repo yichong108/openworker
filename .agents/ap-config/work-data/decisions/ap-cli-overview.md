@@ -23,14 +23,14 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  CLI 入口 (src/index.ts)                                     │
-│  loadApEnv → installApWorkspace → parseArgs → 分发子命令     │
+│  loadApEnv → parseArgs → 分发子命令                          │
 └───────────────────────────┬─────────────────────────────────┘
                             │
         ┌───────────────────┼───────────────────┐
         ▼                   ▼                   ▼
 ┌───────────────┐  ┌───────────────┐  ┌───────────────────────┐
 │ 内建命令       │  │ Skill 执行     │  │ 工作区初始化           │
-│ login/help    │  │ runApSkill    │  │ install-skills.ts     │
+│ init/login/help│  │ runApSkill    │  │ install-skills.ts     │
 │ task-create   │  │ runApAsk      │  │ skills + work-data    │
 │ decision-create│ │ (Cursor SDK)  │  │ 种子拷贝               │
 │ view          │  │               │  │                       │
@@ -50,7 +50,7 @@
 ```
 apps/ap-cli/
 ├── src/
-│   ├── index.ts            # 入口：初始化 → 解析 → 分发
+│   ├── index.ts            # 入口：解析 → 分发
 │   ├── cli.ts              # 子命令解析与帮助文案
 │   ├── run.ts              # Cursor Agent 创建与流式输出
 │   ├── prompt.ts           # ask / skill prompt 组装
@@ -73,6 +73,7 @@ apps/ap-cli/
 
 | 类型  | 命令                           | 说明                                                                |
 | ----- | ------------------------------ | ------------------------------------------------------------------- |
+| 内建  | `ap init [-C]`                 | 安装 skill 与 work-data 种子到 `.agents/`，不调用 Agent             |
 | 内建  | `ap login`                     | 浏览器登录 Cursor SDK，凭证写入 `~/.cursor/sdk/auth.json`           |
 | 内建  | `ap help [topic]`              | 顶层帮助或单个 skill 帮助                                           |
 | 内建  | `ap task-create [--name]`      | 从模板创建任务到 `tasks/todo/`，不调用 Agent                        |
@@ -87,12 +88,12 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 
 ### 工作区初始化
 
-每次 `ap` 启动时调用 `installApWorkspace()`：
+由 `ap init` 调用 `installApWorkspace()`：
 
 1. **Skills 安装** — 用 `apps/ap-cli/src/skills` 覆盖 `.agents/skills` 中的同名目录；不删除其他 skill
 2. **Work-data 补齐** — 把 `apps/ap-cli/src/work-data` 拷到 `.agents/ap-config/work-data`；`*-template.md` 始终覆盖，其余同名文件跳过
 
-`pnpm install` 时 `prepare` 脚本也会执行 skill 安装。
+未初始化时执行 skill 或提问会提示先运行 `ap init`。
 
 ### Agent 执行流程
 
@@ -113,7 +114,7 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 
 - 环境变量 `CURSOR_API_KEY`
 - 或 `ap login` 写入 SDK 凭证
-- `help` / `task-create` / `decision-create` 不需要 Key
+- `help` / `init` / `task-create` / `decision-create` 不需要 Key
 
 ### 与 work-data 的约定
 

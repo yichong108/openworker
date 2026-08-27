@@ -5,7 +5,14 @@
 
 import { Cursor } from '@cursor/sdk'
 
-import { parseArgs, printCreateHelp, printHelp, printSkillHelp, printViewHelp } from './cli.js'
+import {
+  parseArgs,
+  printCreateHelp,
+  printHelp,
+  printInitHelp,
+  printSkillHelp,
+  printViewHelp
+} from './cli.js'
 import { createWorkDataFile } from './create-work-data.js'
 import {
   findWorkspaceRoot,
@@ -36,18 +43,10 @@ async function requireCursorAuth(): Promise<string | undefined | null> {
 }
 
 /**
- * CLI 主流程：初始化工作区 → 发现 skill → 解析子命令 → 登录或执行。
+ * CLI 主流程：发现 skill → 解析子命令 → 登录或执行。
  */
 async function main(): Promise<void> {
   loadApEnv()
-  try {
-    installApWorkspace()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(`[ap] ${message}`)
-    process.exitCode = 1
-    return
-  }
 
   const workspaceRoot = findWorkspaceRoot()
   const skills = listAgentsSkills(workspaceRoot)
@@ -76,6 +75,10 @@ async function main(): Promise<void> {
       printViewHelp()
       return
     }
+    if (command.topic === 'init') {
+      printInitHelp()
+      return
+    }
     if (command.topic) {
       const skill = findAgentsSkill(workspaceRoot, command.topic)
       if (!skill) {
@@ -93,6 +96,17 @@ async function main(): Promise<void> {
 
   if (command.command === 'login') {
     await loginCursorSdk()
+    return
+  }
+
+  if (command.command === 'init') {
+    try {
+      installApWorkspace(command.cwd)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[ap] ${message}`)
+      process.exitCode = 1
+    }
     return
   }
 
@@ -134,6 +148,11 @@ async function main(): Promise<void> {
   }
 
   if (command.command === 'ask') {
+    if (skills.length === 0) {
+      console.error('未发现 skill。请先运行：\n  ap init')
+      process.exitCode = 1
+      return
+    }
     const code = await runApAsk({
       query: command.query,
       skills,

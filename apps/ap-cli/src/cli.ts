@@ -9,6 +9,7 @@ import { resolveAgentsSkill, skillShortName, type AgentsSkill } from './skills-f
 
 /** 与 skill 目录名冲突时优先的内建命令 */
 export const AP_RESERVED_COMMANDS = [
+  'init',
   'login',
   'help',
   'task-create',
@@ -22,6 +23,11 @@ export type ApCreateCommand = 'task-create' | 'decision-create'
 /** ap 子命令解析结果 */
 export type ApCliCommand =
   | { command: 'help'; topic?: string }
+  | {
+      command: 'init'
+      /** 仓库工作区根目录 */
+      cwd: string
+    }
   | { command: 'login' }
   | {
       command: 'task-create'
@@ -77,7 +83,7 @@ export type ApCliCommand =
 export function printHelp(skills: readonly AgentsSkill[] = []): void {
   const skillLines =
     skills.length === 0
-      ? '  （未发现 `.agents/skills/*/SKILL.md`）'
+      ? '  （未发现 `.agents/skills/*/SKILL.md`，请先运行 ap init）'
       : skills
           .map((skill) => {
             const short = skillShortName(skill.name)
@@ -95,6 +101,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
   ap <skill> [options] [extra...]
   ap task-create [--name <文件名>]
   ap decision-create [--name <文件名>]
+  ap init [-C <项目根>]
   ap view [--port <n>] [--no-open]
   ap login
   ap help [skill]
@@ -105,6 +112,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
 --mode 是 Cursor SDK 对话模式：agent（默认，直接改代码）或 plan（先出方案）。
 
 内建命令:
+  init                 安装 skill 与 work-data 种子到 .agents/（不调用 Agent）
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
   task-create          从模板创建任务到 tasks/todo/（不调用 Agent）
   decision-create      从模板创建决策到 decisions/（不调用 Agent）
@@ -123,6 +131,7 @@ ${skillLines}
   ap ap-task-execute --task TASK-001
   ap ap-refactor
   ap refactor
+  ap init
   ap login
   ap task-create
   ap task-create --name 用户登录
@@ -207,6 +216,26 @@ export function printCreateHelp(command: ApCreateCommand): void {
 }
 
 /**
+ * 打印 ap init 的用法。
+ */
+export function printInitHelp(): void {
+  console.log(`ap init — 安装 skill 与 work-data 种子到 .agents/
+
+用法:
+  ap init
+  ap init -C <项目根>
+
+选项:
+  -C, --cwd <path>     项目根目录（默认 git/pnpm 仓库根）
+  -h, --help           显示帮助
+
+覆盖安装包内 skill 到 .agents/skills/<同名目录>，不删除其他 skill。
+补齐 work-data 到 .agents/ap-config/work-data；*-template.md 始终覆盖，其余同名文件跳过。
+不需要 Cursor API Key。
+`)
+}
+
+/**
  * 打印 ap view 的用法。
  */
 export function printViewHelp(): void {
@@ -231,6 +260,41 @@ export function printViewHelp(): void {
   AP_WEB_PORT_MIN      扫描起始端口（默认 10000）
   AP_WEB_PORT_MAX      扫描结束端口（默认 10099）
 `)
+}
+
+/**
+ * 解析 ap init 的选项。
+ *
+ * @param argv - 子命令之后的参数
+ * @param defaults - cwd 默认值
+ */
+export function parseInitArgs(
+  argv: string[],
+  defaults: { cwd: string }
+): { help: true } | { help: false; cwd: string } {
+  let cwd = defaults.cwd
+  let help = false
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg === '-h' || arg === '--help') {
+      help = true
+      continue
+    }
+    if (arg === '-C' || arg === '--cwd') {
+      const next = argv[++i]
+      if (!next) throw new Error(`${arg} 需要路径参数`)
+      cwd = resolve(next)
+      continue
+    }
+    if (arg.startsWith('-')) {
+      throw new Error(`未知选项: ${arg}`)
+    }
+    throw new Error(`不接受额外参数: ${arg}`)
+  }
+
+  if (help) return { help: true }
+  return { help: false, cwd }
 }
 
 /**
@@ -417,7 +481,7 @@ export function parseCreateArgs(
 /**
  * 解析 process.argv（跳过 node / 脚本路径）为 ap 子命令。
  *
- * 第一段是 login/help/view/task-create/decision-create 走内建命令；
+ * 第一段是 init/login/help/view/task-create/decision-create 走内建命令；
  * 是已发现的 skill 名（含 ap- 短名）则执行该 skill；
  * 否则整段当作用户提问（ask）。提问可用 --skill 钉死 skill。
  * --mode 传给 Cursor SDK（agent | plan，默认 agent）。
@@ -441,6 +505,14 @@ export function parseArgs(
   if (!first || first === 'help' || first === '-h' || first === '--help') {
     const topic = first === 'help' ? args[1] : undefined
     return { command: 'help', ...(topic ? { topic } : {}) }
+  }
+
+  if (first === 'init') {
+    const parsed = parseInitArgs(args.slice(1), { cwd: defaults.cwd })
+    if (parsed.help) {
+      return { command: 'help', topic: 'init' }
+    }
+    return { command: 'init', cwd: parsed.cwd }
   }
 
   if (first === 'login') {
