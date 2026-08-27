@@ -3,12 +3,15 @@ import { join, resolve } from 'node:path'
 /**
  * 解析用户敲命令时的工作目录。
  *
- * pnpm `--filter` 会在包目录里启动 Next，`process.cwd()` 变成 `apps/ap-web`。
+ * 优先 `AP_WEB_LAUNCH_DIR`（ap view 注入，npx 不会覆盖）。
+ * pnpm `--filter` 会在包目录里启动 Next，`process.cwd()` 变成 `apps/ap-web`；
  * `INIT_CWD` 才是敲 `pnpm ap-web:dev` 时的目录。未设置时回退 `process.cwd()`。
  *
  * @returns 绝对路径
  */
 export function getApWebLaunchDir(): string {
+  const explicit = process.env.AP_WEB_LAUNCH_DIR?.trim()
+  if (explicit) return resolve(explicit)
   const initCwd = process.env.INIT_CWD?.trim()
   return resolve(initCwd && initCwd.length > 0 ? initCwd : process.cwd())
 }

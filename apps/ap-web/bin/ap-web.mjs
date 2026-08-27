@@ -2,7 +2,8 @@
 /**
  * @openworker/ap-web 入口：启动 standalone Next 服务器。
  * 本地 workspace：`.next/standalone` + 包内依赖；发布包：`standalone-dist` + npm 安装的依赖。
- * PORT 默认 10000；INIT_CWD 由 ap view 注入。
+ * PORT 默认 10000；INIT_CWD / AP_WEB_LAUNCH_DIR 由 ap view 注入。
+ * 监听地址用 AP_WEB_HOSTNAME，默认 127.0.0.1，不读取系统 HOSTNAME（电脑名）。
  */
 
 import { spawn } from 'node:child_process'
@@ -12,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const port = process.env.PORT?.trim() || '10000'
-const hostname = process.env.HOSTNAME?.trim() || '127.0.0.1'
+const hostname = process.env.AP_WEB_HOSTNAME?.trim() || '127.0.0.1'
 
 const serverCandidates = [
   join(packageRoot, 'standalone-dist', 'server.js'),

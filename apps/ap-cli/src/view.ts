@@ -4,6 +4,7 @@
 
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -14,7 +15,8 @@ const execFileAsync = promisify(execFile)
 const DEFAULT_PORT_MIN = 10_000
 const DEFAULT_PORT_MAX = 10_099
 const HEALTH_TIMEOUT_MS = 2_000
-const READY_TIMEOUT_MS = 60_000
+/** 首次 npx 安装 Next/antd 等依赖常超过 1 分钟 */
+const READY_TIMEOUT_MS = 180_000
 const READY_POLL_MS = 500
 
 /** /api/health 响应 */
@@ -88,6 +90,19 @@ function writeSavedPort(cwd: string, port: number): void {
 }
 
 /**
+ * 探测 127.0.0.1 上该端口能否 bind（排除已被占用或 Windows 保留端口）。
+ */
+function canListen(port: number): Promise<boolean> {
+  return new Promise((resolveListen) => {
+    const server = createServer()
+    server.once('error', () => resolveListen(false))
+    server.listen(port, '127.0.0.1', () => {
+      server.close(() => resolveListen(true))
+    })
+  })
+}
+
+/**
  * 请求 ap-web /api/health；无服务或超时返回 null。
  */
 async function fetchHealth(port: number): Promise<ApWebHealth | null> {
@@ -125,7 +140,8 @@ export async function resolvePortForProject(cwd: string): Promise<number> {
   for (let port = min; port <= max; port++) {
     const health = await fetchHealth(port)
     if (!health) {
-      return port
+      if (await canListen(port)) return port
+      continue
     }
     if (health.ok && health.launchDir && pathsEqual(health.launchDir, projectRoot)) {
       return port
@@ -148,6 +164,9 @@ export async function resolveExplicitPort(cwd: string, port: number): Promise<nu
   const projectRoot = resolve(cwd)
   const health = await fetchHealth(port)
   if (!health) {
+    if (!(await canListen(port))) {
+      throw new Error(`端口 ${port} 已被占用`)
+    }
     return port
   }
   if (health.ok && health.launchDir && pathsEqual(health.launchDir, projectRoot)) {
@@ -192,19 +211,23 @@ function resolveNpxCommand(): string {
 }
 
 /**
- * 通过 npx 启动 ap-web：-y 跳过安装确认，--ignore-existing 避免缓存卡住旧 patch。
+ * 通过 npx 启动 ap-web。
+ * `--prefer-online` 取该 minor 下最新 patch；HOSTNAME 固定 127.0.0.1，避免系统电脑名导致 Next 绑错地址。
  */
 function spawnApWebServer(cwd: string, port: number): ChildProcess {
+  const launchDir = resolve(cwd)
   const env = {
     ...process.env,
-    INIT_CWD: resolve(cwd),
+    AP_WEB_LAUNCH_DIR: launchDir,
+    INIT_CWD: launchDir,
     PORT: String(port),
-    HOSTNAME: process.env.HOSTNAME?.trim() || '127.0.0.1'
+    HOSTNAME: '127.0.0.1'
   }
 
   const version = resolveApWebVersionRange()
   process.stderr.write(`[ap view] 正在通过 npx 启动 @openworker/ap-web@${version}…\n`)
-  return spawn(resolveNpxCommand(), ['-y', '--ignore-existing', `@openworker/ap-web@${version}`], {
+  return spawn(resolveNpxCommand(), ['-y', '--prefer-online', `@openworker/ap-web@${version}`], {
+    cwd: launchDir,
     env,
     stdio: 'inherit',
     shell: process.platform === 'win32'
@@ -212,21 +235,64 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
 }
 
 /**
- * 轮询 /api/health 直到本项目实例就绪。
+ * 轮询 /api/health 直到本项目实例就绪；子进程提前退出则立即失败。
  */
-async function waitUntilReady(cwd: string, port: number): Promise<void> {
-  const deadline = Date.now() + READY_TIMEOUT_MS
+async function waitUntilReady(cwd: string, port: number, child: ChildProcess): Promise<void> {
   const projectRoot = resolve(cwd)
-
-  while (Date.now() < deadline) {
-    const health = await fetchHealth(port)
-    if (health?.ok && health.launchDir && pathsEqual(health.launchDir, projectRoot)) {
-      return
-    }
-    await new Promise((r) => setTimeout(r, READY_POLL_MS))
+  const deadline = Date.now() + READY_TIMEOUT_MS
+  const exited = child.exitCode !== null || child.signalCode !== null
+  if (exited) {
+    throw new Error(
+      `ap-web 在就绪前退出（${child.signalCode ? `signal ${child.signalCode}` : `code ${child.exitCode ?? 'null'}`}）。请查看上方 npx 输出。`
+    )
   }
 
-  throw new Error(`等待 ap-web 就绪超时（${READY_TIMEOUT_MS / 1000}s）：http://127.0.0.1:${port}/`)
+  await new Promise<void>((resolveReady, rejectReady) => {
+    let settled = false
+    const finish = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      child.off('exit', onExit)
+      child.off('error', onError)
+      fn()
+    }
+    const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+      finish(() =>
+        rejectReady(
+          new Error(
+            `ap-web 在就绪前退出（${signal ? `signal ${signal}` : `code ${code ?? 'null'}`}）。请查看上方 npx 输出。`
+          )
+        )
+      )
+    }
+    const onError = (error: Error): void => {
+      finish(() => rejectReady(error))
+    }
+
+    child.once('exit', onExit)
+    child.once('error', onError)
+
+    const poll = async (): Promise<void> => {
+      while (Date.now() < deadline) {
+        if (settled) return
+        const health = await fetchHealth(port)
+        if (health?.ok && health.launchDir && pathsEqual(health.launchDir, projectRoot)) {
+          finish(() => resolveReady())
+          return
+        }
+        await new Promise((r) => setTimeout(r, READY_POLL_MS))
+      }
+      finish(() =>
+        rejectReady(
+          new Error(
+            `等待 ap-web 就绪超时（${READY_TIMEOUT_MS / 1000}s）：http://127.0.0.1:${port}/。首次启动需下载依赖，请保持窗口打开后重试。`
+          )
+        )
+      )
+    }
+
+    void poll()
+  })
 }
 
 /**
@@ -281,7 +347,7 @@ export async function runApView(input: RunApViewInput): Promise<number> {
     if (spawnError) {
       throw spawnError
     }
-    await waitUntilReady(projectRoot, port)
+    await waitUntilReady(projectRoot, port, child)
     writeSavedPort(projectRoot, port)
     process.stderr.write(`[ap view] http://127.0.0.1:${port}/ （INIT_CWD=${projectRoot}）\n`)
     if (input.open) {
