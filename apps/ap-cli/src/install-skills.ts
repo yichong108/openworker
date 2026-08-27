@@ -5,9 +5,9 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 
-import { findWorkspaceRoot, getPackageRoot } from './env.js'
+import { getPackageRoot } from './env.js'
 
 /** work-data 拷贝统计：新增、覆盖模板、跳过的同名文件 */
 type WorkDataCopyStats = {
@@ -72,19 +72,19 @@ function copyWorkDataTree(source: string, dest: string): WorkDataCopyStats {
 }
 
 /**
- * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖仓库根 `.agents/skills` 中的同名目录。
+ * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖 `startDir/.agents/skills` 中的同名目录。
  *
- * 仅由 `ap init` 调用。只覆盖源目录中存在的 skill，
- * 不删除 `.agents`、`.agents/skills` 或其他无关 skill。
+ * 仅由 `ap init` 调用。目标只允许 `startDir` 下，不向上查找仓库根。
+ * 只覆盖源目录中存在的 skill，不删除 `.agents`、`.agents/skills` 或其他无关 skill。
  *
- * @param startDir - 查找项目根的起点，默认 process.cwd()
- * @returns 安装目标根路径（`.agents/skills`）
+ * @param startDir - 安装目标目录，默认 process.cwd()
+ * @returns 安装目标根路径（`startDir/.agents/skills`）
  */
 export function installApSkills(startDir: string = process.cwd()): string {
   const packageRoot = getPackageRoot()
-  const workspaceRoot = findWorkspaceRoot(startDir)
+  const targetRoot = resolve(startDir)
   const source = join(packageRoot, 'src', 'skills')
-  const destRoot = join(workspaceRoot, '.agents', 'skills')
+  const destRoot = join(targetRoot, '.agents', 'skills')
 
   if (!existsSync(source)) {
     throw new Error(`未找到 skills 源目录: ${source}`)
@@ -108,18 +108,19 @@ export function installApSkills(startDir: string = process.cwd()): string {
 }
 
 /**
- * 把 `apps/ap-cli/src/work-data` 补齐到仓库根 `.agents/ap-config/work-data`。
+ * 把 `apps/ap-cli/src/work-data` 补齐到 `startDir/.agents/ap-config/work-data`。
  *
+ * 目标只允许 `startDir` 下，不向上查找仓库根。
  * `*-template.md` 覆盖已有文件；其余同名文件不覆盖，也不删除目标里多出来的内容。
  *
- * @param startDir - 查找项目根的起点，默认 process.cwd()
- * @returns 安装目标路径（`.agents/ap-config/work-data`）
+ * @param startDir - 安装目标目录，默认 process.cwd()
+ * @returns 安装目标路径（`startDir/.agents/ap-config/work-data`）
  */
 export function installApConfig(startDir: string = process.cwd()): string {
   const packageRoot = getPackageRoot()
-  const workspaceRoot = findWorkspaceRoot(startDir)
+  const targetRoot = resolve(startDir)
   const source = join(packageRoot, 'src', 'work-data')
-  const dest = join(workspaceRoot, '.agents', 'ap-config', 'work-data')
+  const dest = join(targetRoot, '.agents', 'ap-config', 'work-data')
 
   if (!existsSync(source)) {
     throw new Error(`未找到 work-data 源目录: ${source}`)
@@ -133,8 +134,9 @@ export function installApConfig(startDir: string = process.cwd()): string {
 }
 
 /**
- * 执行 ap 工作区初始化
- * @param startDir - 查找项目根的起点，默认 process.cwd()
+ * 执行 ap 工作区初始化：skill 与 work-data 都装到 `startDir` 下，不向上查找仓库根。
+ *
+ * @param startDir - 安装目标目录，默认 process.cwd()
  */
 export function installApWorkspace(startDir: string = process.cwd()): void {
   installApSkills(startDir)
