@@ -86,7 +86,7 @@ function copyWorkDataTree(source: string, dest: string): WorkDataCopyStats {
 }
 
 /**
- * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖 `startDir/.agents/ap-config/skills` 中的同名目录。
+ * 用 `apps/ap-cli/src/ap-config/skills` 下的各个 skill 覆盖 `startDir/.agents/ap-config/skills` 中的同名目录。
  *
  * 仅由 `ap init` 调用。目标只允许 `startDir` 下，不向上查找仓库根。
  * 内置 skill 不写入 `.agents/skills`，避免被 Cursor 等外部工具发现。
@@ -98,7 +98,7 @@ function copyWorkDataTree(source: string, dest: string): WorkDataCopyStats {
 export function installApSkills(startDir: string = process.cwd()): string {
   const packageRoot = getPackageRoot()
   const targetRoot = resolve(startDir)
-  const source = join(packageRoot, 'src', 'skills')
+  const source = join(packageRoot, 'src', 'ap-config', 'skills')
   const destRoot = join(targetRoot, '.agents', 'ap-config', 'skills')
 
   if (!existsSync(source)) {
@@ -183,7 +183,7 @@ export function ensureApConfigJson(startDir: string = process.cwd()): string {
 }
 
 /**
- * 把 `apps/ap-cli/src/work-data` 补齐到 `startDir/.agents/ap-config/work-data`。
+ * 把 `apps/ap-cli/src/ap-config/work-data` 补齐到 `startDir/.agents/ap-config/work-data`。
  *
  * 目标只允许 `startDir` 下，不向上查找仓库根。
  * `*-template.md` 覆盖已有文件；其余同名文件不覆盖，也不删除目标里多出来的内容。
@@ -194,7 +194,7 @@ export function ensureApConfigJson(startDir: string = process.cwd()): string {
 export function installApConfig(startDir: string = process.cwd()): string {
   const packageRoot = getPackageRoot()
   const targetRoot = resolve(startDir)
-  const source = join(packageRoot, 'src', 'work-data')
+  const source = join(packageRoot, 'src', 'ap-config', 'work-data')
   const dest = join(targetRoot, '.agents', 'ap-config', 'work-data')
 
   if (!existsSync(source)) {

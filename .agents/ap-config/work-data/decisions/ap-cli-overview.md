@@ -59,12 +59,13 @@ apps/ap-cli/
 │   ├── create-work-data.ts # task-create / decision-create
 │   ├── env.ts              # 仓库根、环境变量、模型/模式
 │   ├── view.ts             # ap view：启动 ap-web standalone
-│   ├── skills/             # skill 源（安装到 .agents/ap-config/skills）
-│   │   ├── ap-task-execute/
-│   │   └── ap-refactor/
-│   └── work-data/          # work-data 种子（安装到 .agents/ap-config/work-data）
-│       ├── tasks/
-│       └── decisions/
+│   └── ap-config/          # 种子（安装到 .agents/ap-config）
+│       ├── skills/         # skill 源（安装到 .agents/ap-config/skills）
+│       │   ├── ap-task-execute/
+│       │   └── ap-refactor/
+│       └── work-data/      # work-data 种子（安装到 .agents/ap-config/work-data）
+│           ├── tasks/
+│           └── decisions/
 ├── dist/                   # 构建产物（npm publish）
 └── package.json            # bin: ap → dist/index.js
 ```
@@ -90,8 +91,8 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 
 由 `ap init` 调用 `installApWorkspace()`：
 
-1. **Skills 安装** — 用 `apps/ap-cli/src/skills` 覆盖 `.agents/ap-config/skills` 中的同名目录；不写入 `.agents/skills`，也不删除其他 skill
-2. **Work-data 补齐** — 把 `apps/ap-cli/src/work-data` 拷到 `.agents/ap-config/work-data`；`*-template.md` 始终覆盖，其余同名文件跳过
+1. **Skills 安装** — 用 `apps/ap-cli/src/ap-config/skills` 覆盖 `.agents/ap-config/skills` 中的同名目录；不写入 `.agents/skills`，也不删除其他 skill
+2. **Work-data 补齐** — 把 `apps/ap-cli/src/ap-config/work-data` 拷到 `.agents/ap-config/work-data`；`*-template.md` 始终覆盖，其余同名文件跳过
 
 未初始化时执行 skill 或提问会提示先运行 `ap init`。读取 skill 时同时发现 `.agents/ap-config/skills` 与 `.agents/skills`（同名时内置优先）。
 
@@ -131,7 +132,7 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 └── decisions/      ← 架构决策（AI 可读不可改）
 ```
 
-核心 skill `ap-task-execute` 负责串行执行任务队列，约定见 `apps/ap-cli/src/skills/ap-task-execute/SKILL.md`。
+核心 skill `ap-task-execute` 负责串行执行任务队列，约定见 `apps/ap-cli/src/ap-config/skills/ap-task-execute/SKILL.md`。
 
 ### 与 monorepo 的关系
 

@@ -72,7 +72,7 @@ pnpm ap:start:dist help
 pnpm ap:start:dist task-create --name 构建冒烟
 ```
 
-更接近发布包时，在 `apps/ap-cli/` 下执行 `pnpm pack`，检查生成的 tarball 是否包含 `dist/`、`src/skills`、`src/work-data`。
+更接近发布包时，在 `apps/ap-cli/` 下执行 `pnpm pack`，检查生成的 tarball 是否包含 `dist/`、`src/ap-config`。
 
 ## 要求
 

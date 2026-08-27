@@ -81,7 +81,7 @@ function readTemplate(kind: WorkDataKind, cwd: string): string {
 
   const candidates = [
     join(cwd, '.agents', 'ap-config', 'work-data', relative),
-    join(getPackageRoot(), 'src', 'work-data', relative)
+    join(getPackageRoot(), 'src', 'ap-config', 'work-data', relative)
   ]
 
   for (const path of candidates) {

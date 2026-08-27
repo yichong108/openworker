@@ -34,4 +34,4 @@
 
 ### ap 数据工作区
 
-- AI 需要根据 `.agents/ap-config/work-data` 目录下的约定进行处理。`apps/ap-cli/src/work-data` 是种子：`ap init` 时拷贝到 `.agents/ap-config/work-data`，`*-template.md` 会覆盖，其余已存在的同名文件不覆盖。内置技能从 `apps/ap-cli/src/skills` 覆盖安装到 `.agents/ap-config/skills/<skill>`，不写入 `.agents/skills`，也不删除 `.agents` 或其他 skill。`pnpm ap <skill>` 执行指定 skill（`ap-` 开头的也可用短名，如 `task-execute`）；读取时同时发现 `.agents/ap-config/skills` 与 `.agents/skills`（同名时内置目录优先）。`pnpm ap "<提问>"` 由 Agent 从已发现 skill 中选一个执行，也可用 `--skill` 钉死 skill。`--mode` 为 Cursor SDK 对话模式（`agent` 默认 / `plan`）。
+- AI 需要根据 `.agents/ap-config/work-data` 目录下的约定进行处理。`apps/ap-cli/src/ap-config/work-data` 是种子：`ap init` 时拷贝到 `.agents/ap-config/work-data`，`*-template.md` 会覆盖，其余已存在的同名文件不覆盖。内置技能从 `apps/ap-cli/src/ap-config/skills` 覆盖安装到 `.agents/ap-config/skills/<skill>`，不写入 `.agents/skills`，也不删除 `.agents` 或其他 skill。`pnpm ap <skill>` 执行指定 skill（`ap-` 开头的也可用短名，如 `task-execute`）；读取时同时发现 `.agents/ap-config/skills` 与 `.agents/skills`（同名时内置目录优先）。`pnpm ap "<提问>"` 由 Agent 从已发现 skill 中选一个执行，也可用 `--skill` 钉死 skill。`--mode` 为 Cursor SDK 对话模式（`agent` 默认 / `plan`）。
