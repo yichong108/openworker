@@ -192,7 +192,7 @@ function resolveNpxCommand(): string {
 }
 
 /**
- * 通过 npx 启动 ap-web（--ignore-existing，避免缓存卡住旧 patch）。
+ * 通过 npx 启动 ap-web：-y 跳过安装确认，--ignore-existing 避免缓存卡住旧 patch。
  */
 function spawnApWebServer(cwd: string, port: number): ChildProcess {
   const env = {
@@ -204,7 +204,7 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
 
   const version = resolveApWebVersionRange()
   process.stderr.write(`[ap view] 正在通过 npx 启动 @openworker/ap-web@${version}…\n`)
-  return spawn(resolveNpxCommand(), ['--ignore-existing', `@openworker/ap-web@${version}`], {
+  return spawn(resolveNpxCommand(), ['-y', '--ignore-existing', `@openworker/ap-web@${version}`], {
     env,
     stdio: 'inherit',
     shell: process.platform === 'win32'

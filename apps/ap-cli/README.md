@@ -56,7 +56,7 @@ ap view --no-open
 ap view --port 10050
 ```
 
-- 通过 `npx --ignore-existing` 启动 `@openworker/ap-web`（按本 CLI 的 `major.minor` 取 `@x.y.x` 当前最新 patch）
+- 通过 `npx -y --ignore-existing` 启动 `@openworker/ap-web`（按本 CLI 的 `major.minor` 取 `@x.y.x` 当前最新 patch，`-y` 跳过安装确认）
 - 多项目并行时各目录独立端口，记录在 `.agents/ap-config/web-data/ap-web.port`
 - 环境变量：`AP_WEB_PORT_MIN`（默认 10000）、`AP_WEB_PORT_MAX`（默认 10099）
 
