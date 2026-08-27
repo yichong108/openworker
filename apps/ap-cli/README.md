@@ -58,7 +58,7 @@ ap view --port 10050
 - 多项目并行时各目录独立端口，记录在 `.agents/ap-config/web-data/ap-web.port`
 - 环境变量：`AP_WEB_PORT_MIN`（默认 10000）、`AP_WEB_PORT_MAX`（默认 10099）
 
-本仓库内验证 standalone：先 `pnpm ap-web:build && pnpm --filter @openworker/ap-web prepare-standalone`，再 `pnpm ap view`（会读取 `apps/ap-web/.publish-staging/`）。
+本仓库内 `pnpm ap view` 走 workspace 的 `@openworker/ap-web`（需先 `pnpm ap-web:build`，用 `.next/standalone` + 仓库里的 `next`）。`.publish-staging` 只用于 `npm publish`，不要指望那里有 `node_modules`。
 
 ## 验证构建
 

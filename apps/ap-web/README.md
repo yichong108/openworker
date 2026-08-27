@@ -20,14 +20,39 @@ pnpm ap-web:dev
 
 执行 skill / 任务 Agent 需要 DeepSeek API Key：在配置抽屉填写，或设置 `DEEPSEEK_API_KEY`（`apps/ap-web/.env`、仓库根 `.env` 或 `apps/ap-cli/.env`）。`pnpm dev` 前会通过 turbo 自动 build 上游 workspace 包。
 
-## 发布（standalone）
+## 发布（npm 依赖，不带 standalone/node_modules）
 
-`next build` 产出 standalone，由 `scripts/prepare-standalone.mjs` 组装 `.publish-staging/`（含 `bin/ap-web.mjs` 与临时 `package.json`），再 `npm publish`：
+源码 `package.json` 保持 `private: true` 与 `workspace:*`，不能从 `apps/ap-web` 直接 publish。
+
+```bash
+pnpm ap-web:build
+pnpm --filter @openworker/ap-web prepare-publish
+```
+
+脚本会写入 `apps/ap-web/.publish-staging/`（gitignore）：
+
+- 发布用 `package.json`（`next` / `react` 等为真实版本号，无 `workspace:*`）
+- `bin/ap-web.mjs`
+- `standalone-dist/`：`.next/standalone` **不含任何 `node_modules`**
+- **不会**在这里执行 `npm install`（完整 `next`+`antd` 可达数百 MB，且本来就不会打进 tarball）
+
+`files` 只有 `bin` 和 `standalone-dist`，发布包里没有 `node_modules`。用户 `npm i @openworker/ap-web` 时才会在自己机器上装依赖。
+
+本仓库内看板：`pnpm ap-web:build` 后 `pnpm ap view`（走 workspace 包的 `.next/standalone`，不经过 `.publish-staging`）。
+
+本机若要验证**发布目录**能否启动（会占本地磁盘，可装完删）：
+
+```bash
+cd apps/ap-web/.publish-staging
+npm install --omit=dev
+node bin/ap-web.mjs
+```
+
+发布：
 
 ```bash
 pnpm release:ap-web
+# 或在 .publish-staging 内：npm publish --access public
 ```
-
-发布后用户通过 `ap view` 启动（默认端口 10000–10099，由 `INIT_CWD` 对齐项目 `.agents/`）。开发仍用 `pnpm ap-web:dev`（:3011）。
 
 探活：`GET /api/health` 返回 `{ ok, launchDir }`，供 `ap view` 识别多实例。

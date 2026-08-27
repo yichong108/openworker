@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { getPackageRoot, findWorkspaceRoot } from './env.js'
+import { getPackageRoot } from './env.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -168,32 +168,37 @@ function readApWebPackageVersion(): string {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
     optionalDependencies?: Record<string, string>
   }
-  return pkg.optionalDependencies?.['@openworker/ap-web']?.trim() || '0.1.0'
+  // 如果没有指定就按最新的版本号
+  return pkg.optionalDependencies?.['@openworker/ap-web']?.trim() || 'latest'
 }
 
 /**
- * 解析已安装的 @openworker/ap-web bin 路径。
+ * 判断 ap-web 包根是否已有可启动的 standalone。
+ * 发布包用 standalone-dist；本地 workspace 用 next build 产出的 .next/standalone。
+ */
+function hasStandaloneServer(pkgRoot: string): boolean {
+  return [
+    join(pkgRoot, 'standalone-dist', 'server.js'),
+    join(pkgRoot, 'standalone-dist', 'apps', 'ap-web', 'server.js'),
+    join(pkgRoot, '.next', 'standalone', 'server.js'),
+    join(pkgRoot, '.next', 'standalone', 'apps', 'ap-web', 'server.js')
+  ].some((candidate) => existsSync(candidate))
+}
+
+/**
+ * 解析已安装的 @openworker/ap-web bin。
+ * 只认包本身（bin + standalone）；发布包不带 node_modules，不在这里找 next。
  */
 function resolveInstalledApWebBin(): string | null {
-  const stagingBin = join(
-    findWorkspaceRoot(),
-    'apps',
-    'ap-web',
-    '.publish-staging',
-    'bin',
-    'ap-web.mjs'
-  )
-  if (existsSync(stagingBin)) {
-    return stagingBin
-  }
-
   try {
     const require = createRequire(import.meta.url)
     const pkgJson = require.resolve('@openworker/ap-web/package.json')
-    const binPath = join(dirname(pkgJson), 'bin', 'ap-web.mjs')
-    if (existsSync(binPath)) {
-      return binPath
+    const pkgRoot = dirname(pkgJson)
+    const binPath = join(pkgRoot, 'bin', 'ap-web.mjs')
+    if (!existsSync(binPath) || !hasStandaloneServer(pkgRoot)) {
+      return null
     }
+    return binPath
   } catch {
     // optional 未安装
   }
@@ -219,6 +224,7 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
     HOSTNAME: process.env.HOSTNAME?.trim() || '127.0.0.1'
   }
 
+  // 方法一：通过package.json声明的对应依赖包启动
   const installedBin = resolveInstalledApWebBin()
   if (installedBin) {
     return spawn(process.execPath, [installedBin], {
@@ -227,9 +233,11 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
     })
   }
 
+  // 方法二：通过 npx 去下载启动，注意使用~号来安装最新版本也有npx缓存问题导致不是下载最新的，
+  // 所以需要使用--ignore-existing来忽略缓存（npx默认是会缓存的也不知道什么时候失效，包大小不大）
   const version = readApWebPackageVersion()
   process.stderr.write(`[ap view] 正在通过 npx 启动 @openworker/ap-web@${version}…\n`)
-  return spawn(resolveNpxCommand(), [`@openworker/ap-web@${version}`], {
+  return spawn(resolveNpxCommand(), ['--ignore-existing', `@openworker/ap-web@${version}`], {
     env,
     stdio: 'inherit',
     shell: process.platform === 'win32'

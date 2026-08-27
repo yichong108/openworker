@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * @openworker/ap-web 发布包入口：启动 standalone Next 服务器。
+ * @openworker/ap-web 入口：启动 standalone Next 服务器。
+ * 本地 workspace：`.next/standalone` + 包内依赖；发布包：`standalone-dist` + npm 安装的依赖。
  * PORT 默认 10000；INIT_CWD 由 ap view 注入。
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -16,12 +17,12 @@ const hostname = process.env.HOSTNAME?.trim() || '127.0.0.1'
 const serverCandidates = [
   join(packageRoot, 'standalone-dist', 'server.js'),
   join(packageRoot, 'standalone-dist', 'apps', 'ap-web', 'server.js'),
-  join(packageRoot, '.publish-staging', 'standalone-dist', 'server.js'),
-  join(packageRoot, '.publish-staging', 'standalone-dist', 'apps', 'ap-web', 'server.js')
+  join(packageRoot, '.next', 'standalone', 'server.js'),
+  join(packageRoot, '.next', 'standalone', 'apps', 'ap-web', 'server.js')
 ]
 const serverJs = serverCandidates.find((candidate) => existsSync(candidate))
 if (!serverJs) {
-  console.error('[ap-web] 未找到 standalone server.js，请先 build 并 prepare-standalone')
+  console.error('[ap-web] 未找到 standalone server.js，请先运行 pnpm ap-web:build')
   process.exit(1)
 }
 const serverDir = dirname(serverJs)
@@ -31,7 +32,10 @@ const child = spawn(process.execPath, [serverJs], {
   env: {
     ...process.env,
     PORT: port,
-    HOSTNAME: hostname
+    HOSTNAME: hostname,
+    NODE_PATH: [join(packageRoot, 'node_modules'), process.env.NODE_PATH]
+      .filter(Boolean)
+      .join(delimiter)
   },
   stdio: 'inherit'
 })

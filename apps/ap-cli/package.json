@@ -1,6 +1,6 @@
 {
   "name": "@openworker/ap",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "AI command pipeline with Cursor SDK",
   "keywords": [
     "ap",
@@ -56,7 +56,7 @@
     "dotenv": "^17.4.2"
   },
   "optionalDependencies": {
-    "@openworker/ap-web": "0.1.0"
+    "@openworker/ap-web": "~0.3.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -1,4 +1,9 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 /** @type {import('next').NextConfig} */
+
+const appDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * 本地任务看板需要 Node runtime 读写 markdown，不能做成 static export。
@@ -8,6 +13,12 @@ const nextConfig = {
   // 由 scripts/clean-next.mjs 按 lstat 清理；Next 自带 rmSync 会跟随
   // standalone 里指向真实 node_modules 的 junction，第二次 build 会把依赖删掉。
   cleanDistDir: false,
+  experimental: {
+    outputFileTracingRoot: path.join(appDir, '../..'),
+    outputFileTracingExcludes: {
+      '*': ['**/node_modules/sass/**', '**/node_modules/typescript/**', '**/node_modules/@types/**']
+    }
+  },
   reactStrictMode: true,
   transpilePackages: [
     '@openworker/ap-agent',
