@@ -1,6 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 chcp 936 >nul 2>&1
+title OpenWorker
 cd /d "%~dp0"
 set "SCRIPT_DIR=%CD%"
 set "NODE_VERSION=25.9.0"
@@ -20,10 +21,27 @@ exit /b 0
 
 :say
 call :init_color
-echo !AP_ORANGE!%~1!AP_RESET!
+set "AP_SAY=%~1"
+echo !AP_ORANGE!!AP_SAY!!AP_RESET!
+set "AP_SAY="
+exit /b 0
+
+:show_logo
+call :say "                                  /\_/\ "
+call :say "                                ( >o.o< )"
+call :say "                               (   =w=   )"
+call :say "                              (           )"
+call :say "                             (             )"
+call :say "                            (               )~"
+call :say "                             (_____________)"
+call :say "                               u         u"
 exit /b 0
 
 :show_welcome
+title OpenWorker
+cls
+echo.
+call :show_logo
 echo.
 call :say "你好，这里是 AI 任务助手。"
 call :say "我先帮你做一点准备工作，一共 5 小步，通常很快。"

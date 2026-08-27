@@ -36,10 +36,31 @@ AP_SEP="============================================================"
 
 # ---------- 用户可见输出 ----------
 say() {
-  printf '%b%s%b\n' "${AP_ORANGE}" "$1" "${AP_RESET}"
+  printf '%s%s%s\n' "${AP_ORANGE}" "$1" "${AP_RESET}"
+}
+
+show_logo() {
+  printf '\033]0;OpenWorker\007'
+  if [[ -t 1 ]] && command -v clear >/dev/null 2>&1; then
+    clear
+  fi
+  echo ""
+  while IFS= read -r line; do
+    printf '%s%s%s\n' "${AP_ORANGE}" "${line}" "${AP_RESET}"
+  done <<'EOF'
+                                  /\_/\ 
+                                ( >o.o< )
+                               (   =w=   )
+                              (           )
+                             (             )
+                            (               )~
+                             (_____________)
+                               u         u
+EOF
 }
 
 show_welcome() {
+  show_logo
   echo ""
   say "你好，这里是 AI 任务助手。"
   say "我先帮你做一点准备工作，一共 5 小步，通常很快。"
