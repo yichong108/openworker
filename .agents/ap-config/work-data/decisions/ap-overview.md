@@ -2,92 +2,46 @@
 
 - **Deciders:** Wang Zhang
 
-## Context
+## 版本更新
 
-AI-PIPELINE 是 OpenWorker 中面向本地 AI 软件生产的工具链，由 CLI（`apps/ap-cli`）与 Web 看板（`apps/ap-web`）组成。两者共用 `.agents/` 目录下的 Skill、任务 markdown 与决策文档，形成「命令行执行 + 可视化看板」的双端协作。
+1、需要配置安装时的ap版本
+为了后续版本的识别维护
 
-## Decision
+2、尽量保证数据和接口的不变性原子性，减少破坏性变更的影响
+ap命令内部对不同版本进行长期兼容。考虑这是尽量对用户体验的友好，和减少开发维护问题。
 
-### 系统定位
+3、当积累到一定量的破坏性变，根据生态情况考虑版本维护和升级
+目前还没到那个程度，只需要注意扩展性、稳定性。
 
-| 端  | 包名                 | 入口                                                  | 职责                                                          |
-| --- | -------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
-| CLI | `@openworker/ap`     | `ap` / `pnpm ap`                                      | Skill 执行、任务/决策创建、work-data 种子、`ap view` 启动看板 |
-| Web | `@openworker/ap-web` | `pnpm ap-web:dev` → :3011；发布后 `ap view` → :10000+ | 任务看板、拖拽改状态、任务 Agent 对话、Skill 工具集           |
+## 内置skills
 
-### 共享数据层（`.agents/`）
+1、内置skills默认不影响外部，也就是说外部默认不知道ap内置的skills
 
-```
-.agents/
-├── skills/                              ← Skill 插件（SKILL.md）
-│   ├── ap-task-execute/
-│   └── ap-refactor/
-└── ap-config/
-    ├── work-data/
-    │   ├── tasks/                       ← 任务 markdown（todo/doing/done/blocked）
-    │   └── decisions/                   ← 架构决策
-    ├── web-data/
-    │   ├── toolbox.json                 ← ap-web 工具集配置
-    │   ├── ap-web.port                  ← ap view 记录的本地端口（可不 commit）
-    │   └── chat/                        ← ap-web 任务对话历史
-    └── ai-config.local.json             ← ap-web DeepSeek 配置
-```
+2、skills本身比较特别，既是应用数据又是处理用户数据的引擎，对版本更新会有些影响。
+考虑这个的话，把skills、用户数据等ap-config目录下的数据作为整体的版本。对于skill小的更改
+会影响效果影响可能小，但大的更改比如改变用户数据接口等影响，这样又要处理兼容了，并且兼容成本不小。
 
-**核心约定：**
+3、ap可以读取.agents/skills，内置的在ap-config/builtin-skills下面
 
-- 任务状态以**所在目录**为准（`todo` / `doing` / `done` / `blocked`）
-- `plan/` 仅供人工，AI 不读写
-- 决策文档 AI 可读不可改
-- work-data 种子来自 `apps/ap-cli/src/work-data`，由 `ap` 启动时补齐
+## ap-cli和ap-web的相互影响
 
-### 双端协作关系
+1、两者的基础功能保持一致
+这应该是体验和维护的问题。在用户容错接受度比较好的情况下，尽量使用skills来处理，这样的扩展性比较强并且对外接口稳定，总体会好很多，副作用的处理也能够有一定的支持。
 
-```
-                    ┌─────────────────┐
-                    │   .agents/      │
-                    │  (文件即数据)    │
-                    └────────┬────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-     ┌────────────┐  ┌────────────┐  ┌────────────┐
-     │  ap-cli    │  │  ap-web    │  │  Cursor /  │
-     │  终端执行   │  │  看板管理   │  │  DeepSeek  │
-     └────────────┘  └────────────┘  └────────────┘
-```
+2、保持一致的方式
+目前功能不多，在代码层面上ap-cli和ap-web引擎是几乎独立的，采取的是不成文的协议来保持一致。
+可以通过ap-web引入ap-cli的代码接口来进行保持一致，这个可能是比较自然的事情。
 
-- **ap-cli**：在终端跑 Skill（如 `ap task-execute`），适合连续自动化流水线
-- **ap-web**：可视化任务列、编辑字段、移入 `doing` 时自动启动任务 Agent，适合日常任务管理与对话
-- 两端读写同一套任务 markdown，可交替使用
+3、发布方式
+ap-cli和ap-web的minor需要一致但patch可以不同，考虑发布维护量，如果cli的修改对web没有影响那么web可以不更新发布。
 
-### Agent 运行时差异
+## 保证ap-cli打开的ap-web是patch最新版本。
 
-|          | ap-cli                        | ap-web                                    |
-| -------- | ----------------------------- | ----------------------------------------- |
-| SDK      | `@cursor/sdk`                 | `@openworker/ap-agent`（ApAgentWithAGUI） |
-| 模型     | Cursor（composer 等）         | DeepSeek                                  |
-| 鉴权     | `CURSOR_API_KEY` / `ap login` | `DEEPSEEK_API_KEY` / 配置抽屉             |
-| 输出     | 终端 stdout/stderr            | Web UI + SSE 推送                         |
-| 执行方式 | 进程退出即结束                | 后台 Job + 内存 Map                       |
+问题：安装了ap-cli之后后面启动不会自动更新本身，也就是ap命令一直是旧的。
+1、这个通常不要自己更新自己，避免不必要的一些未知问题。
+解决方法是：需要外部程序或人为来进行升级处理
 
-> ap-web 已从 Cursor SDK 迁移至 DeepSeek（见任务 `task-20260826145900`）。ap-cli 仍使用 Cursor SDK。
-
-### 详细架构文档
-
-- [ap-cli 系统架构](./ap-cli-overview.md) — CLI 子命令、Skill 安装、Cursor Agent 执行
-- [ap-web 系统架构](./ap-web-overview.md) — Next.js 看板、文件监听 SSE、DeepSeek Agent
-
-### 典型工作流
-
-1. `ap task-create --name 实现某某功能` → 在 `todo/` 创建任务
-2. **发布后** `ap view` → 浏览器打开 standalone 看板（:10000+）；**monorepo 开发**用 `pnpm ap-web:dev`（:3011）
-3. 拖入 `doing` → ap-web 自动启动任务 Agent（DeepSeek）
-4. 或 `ap task-execute` → ap-cli 串行执行 TODO 队列（Cursor SDK）
-5. 完成后任务在 `done/`，两端均可看到
-
-## Consequences
-
-- **正面：** 双端互补，CLI 适合自动化流水线，Web 适合可视化管理；共享 markdown 便于 git 追踪
-- **负面 / 风险：** 两端 Agent 运行时不同，行为可能不完全一致；ap-web 的 `INIT_CWD` 与仓库根路径语义需留意
-- **后续工作：** 统一 Agent 抽象或让 ap-cli 也支持 DeepSeek 路径
+2、在ap下进行加载ap-web可以通过npx并且配置npx不缓存的方式
+这个方式目前可以接受，ap-web本身才几M，打开的时候去下载影响小，本身应用需要联网。
+目前也不用优化。
+获取比如@1.0.x版本依赖包

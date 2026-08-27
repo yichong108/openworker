@@ -56,11 +56,11 @@ ap view --no-open
 ap view --port 10050
 ```
 
-- 自动启动 `@openworker/ap-web`（可选依赖或 npx 兜底）
+- 通过 `npx --ignore-existing` 启动 `@openworker/ap-web`（按本 CLI 的 `major.minor` 取 `@x.y.x` 当前最新 patch）
 - 多项目并行时各目录独立端口，记录在 `.agents/ap-config/web-data/ap-web.port`
 - 环境变量：`AP_WEB_PORT_MIN`（默认 10000）、`AP_WEB_PORT_MAX`（默认 10099）
 
-本仓库内 `pnpm ap view` 走 workspace 的 `@openworker/ap-web`（需先 `pnpm ap-web:build`，用 `.next/standalone` + 仓库里的 `next`）。`.publish-staging` 只用于 `npm publish`，不要指望那里有 `node_modules`。
+本仓库内开发看板请用 `pnpm ap-web:dev`。`pnpm ap view` 与发布后一样走 npx 拉已发布包。
 
 ## 验证构建
 

@@ -54,9 +54,6 @@
     "@cursor/sdk": "catalog:",
     "dotenv": "^17.4.2"
   },
-  "optionalDependencies": {
-    "@openworker/ap-web": "~0.3.0"
-  },
   "devDependencies": {
     "@types/node": "catalog:",
     "publint": "catalog:",

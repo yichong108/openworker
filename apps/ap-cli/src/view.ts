@@ -3,7 +3,6 @@
  */
 
 import { execFile, spawn, type ChildProcess } from 'node:child_process'
-import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -161,49 +160,28 @@ export async function resolveExplicitPort(cwd: string, port: number): Promise<nu
 }
 
 /**
- * 读取与 @openworker/ap 对齐的 ap-web 版本（optionalDependencies）。
+ * 把 CLI 自身 semver 转成同 minor 的 npm x-range。
+ * 协议：ap-cli 与 ap-web 的 major.minor 对齐、patch 可不同 → 1.1.2 对应 1.1.x。
  */
-function readApWebPackageVersion(): string {
+function toMinorXRange(version: string): string {
+  const match = /^(\d+)\.(\d+)\.\d+/.exec(version.trim())
+  if (!match) {
+    throw new Error(`无法从 CLI 版本推出 ap-web range：${version} 不是 x.y.z`)
+  }
+  return `${match[1]}.${match[2]}.x`
+}
+
+/**
+ * 按 CLI 版本推出 ap-web 的 npm range，供 npx 取该 minor 下最新 patch。
+ */
+function resolveApWebVersionRange(): string {
   const pkgPath = join(getPackageRoot(), 'package.json')
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
-    optionalDependencies?: Record<string, string>
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string }
+  const version = pkg.version?.trim()
+  if (!version) {
+    throw new Error(`无法从 CLI 版本推出 ap-web range：${pkgPath} 缺少 version`)
   }
-  // 如果没有指定就按最新的版本号
-  return pkg.optionalDependencies?.['@openworker/ap-web']?.trim() || 'latest'
-}
-
-/**
- * 判断 ap-web 包根是否已有可启动的 standalone。
- * 发布包用 standalone-dist；本地 workspace 用 next build 产出的 .next/standalone。
- */
-function hasStandaloneServer(pkgRoot: string): boolean {
-  return [
-    join(pkgRoot, 'standalone-dist', 'server.js'),
-    join(pkgRoot, 'standalone-dist', 'apps', 'ap-web', 'server.js'),
-    join(pkgRoot, '.next', 'standalone', 'server.js'),
-    join(pkgRoot, '.next', 'standalone', 'apps', 'ap-web', 'server.js')
-  ].some((candidate) => existsSync(candidate))
-}
-
-/**
- * 解析已安装的 @openworker/ap-web bin。
- * 只认包本身（bin + standalone）；发布包不带 node_modules，不在这里找 next。
- */
-function resolveInstalledApWebBin(): string | null {
-  try {
-    const require = createRequire(import.meta.url)
-    const pkgJson = require.resolve('@openworker/ap-web/package.json')
-    const pkgRoot = dirname(pkgJson)
-    const binPath = join(pkgRoot, 'bin', 'ap-web.mjs')
-    if (!existsSync(binPath) || !hasStandaloneServer(pkgRoot)) {
-      return null
-    }
-    return binPath
-  } catch {
-    // optional 未安装
-  }
-
-  return null
+  return toMinorXRange(version)
 }
 
 /**
@@ -214,7 +192,7 @@ function resolveNpxCommand(): string {
 }
 
 /**
- * 启动 ap-web 子进程（已安装包或 npx 兜底）。
+ * 通过 npx 启动 ap-web（--ignore-existing，避免缓存卡住旧 patch）。
  */
 function spawnApWebServer(cwd: string, port: number): ChildProcess {
   const env = {
@@ -224,18 +202,7 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
     HOSTNAME: process.env.HOSTNAME?.trim() || '127.0.0.1'
   }
 
-  // 方法一：通过package.json声明的对应依赖包启动
-  const installedBin = resolveInstalledApWebBin()
-  if (installedBin) {
-    return spawn(process.execPath, [installedBin], {
-      env,
-      stdio: 'inherit'
-    })
-  }
-
-  // 方法二：通过 npx 去下载启动，注意使用~号来安装最新版本也有npx缓存问题导致不是下载最新的，
-  // 所以需要使用--ignore-existing来忽略缓存（npx默认是会缓存的也不知道什么时候失效，包大小不大）
-  const version = readApWebPackageVersion()
+  const version = resolveApWebVersionRange()
   process.stderr.write(`[ap view] 正在通过 npx 启动 @openworker/ap-web@${version}…\n`)
   return spawn(resolveNpxCommand(), ['--ignore-existing', `@openworker/ap-web@${version}`], {
     env,
