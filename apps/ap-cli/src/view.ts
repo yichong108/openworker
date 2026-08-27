@@ -18,6 +18,7 @@ const HEALTH_TIMEOUT_MS = 2_000
 /** 首次 npx 安装 Next/antd 等依赖常超过 1 分钟 */
 const READY_TIMEOUT_MS = 180_000
 const READY_POLL_MS = 500
+const NPM_MIRROR_REGISTRY = 'https://registry.npmmirror.com'
 
 /** /api/health 响应 */
 type ApWebHealth = {
@@ -212,7 +213,8 @@ function resolveNpxCommand(): string {
 
 /**
  * 通过 npx 启动 ap-web。
- * `--prefer-online` 取该 minor 下最新 patch；HOSTNAME 固定 127.0.0.1，避免系统电脑名导致 Next 绑错地址。
+ * `--prefer-online` 取该 minor 下最新 patch；`--registry` 走 npmmirror；
+ * HOSTNAME 固定 127.0.0.1，避免系统电脑名导致 Next 绑错地址。
  */
 function spawnApWebServer(cwd: string, port: number): ChildProcess {
   const launchDir = resolve(cwd)
@@ -226,12 +228,16 @@ function spawnApWebServer(cwd: string, port: number): ChildProcess {
 
   const version = resolveApWebVersionRange()
   process.stderr.write(`[ap view] 正在通过 npx 启动 @openworker/ap-web@${version}…\n`)
-  return spawn(resolveNpxCommand(), ['-y', '--prefer-online', `@openworker/ap-web@${version}`], {
-    cwd: launchDir,
-    env,
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
-  })
+  return spawn(
+    resolveNpxCommand(),
+    ['-y', '--prefer-online', `--registry=${NPM_MIRROR_REGISTRY}`, `@openworker/ap-web@${version}`],
+    {
+      cwd: launchDir,
+      env,
+      stdio: 'inherit',
+      shell: process.platform === 'win32'
+    }
+  )
 }
 
 /**

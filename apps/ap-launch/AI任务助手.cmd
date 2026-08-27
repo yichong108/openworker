@@ -8,6 +8,7 @@ set "NODE_VERSION=25.9.0"
 set "NODE_VERSION_TAG=v%NODE_VERSION%"
 set "AP_CONFIG=%SCRIPT_DIR%\.agents\ap-config\ap-config.json"
 set "NODE_HOME=%LOCALAPPDATA%\OpenWorker\nodejs\%NODE_VERSION%"
+set "NPM_REGISTRY=https://registry.npmmirror.com"
 
 goto :main
 
@@ -175,7 +176,7 @@ if errorlevel 1 (
 )
 
 call :show_indent "正在安装 AI 任务助手，可能需要一点时间..."
-call npm install @openworker/ap -g
+call npm install @openworker/ap -g --registry=%NPM_REGISTRY%
 if errorlevel 1 (
   call :fail_step 2 "安装 AI 任务助手" "安装没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   exit /b 1
@@ -199,7 +200,7 @@ if errorlevel 1 (
 )
 
 call :show_indent "正在确认是否有新版本，请稍候..."
-call npm update @openworker/ap -g
+call npm update @openworker/ap -g --registry=%NPM_REGISTRY%
 if errorlevel 1 (
   call :fail_step 3 "检查更新" "更新没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   exit /b 1

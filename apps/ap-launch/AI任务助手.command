@@ -16,6 +16,7 @@ cd "$SCRIPT_DIR"
 NODE_VERSION="25.9.0"
 NODE_VERSION_TAG="v${NODE_VERSION}"
 AP_CONFIG="${SCRIPT_DIR}/.agents/ap-config/ap-config.json"
+NPM_REGISTRY="https://registry.npmmirror.com"
 
 STEP1_TITLE="准备运行环境"
 STEP2_TITLE="安装 AI 任务助手"
@@ -235,7 +236,7 @@ step_install_assistant() {
   local npm
   npm="$(npm_cmd)" || fail_step 2 "${STEP2_TITLE}" "暂时找不到安装工具，请先完成上一步。"
   show_indent "正在安装 AI 任务助手，可能需要一点时间…"
-  if ! "${npm}" install @openworker/ap -g; then
+  if ! "${npm}" install @openworker/ap -g --registry="${NPM_REGISTRY}"; then
     fail_step 2 "${STEP2_TITLE}" "安装没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   fi
   if ! command -v ap >/dev/null 2>&1; then
@@ -249,7 +250,7 @@ step_update_assistant() {
   local npm
   npm="$(npm_cmd)" || fail_step 3 "${STEP3_TITLE}" "暂时找不到更新工具，请把窗口截图发给支持的人。"
   show_indent "正在确认是否有新版本，请稍候…"
-  if ! "${npm}" update @openworker/ap -g; then
+  if ! "${npm}" update @openworker/ap -g --registry="${NPM_REGISTRY}"; then
     fail_step 3 "${STEP3_TITLE}" "更新没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   fi
   if ! command -v ap >/dev/null 2>&1; then
