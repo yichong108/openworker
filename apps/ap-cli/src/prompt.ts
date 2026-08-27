@@ -3,27 +3,32 @@
  */
 
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 
 import { findAgentsSkill, type AgentsSkill } from './skills-fs.js'
 
 /**
- * 读取 `.agents/skills/<name>/SKILL.md`。
+ * 读取指定 skill 的 SKILL.md。
  *
  * 内联进 prompt，避免本地 runtime 未加载 filesystem skills 时 Agent 不知道流程。
+ * 查找顺序：`.agents/ap-config/skills`，再 `.agents/skills`。
  *
  * @param cwd - 仓库根目录
- * @param skillName - `.agents/skills` 下的目录名
+ * @param skillName - skill 目录名
  * @returns skill Markdown
  */
 export async function readAgentsSkillMarkdown(cwd: string, skillName: string): Promise<string> {
   const skill = findAgentsSkill(cwd, skillName)
-  const skillPath = skill?.skillMd ?? join(cwd, '.agents', 'skills', skillName, 'SKILL.md')
+  const skillPath = skill?.skillMd
+  if (!skillPath) {
+    throw new Error(
+      `未找到 skill: ${skillName}\n请确认 \`.agents/ap-config/skills/${skillName}/SKILL.md\` 或 \`.agents/skills/${skillName}/SKILL.md\` 存在。`
+    )
+  }
   try {
     return await readFile(skillPath, 'utf8')
   } catch {
     throw new Error(
-      `未找到 skill: ${skillPath}\n请确认 \`.agents/skills/${skillName}/SKILL.md\` 存在。`
+      `未找到 skill: ${skillPath}\n请确认 \`.agents/ap-config/skills/${skillName}/SKILL.md\` 或 \`.agents/skills/${skillName}/SKILL.md\` 存在。`
     )
   }
 }
@@ -62,7 +67,7 @@ export function buildAskPrompt(
   const catalog = skills
     .map((skill) => {
       const summary = skill.summary ? ` — ${skill.summary}` : ''
-      return `- \`${skill.name}\`${summary}\n  路径：\`.agents/skills/${skill.name}/\``
+      return `- \`${skill.name}\`${summary}\n  路径：\`${skill.relDir}/\``
     })
     .join('\n')
 
@@ -99,10 +104,17 @@ ${bodies}
  * @param skillName - skill 目录名
  * @param skillMarkdown - SKILL.md 全文
  * @param extra - 可选补充指令（如 --task 或剩余参数）
+ * @param relDir - 相对工作区根的 skill 目录，供 Agent 读取附属文件
  * @returns 发给 Agent.send 的文本
  */
-export function buildSkillPrompt(skillName: string, skillMarkdown: string, extra?: string): string {
+export function buildSkillPrompt(
+  skillName: string,
+  skillMarkdown: string,
+  extra?: string,
+  relDir?: string
+): string {
   const extraBlock = extra ? `\n用户补充指令：\`${extra}\`。在不违反 skill 的前提下遵从。\n` : ''
+  const skillPath = relDir ?? `.agents/ap-config/skills/${skillName}`
 
   return `你是本仓库的 Agent。必须严格遵循下方 **${skillName}** skill，不要发明 skill 之外的流程或需求。
 
@@ -112,7 +124,7 @@ export function buildSkillPrompt(skillName: string, skillMarkdown: string, extra
 ${extraBlock}
 先读 \`.agents/AGENTS.md\`。
 
-项目 skill 路径：\`.agents/skills/${skillName}/\`（含 references 等附属文件）。
+项目 skill 路径：\`${skillPath}/\`（含 references 等附属文件）。
 
 ## ${skillName} skill
 

@@ -1,6 +1,7 @@
 /**
- * ap 初始化：覆盖安装同名 skill，并把 work-data 种子补齐到 .agents/ap-config/work-data。
- * 由 `ap init` 调用；skill 只替换同名目录；
+ * ap 初始化：覆盖安装同名内置 skill 到 .agents/ap-config/skills，
+ * 并把 work-data 种子补齐到 .agents/ap-config/work-data。
+ * 由 `ap init` 调用；skill 只替换 ap-config 下同名目录，不写入 `.agents/skills`；
  * work-data 覆盖 `*-template.md`，其余同名文件不覆盖。
  */
 
@@ -72,19 +73,20 @@ function copyWorkDataTree(source: string, dest: string): WorkDataCopyStats {
 }
 
 /**
- * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖 `startDir/.agents/skills` 中的同名目录。
+ * 用 `apps/ap-cli/src/skills` 下的各个 skill 覆盖 `startDir/.agents/ap-config/skills` 中的同名目录。
  *
  * 仅由 `ap init` 调用。目标只允许 `startDir` 下，不向上查找仓库根。
+ * 内置 skill 不写入 `.agents/skills`，避免被 Cursor 等外部工具发现。
  * 只覆盖源目录中存在的 skill，不删除 `.agents`、`.agents/skills` 或其他无关 skill。
  *
  * @param startDir - 安装目标目录，默认 process.cwd()
- * @returns 安装目标根路径（`startDir/.agents/skills`）
+ * @returns 安装目标根路径（`startDir/.agents/ap-config/skills`）
  */
 export function installApSkills(startDir: string = process.cwd()): string {
   const packageRoot = getPackageRoot()
   const targetRoot = resolve(startDir)
   const source = join(packageRoot, 'src', 'skills')
-  const destRoot = join(targetRoot, '.agents', 'skills')
+  const destRoot = join(targetRoot, '.agents', 'ap-config', 'skills')
 
   if (!existsSync(source)) {
     throw new Error(`未找到 skills 源目录: ${source}`)
@@ -103,7 +105,9 @@ export function installApSkills(startDir: string = process.cwd()): string {
     skillNames.push(entry.name)
   }
 
-  process.stderr.write(`[ap] 已覆盖安装 skill ${skillNames.join(', ') || '(无)'} → ${destRoot}\n`)
+  process.stderr.write(
+    `[ap] 已覆盖安装内置 skill ${skillNames.join(', ') || '(无)'} → ${destRoot}\n`
+  )
   return destRoot
 }
 

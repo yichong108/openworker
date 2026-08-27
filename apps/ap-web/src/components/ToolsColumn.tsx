@@ -119,7 +119,7 @@ function PlusIcon() {
 }
 
 /**
- * 工具集列：从 `.agents/skills` 挑选 skill，并用 Cursor SDK 开始/停止执行。
+ * 工具集列：从 `.agents/ap-config/skills` 与 `.agents/skills` 挑选 skill 并执行。
  */
 export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   const [catalog, setCatalog] = useState<CatalogSkill[]>([])
@@ -453,7 +453,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                     {pageItems.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="px-2 py-6 text-center text-[var(--ink-soft)]">
-                          未发现 `.agents/skills`
+                          未发现 skill（请先运行 ap init）
                         </td>
                       </tr>
                     ) : (

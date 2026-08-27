@@ -21,7 +21,7 @@ ap命令内部对不同版本进行长期兼容。考虑这是尽量对用户体
 考虑这个的话，把skills、用户数据等ap-config目录下的数据作为整体的版本。对于skill小的更改
 会影响效果影响可能小，但大的更改比如改变用户数据接口等影响，这样又要处理兼容了，并且兼容成本不小。
 
-3、ap可以读取.agents/skills，内置的在ap-config/builtin-skills下面
+3、ap可以读取.agents/skills，内置的在ap-config/skills下面
 
 ## ap-cli和ap-web的相互影响
 
@@ -44,4 +44,3 @@ ap-cli和ap-web的minor需要一致但patch可以不同，考虑发布维护量�
 2、在ap下进行加载ap-web可以通过npx并且配置npx不缓存的方式
 这个方式目前可以接受，ap-web本身才几M，打开的时候去下载影响小，本身应用需要联网。
 目前也不用优化。
-获取比如@1.0.x版本依赖包

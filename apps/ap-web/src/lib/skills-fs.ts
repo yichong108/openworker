@@ -3,10 +3,16 @@ import { join } from 'node:path'
 
 import { getWorkspaceRoot } from './workspace-root'
 
-/** `.agents/skills` 中发现的 skill 摘要 */
+/** skill 来源：内置（ap-config）或项目（.agents/skills） */
+export type SkillSource = 'builtin' | 'project'
+
+/** 工作区内发现的 skill 摘要 */
 export type AgentsSkill = {
   name: string
   summary: string
+  /** 相对工作区根的 skill 目录（POSIX） */
+  relDir: string
+  source: SkillSource
 }
 
 /**
@@ -33,12 +39,14 @@ export function readSkillSummary(markdown: string): string {
 }
 
 /**
- * 列出仓库 `.agents/skills` 下带 SKILL.md 的目录。
+ * 扫描单个 skill 根目录下带 SKILL.md 的子目录。
  *
- * @returns 按名称排序的 skill 列表
+ * @param root - skill 根目录绝对路径
+ * @param relPrefix - 相对工作区根的 POSIX 前缀
+ * @param source - 来源标记
+ * @returns 该目录下发现的 skill
  */
-export function listAgentsSkills(): AgentsSkill[] {
-  const root = join(getWorkspaceRoot(), '.agents', 'skills')
+function listSkillsInRoot(root: string, relPrefix: string, source: SkillSource): AgentsSkill[] {
   if (!existsSync(root)) return []
 
   const skills: AgentsSkill[] = []
@@ -53,16 +61,63 @@ export function listAgentsSkills(): AgentsSkill[] {
     } catch {
       summary = ''
     }
-    skills.push({ name: entry.name, summary })
+    skills.push({
+      name: entry.name,
+      summary,
+      relDir: `${relPrefix}/${entry.name}`,
+      source
+    })
+  }
+  return skills
+}
+
+/**
+ * 列出工作区内带 SKILL.md 的 skill。
+ *
+ * 先读 `.agents/ap-config/skills`（`ap init` 安装的内置 skill），
+ * 再补 `.agents/skills` 中尚未出现的名字。
+ *
+ * @returns 按名称排序的 skill 列表
+ */
+export function listAgentsSkills(): AgentsSkill[] {
+  const workspaceRoot = getWorkspaceRoot()
+  const byName = new Map<string, AgentsSkill>()
+
+  for (const skill of listSkillsInRoot(
+    join(workspaceRoot, '.agents', 'ap-config', 'skills'),
+    '.agents/ap-config/skills',
+    'builtin'
+  )) {
+    byName.set(skill.name, skill)
   }
 
-  return skills.sort((a, b) => a.name.localeCompare(b.name))
+  for (const skill of listSkillsInRoot(
+    join(workspaceRoot, '.agents', 'skills'),
+    '.agents/skills',
+    'project'
+  )) {
+    if (!byName.has(skill.name)) {
+      byName.set(skill.name, skill)
+    }
+  }
+
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * 按目录名查找已发现的 skill。
+ *
+ * @param name - skill 目录名
+ * @returns 对应 skill；不存在则为 undefined
+ */
+export function findAgentsSkill(name: string): AgentsSkill | undefined {
+  return listAgentsSkills().find((skill) => skill.name === name)
 }
 
 /**
  * 读取指定 skill 的 SKILL.md 全文。
  *
- * @param name - `.agents/skills` 下的目录名
+ * @param name - skill 目录名
  * @returns markdown 正文
  */
 export function readSkillMarkdown(name: string): string {
@@ -70,7 +125,11 @@ export function readSkillMarkdown(name: string): string {
   if (!trimmed || trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\')) {
     throw new Error('非法 skill 名')
   }
-  const skillMd = join(getWorkspaceRoot(), '.agents', 'skills', trimmed, 'SKILL.md')
+  const skill = findAgentsSkill(trimmed)
+  if (!skill) {
+    throw new Error(`未找到 skill: ${trimmed}`)
+  }
+  const skillMd = join(getWorkspaceRoot(), ...skill.relDir.split('/'), 'SKILL.md')
   if (!existsSync(skillMd)) {
     throw new Error(`未找到 skill: ${trimmed}`)
   }
@@ -83,12 +142,19 @@ export function readSkillMarkdown(name: string): string {
  * @param skillName - skill 目录名
  * @param skillMarkdown - SKILL.md 全文
  * @param extra - 可选用户补充（空则按 skill 默认流程）
+ * @param relDir - 相对工作区根的 skill 目录
  * @returns 发给 Agent.send 的文本
  */
-export function buildSkillPrompt(skillName: string, skillMarkdown: string, extra?: string): string {
+export function buildSkillPrompt(
+  skillName: string,
+  skillMarkdown: string,
+  extra?: string,
+  relDir?: string
+): string {
   const extraBlock = extra?.trim()
     ? `\n用户补充指令：\`${extra.trim()}\`。在不违反 skill 的前提下遵从。\n`
     : ''
+  const skillPath = relDir ?? `.agents/ap-config/skills/${skillName}`
 
   return `你是本仓库的 Agent。必须严格遵循下方 **${skillName}** skill，不要发明 skill 之外的流程或需求。
 
@@ -98,7 +164,7 @@ export function buildSkillPrompt(skillName: string, skillMarkdown: string, extra
 ${extraBlock}
 先读 \`.agents/AGENTS.md\`。
 
-项目 skill 路径：\`.agents/skills/${skillName}/\`（含 references 等附属文件）。
+项目 skill 路径：\`${skillPath}/\`（含 references 等附属文件）。
 
 ## ${skillName} skill
 

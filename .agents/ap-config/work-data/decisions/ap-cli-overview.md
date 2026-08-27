@@ -4,7 +4,7 @@
 
 ## Context
 
-`apps/ap-cli`（包名 `@openworker/ap`，命令 `ap`）是 OpenWorker monorepo 中的 **AI 软件生产流水线 CLI**。它基于 Cursor SDK 在本地启动 Agent，读取并执行 `.agents/skills/` 下的 Skill，同时负责初始化 work-data 种子、创建任务与决策文件。与 `apps/ap-web` 共用 `.agents/ap-config/work-data/` 数据约定，是 AI-PIPELINE 的命令行端。
+`apps/ap-cli`（包名 `@openworker/ap`，命令 `ap`）是 OpenWorker monorepo 中的 **AI 软件生产流水线 CLI**。它基于 Cursor SDK 在本地启动 Agent，读取并执行 `.agents/ap-config/skills/`（内置，`ap init` 安装）与 `.agents/skills/`（项目 skill）下的 Skill，同时负责初始化 work-data 种子、创建任务与决策文件。与 `apps/ap-web` 共用 `.agents/ap-config/` 数据约定，是 AI-PIPELINE 的命令行端。
 
 ## Decision
 
@@ -41,7 +41,7 @@
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  本地文件系统 (.agents)                                      │
-│  skills/  ap-config/work-data/tasks/  decisions/            │
+│  ap-config/skills  skills/  ap-config/work-data/            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,12 +54,12 @@ apps/ap-cli/
 │   ├── cli.ts              # 子命令解析与帮助文案
 │   ├── run.ts              # Cursor Agent 创建与流式输出
 │   ├── prompt.ts           # ask / skill prompt 组装
-│   ├── skills-fs.ts        # 发现 .agents/skills
+│   ├── skills-fs.ts        # 发现 ap-config/skills 与 .agents/skills
 │   ├── install-skills.ts   # skill + work-data 种子安装
 │   ├── create-work-data.ts # task-create / decision-create
 │   ├── env.ts              # 仓库根、环境变量、模型/模式
 │   ├── view.ts             # ap view：启动 ap-web standalone
-│   ├── skills/             # skill 源（安装到 .agents/skills）
+│   ├── skills/             # skill 源（安装到 .agents/ap-config/skills）
 │   │   ├── ap-task-execute/
 │   │   └── ap-refactor/
 │   └── work-data/          # work-data 种子（安装到 .agents/ap-config/work-data）
@@ -79,7 +79,7 @@ apps/ap-cli/
 | 内建  | `ap task-create [--name]`      | 从模板创建任务到 `tasks/todo/`，不调用 Agent                        |
 | 内建  | `ap decision-create [--name]`  | 从模板创建决策到 `decisions/`，不调用 Agent                         |
 | 内建  | `ap view [--port] [--no-open]` | 启动 `@openworker/ap-web` standalone 看板（10000–10099 自动选端口） |
-| Skill | `ap <skill> [options]`         | 执行 `.agents/skills/<skill>/SKILL.md`                              |
+| Skill | `ap <skill> [options]`         | 执行已发现 skill 的 SKILL.md（ap-config/skills 或 .agents/skills）  |
 | 提问  | `ap "<提问>" [--skill]`        | Agent 从已发现 skill 中选一个执行                                   |
 
 Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-execute`）。
@@ -90,10 +90,10 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 
 由 `ap init` 调用 `installApWorkspace()`：
 
-1. **Skills 安装** — 用 `apps/ap-cli/src/skills` 覆盖 `.agents/skills` 中的同名目录；不删除其他 skill
+1. **Skills 安装** — 用 `apps/ap-cli/src/skills` 覆盖 `.agents/ap-config/skills` 中的同名目录；不写入 `.agents/skills`，也不删除其他 skill
 2. **Work-data 补齐** — 把 `apps/ap-cli/src/work-data` 拷到 `.agents/ap-config/work-data`；`*-template.md` 始终覆盖，其余同名文件跳过
 
-未初始化时执行 skill 或提问会提示先运行 `ap init`。
+未初始化时执行 skill 或提问会提示先运行 `ap init`。读取 skill 时同时发现 `.agents/ap-config/skills` 与 `.agents/skills`（同名时内置优先）。
 
 ### Agent 执行流程
 
@@ -150,7 +150,7 @@ openworker (pnpm workspace)
 
 ## 设计特点
 
-1. **Skill 即插件**：行为由 `.agents/skills/*/SKILL.md` 定义，CLI 只负责发现、组装 prompt、启动 Agent
+1. **Skill 即插件**：行为由 SKILL.md 定义（内置在 `.agents/ap-config/skills`，项目 skill 还可放 `.agents/skills`），CLI 只负责发现、组装 prompt、启动 Agent
 2. **文件即数据**：任务与决策均为 markdown，与 ap-web 共享目录约定
 3. **种子 + 增量**：work-data 模板覆盖安装，用户数据不覆盖
 4. **本地 Agent**：Cursor SDK 在本机 cwd 下改代码，流式输出到终端

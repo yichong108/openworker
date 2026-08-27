@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * 列出 `.agents/skills` 下全部 skill 的名称与描述。
+ * 列出 `.agents/ap-config/skills` 与 `.agents/skills` 下全部 skill 的名称与描述。
  */
 export async function GET(): Promise<NextResponse> {
   try {

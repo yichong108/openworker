@@ -11,7 +11,7 @@ import {
   readAgentsSkillMarkdown
 } from './prompt.js'
 import type { ApConversationMode } from './env.js'
-import type { AgentsSkill } from './skills-fs.js'
+import { findAgentsSkill, type AgentsSkill } from './skills-fs.js'
 
 /** 启动本地 Agent 执行用户提问所需参数 */
 export type RunApAskInput = {
@@ -31,7 +31,7 @@ export type RunApAskInput = {
 
 /** 启动本地 Agent 执行 skill 所需参数 */
 export type RunApSkillInput = {
-  /** `.agents/skills` 下的目录名 */
+  /** skill 目录名（来自 ap-config/skills 或 .agents/skills） */
   skill: string
   /** Cursor API Key；省略则走 CURSOR_API_KEY 或 login 凭证 */
   apiKey?: string
@@ -160,14 +160,16 @@ async function runCursorPrompt(input: {
 }
 
 /**
- * 用本地 Cursor Agent 执行用户提问：列出 `.agents/skills` 由 Agent 选一个执行。
+ * 用本地 Cursor Agent 执行用户提问：列出已发现 skill 由 Agent 选一个执行。
  *
  * @param input - query / skills / cwd / model / mode / 可选 apiKey
  * @returns 进程退出码：0 成功，1 启动失败，2 运行失败，130 取消
  */
 export async function runApAsk(input: RunApAskInput): Promise<number> {
   if (input.skills.length === 0) {
-    process.stderr.write('[ap] 未发现 `.agents/skills/*/SKILL.md`，无法根据提问选择 skill\n')
+    process.stderr.write(
+      '[ap] 未发现 skill。请先运行 ap init（安装到 .agents/ap-config/skills），或把 skill 放到 .agents/skills\n'
+    )
     return 1
   }
   const bodies = await readAgentsSkillBodies(input.cwd, input.skills)
@@ -183,7 +185,7 @@ export async function runApAsk(input: RunApAskInput): Promise<number> {
 }
 
 /**
- * 用本地 Cursor Agent 执行 `.agents/skills` 中的指定 skill。
+ * 用本地 Cursor Agent 执行指定 skill（`.agents/ap-config/skills` 或 `.agents/skills`）。
  *
  * 显式设置 local.cwd 与 settingSources: project。prompt 内联 SKILL.md，
  * 避免 filesystem skill 未挂上。
@@ -192,8 +194,9 @@ export async function runApAsk(input: RunApAskInput): Promise<number> {
  * @returns 进程退出码：0 成功，1 启动失败，2 运行失败，130 取消
  */
 export async function runApSkill(input: RunApSkillInput): Promise<number> {
+  const skill = findAgentsSkill(input.cwd, input.skill)
   const skillMarkdown = await readAgentsSkillMarkdown(input.cwd, input.skill)
-  const prompt = buildSkillPrompt(input.skill, skillMarkdown, input.extra)
+  const prompt = buildSkillPrompt(input.skill, skillMarkdown, input.extra, skill?.relDir)
   return runCursorPrompt({
     prompt,
     name: input.skill,

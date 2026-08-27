@@ -4,7 +4,7 @@ import type { Subscription } from 'rxjs'
 
 import { createApWebAgent } from './ap-agent-runtime'
 import { isAiAuthFailure } from './ai-config'
-import { buildSkillPrompt, listAgentsSkills, readSkillMarkdown } from './skills-fs'
+import { buildSkillPrompt, findAgentsSkill, readSkillMarkdown } from './skills-fs'
 import { TaskFsError } from './task-fs-error'
 import { getWorkspaceRoot } from './workspace-root'
 
@@ -60,11 +60,11 @@ export function listSkillRunSnapshot(): {
 /**
  * 用 ApAgentWithAGUI 启动指定 skill（后台跑完，不阻塞 HTTP）。
  *
- * @param name - `.agents/skills` 目录名
+ * @param name - skill 目录名
  * @param userInput - 可选用户补充，空则按 skill 默认流程
  */
 export async function startSkill(name: string, userInput?: string): Promise<void> {
-  const skill = listAgentsSkills().find((item) => item.name === name)
+  const skill = findAgentsSkill(name)
   if (!skill) {
     throw new TaskFsError(`未找到 skill: ${name}`, 404)
   }
@@ -75,7 +75,7 @@ export async function startSkill(name: string, userInput?: string): Promise<void
   const workspaceRoot = getWorkspaceRoot()
   const markdown = readSkillMarkdown(name)
   const extra = userInput?.trim()
-  const prompt = buildSkillPrompt(name, markdown, extra || undefined)
+  const prompt = buildSkillPrompt(name, markdown, extra || undefined, skill.relDir)
 
   let agent: ApAgentWithAGUI
   try {

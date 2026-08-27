@@ -1,9 +1,15 @@
 /**
- * 发现并读取仓库根 `.agents/skills` 下的 skill。
+ * 发现并读取工作区内的 skill。
+ *
+ * 内置 skill 在 `.agents/ap-config/skills`（`ap init` 安装，默认不暴露给外部工具）；
+ * 同时兼容读取 `.agents/skills` 中的项目 skill。同名时内置目录优先。
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+/** skill 来源：内置（ap-config）或项目（.agents/skills） */
+export type SkillSource = 'builtin' | 'project'
 
 /** 已发现的 skill 元数据 */
 export type AgentsSkill = {
@@ -15,6 +21,30 @@ export type AgentsSkill = {
   skillMd: string
   /** 来自 frontmatter 或标题的一行摘要，可能为空 */
   summary: string
+  /** 相对工作区根的 skill 目录（POSIX，供 prompt 引用） */
+  relDir: string
+  /** 来自 ap-config 内置还是 .agents/skills */
+  source: SkillSource
+}
+
+/**
+ * 内置 skill 根目录（`ap init` 安装目标）。
+ *
+ * @param workspaceRoot - 工作区根目录
+ * @returns `.agents/ap-config/skills` 绝对路径
+ */
+export function getBuiltinSkillsRoot(workspaceRoot: string): string {
+  return join(workspaceRoot, '.agents', 'ap-config', 'skills')
+}
+
+/**
+ * 项目 skill 根目录（Cursor 等外部工具也会读，ap 只读取不安装）。
+ *
+ * @param workspaceRoot - 工作区根目录
+ * @returns `.agents/skills` 绝对路径
+ */
+export function getProjectSkillsRoot(workspaceRoot: string): string {
+  return join(workspaceRoot, '.agents', 'skills')
 }
 
 /**
@@ -41,15 +71,14 @@ export function readSkillSummary(markdown: string): string {
 }
 
 /**
- * 列出 `.agents/skills` 中带 SKILL.md 的目录。
+ * 扫描单个 skill 根目录下带 SKILL.md 的子目录。
  *
- * 后加入的 skill 只要放在该目录下就会被发现，无需改 CLI 白名单。
- *
- * @param workspaceRoot - 仓库根目录
- * @returns 按名称排序的 skill 列表
+ * @param root - skill 根目录绝对路径
+ * @param relPrefix - 相对工作区根的 POSIX 前缀，如 `.agents/ap-config/skills`
+ * @param source - 来源标记
+ * @returns 该目录下发现的 skill
  */
-export function listAgentsSkills(workspaceRoot: string): AgentsSkill[] {
-  const root = join(workspaceRoot, '.agents', 'skills')
+function listSkillsInRoot(root: string, relPrefix: string, source: SkillSource): AgentsSkill[] {
   if (!existsSync(root)) return []
 
   const skills: AgentsSkill[] = []
@@ -66,10 +95,48 @@ export function listAgentsSkills(workspaceRoot: string): AgentsSkill[] {
       summary = ''
     }
 
-    skills.push({ name: entry.name, dir, skillMd, summary })
+    skills.push({
+      name: entry.name,
+      dir,
+      skillMd,
+      summary,
+      relDir: `${relPrefix}/${entry.name}`,
+      source
+    })
+  }
+  return skills
+}
+
+/**
+ * 列出工作区内带 SKILL.md 的 skill。
+ *
+ * 先读 `.agents/ap-config/skills`，再补 `.agents/skills` 中尚未出现的名字。
+ *
+ * @param workspaceRoot - 仓库根目录
+ * @returns 按名称排序的 skill 列表
+ */
+export function listAgentsSkills(workspaceRoot: string): AgentsSkill[] {
+  const byName = new Map<string, AgentsSkill>()
+
+  for (const skill of listSkillsInRoot(
+    getBuiltinSkillsRoot(workspaceRoot),
+    '.agents/ap-config/skills',
+    'builtin'
+  )) {
+    byName.set(skill.name, skill)
   }
 
-  return skills.sort((a, b) => a.name.localeCompare(b.name))
+  for (const skill of listSkillsInRoot(
+    getProjectSkillsRoot(workspaceRoot),
+    '.agents/skills',
+    'project'
+  )) {
+    if (!byName.has(skill.name)) {
+      byName.set(skill.name, skill)
+    }
+  }
+
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
@@ -93,7 +160,7 @@ export function resolveAgentsSkill(
 }
 
 /**
- * 按名称解析 `.agents/skills/<name>`，支持省略 `ap-` 前缀。
+ * 按名称解析 skill，支持省略 `ap-` 前缀。
  *
  * @param workspaceRoot - 仓库根目录
  * @param name - skill 目录名或短名

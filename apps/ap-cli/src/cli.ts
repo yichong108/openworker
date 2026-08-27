@@ -54,7 +54,7 @@ export type ApCliCommand =
     }
   | {
       command: 'skill'
-      /** `.agents/skills` 下的目录名 */
+      /** skill 目录名（ap-config/skills 或 .agents/skills） */
       skill: string
       /** 仓库工作区根目录（Agent 的 local.cwd） */
       cwd: string
@@ -78,12 +78,12 @@ export type ApCliCommand =
 /**
  * 打印 ap 顶层用法，并列出当前已发现的 skill。
  *
- * @param skills - `.agents/skills` 中已发现的 skill
+ * @param skills - 已发现的 skill（ap-config/skills 与 .agents/skills）
  */
 export function printHelp(skills: readonly AgentsSkill[] = []): void {
   const skillLines =
     skills.length === 0
-      ? '  （未发现 `.agents/skills/*/SKILL.md`，请先运行 ap init）'
+      ? '  （未发现 skill，请先运行 ap init，或把 skill 放到 .agents/skills）'
       : skills
           .map((skill) => {
             const short = skillShortName(skill.name)
@@ -93,7 +93,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
           })
           .join('\n')
 
-  console.log(`ap — 用 Cursor SDK 本地 Agent 执行 .agents/skills 中的任意技能
+  console.log(`ap — 用 Cursor SDK 本地 Agent 执行 skill
 
 用法:
   ap "<提问>"
@@ -112,7 +112,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
 --mode 是 Cursor SDK 对话模式：agent（默认，直接改代码）或 plan（先出方案）。
 
 内建命令:
-  init                 安装 skill 与 work-data 种子到 .agents/（不调用 Agent）
+  init                 安装内置 skill 到 .agents/ap-config/skills，并补齐 work-data
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
   task-create          从模板创建任务到 tasks/todo/（不调用 Agent）
   decision-create      从模板创建决策到 decisions/（不调用 Agent）
@@ -159,7 +159,7 @@ export function printSkillHelp(skill: AgentsSkill): void {
   const summary = skill.summary ? `\n${skill.summary}\n` : ''
   const short = skillShortName(skill.name)
   const aliasLine = short ? `\n短名：${short}（ap ${short} 与 ap ${skill.name} 等价）\n` : ''
-  console.log(`ap ${skill.name} — 执行 .agents/skills/${skill.name}
+  console.log(`ap ${skill.name} — 执行 ${skill.relDir}
 ${summary}${aliasLine}
 用法:
   ap ${skill.name} [options] [extra...]${short ? `\n  ap ${short} [options] [extra...]` : ''}
@@ -219,7 +219,7 @@ export function printCreateHelp(command: ApCreateCommand): void {
  * 打印 ap init 的用法。
  */
 export function printInitHelp(): void {
-  console.log(`ap init — 安装 skill 与 work-data 种子到 .agents/
+  console.log(`ap init — 安装内置 skill 与 work-data 种子到 .agents/
 
 用法:
   ap init
@@ -229,8 +229,9 @@ export function printInitHelp(): void {
   -C, --cwd <path>     项目根目录（默认 git/pnpm 仓库根）
   -h, --help           显示帮助
 
-覆盖安装包内 skill 到 .agents/skills/<同名目录>，不删除其他 skill。
+覆盖安装包内 skill 到 .agents/ap-config/skills/<同名目录>，不写入 .agents/skills。
 补齐 work-data 到 .agents/ap-config/work-data；*-template.md 始终覆盖，其余同名文件跳过。
+执行 skill 时同时读取 .agents/ap-config/skills 与 .agents/skills（同名时内置优先）。
 不需要 Cursor API Key。
 `)
 }
