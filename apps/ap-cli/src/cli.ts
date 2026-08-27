@@ -112,7 +112,7 @@ export function printHelp(skills: readonly AgentsSkill[] = []): void {
 --mode 是 Cursor SDK 对话模式：agent（默认，直接改代码）或 plan（先出方案）。
 
 内建命令:
-  init                 安装内置 skill 到 .agents/ap-config/skills，并补齐 work-data
+  init                 安装内置 skill 到 .agents/ap-config/skills，补齐 work-data 与 ap-config.json
   login                浏览器登录 Cursor，写入 SDK 凭证（不执行任务）
   task-create          从模板创建任务到 tasks/todo/（不调用 Agent）
   decision-create      从模板创建决策到 decisions/（不调用 Agent）
@@ -231,6 +231,7 @@ export function printInitHelp(): void {
 
 覆盖安装包内 skill 到 .agents/ap-config/skills/<同名目录>，不写入 .agents/skills。
 补齐 work-data 到 .agents/ap-config/work-data；*-template.md 始终覆盖，其余同名文件跳过。
+首次写入 .agents/ap-config/ap-config.json（data-version: 1），再次 init 不改该字段及其值。
 执行 skill 时同时读取 .agents/ap-config/skills 与 .agents/skills（同名时内置优先）。
 不需要 Cursor API Key。
 `)

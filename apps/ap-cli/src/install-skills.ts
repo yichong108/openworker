@@ -1,14 +1,27 @@
 /**
  * ap 初始化：覆盖安装同名内置 skill 到 .agents/ap-config/skills，
- * 并把 work-data 种子补齐到 .agents/ap-config/work-data。
+ * 并把 work-data 种子补齐到 .agents/ap-config/work-data，
+ * 以及确保 `.agents/ap-config/ap-config.json` 存在。
  * 由 `ap init` 调用；skill 只替换 ap-config 下同名目录，不写入 `.agents/skills`；
  * work-data 覆盖 `*-template.md`，其余同名文件不覆盖。
+ * ap-config.json 仅在首次创建时写入 `data-version: 1`，之后不改该字段及其值。
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { join, resolve } from 'node:path'
 
 import { getPackageRoot } from './env.js'
+
+/** 首次 init 写入的数据版本；再次 init 不得覆盖已有值 */
+const INITIAL_DATA_VERSION = 1
 
 /** work-data 拷贝统计：新增、覆盖模板、跳过的同名文件 */
 type WorkDataCopyStats = {
@@ -112,6 +125,64 @@ export function installApSkills(startDir: string = process.cwd()): string {
 }
 
 /**
+ * `.agents/ap-config/ap-config.json` 的绝对路径。
+ *
+ * @param startDir - 安装目标目录
+ * @returns 配置文件路径
+ */
+function getApConfigJsonPath(startDir: string): string {
+  return join(resolve(startDir), '.agents', 'ap-config', 'ap-config.json')
+}
+
+/**
+ * 确保 `.agents/ap-config/ap-config.json` 存在。
+ *
+ * 文件不存在时写入 `{ "data-version": 1 }`。
+ * 已有 `data-version` 时不改该字段及其值；缺该字段时补 1，并保留其余键。
+ * 已有文件但不是合法 JSON 对象时跳过，避免覆盖用户数据。
+ *
+ * @param startDir - 安装目标目录，默认 process.cwd()
+ * @returns 配置文件路径
+ */
+export function ensureApConfigJson(startDir: string = process.cwd()): string {
+  const destFile = getApConfigJsonPath(startDir)
+  mkdirSync(join(resolve(startDir), '.agents', 'ap-config'), { recursive: true })
+
+  if (!existsSync(destFile)) {
+    const initial = { 'data-version': INITIAL_DATA_VERSION }
+    writeFileSync(destFile, `${JSON.stringify(initial, null, 2)}\n`, 'utf8')
+    process.stderr.write(`[ap] 已写入 ${destFile}（data-version: ${INITIAL_DATA_VERSION}）\n`)
+    return destFile
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(destFile, 'utf8')) as unknown
+  } catch {
+    process.stderr.write(`[ap] 已存在 ${destFile}，内容不是合法 JSON，跳过以免覆盖\n`)
+    return destFile
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    process.stderr.write(`[ap] 已存在 ${destFile}，保留现有内容（data-version 未改）\n`)
+    return destFile
+  }
+
+  const config = parsed as Record<string, unknown>
+  if (Object.prototype.hasOwnProperty.call(config, 'data-version')) {
+    process.stderr.write(
+      `[ap] 已存在 ${destFile}，保留 data-version: ${String(config['data-version'])}\n`
+    )
+    return destFile
+  }
+
+  config['data-version'] = INITIAL_DATA_VERSION
+  writeFileSync(destFile, `${JSON.stringify(config, null, 2)}\n`, 'utf8')
+  process.stderr.write(`[ap] 已为 ${destFile} 补齐 data-version: ${INITIAL_DATA_VERSION}\n`)
+  return destFile
+}
+
+/**
  * 把 `apps/ap-cli/src/work-data` 补齐到 `startDir/.agents/ap-config/work-data`。
  *
  * 目标只允许 `startDir` 下，不向上查找仓库根。
@@ -138,11 +209,12 @@ export function installApConfig(startDir: string = process.cwd()): string {
 }
 
 /**
- * 执行 ap 工作区初始化：skill 与 work-data 都装到 `startDir` 下，不向上查找仓库根。
+ * 执行 ap 工作区初始化：skill、work-data 与 ap-config.json 都装到 `startDir` 下，不向上查找仓库根。
  *
  * @param startDir - 安装目标目录，默认 process.cwd()
  */
 export function installApWorkspace(startDir: string = process.cwd()): void {
   installApSkills(startDir)
   installApConfig(startDir)
+  ensureApConfigJson(startDir)
 }
