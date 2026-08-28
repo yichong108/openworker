@@ -148,7 +148,7 @@ body {
 .ap-modal-content--chat.ant-modal-content {
   display: flex !important;
   flex-direction: column;
-  max-height: min(40rem, 88vh);
+  max-height: min(52rem, 92vh);
   overflow: hidden;
 }
 
@@ -206,7 +206,7 @@ body {
   --aw-font-weight-medium: 500;
 
   display: flex;
-  min-height: min(28rem, 68vh);
+  min-height: min(40rem, 80vh);
   height: 100%;
   flex: 1;
   flex-direction: column;
@@ -214,6 +214,10 @@ body {
   background: var(--aw-color-bg-layout);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.ap-task-chat-session .app-content .app-composer-stack {
+  margin-bottom: 0;
 }
 
 .ap-task-chat-session .app-content {
