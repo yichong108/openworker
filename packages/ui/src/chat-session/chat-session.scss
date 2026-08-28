@@ -8,15 +8,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 0;
   background: var(--aw-color-bg-layout);
-
-  align-items: center;
 
   &.is-empty-conversation {
     min-height: 0;
   }
 
-  /* 输入区居中同宽；消息区全宽，滚动条贴主栏右侧，正文在 inner 居中 */
+  /* 输入区与消息区铺满父容器，只留列内边距，不设阅读栏 max-width */
   .app-messages-shell {
     align-self: stretch;
     width: 100%;
@@ -27,9 +26,9 @@
   .app-composer-stack,
   .app-plan-card-stack {
     width: 100%;
-    max-width: var(--aw-main-content-max-width);
+    max-width: none;
     box-sizing: border-box;
-    margin-inline: auto;
+    margin-inline: 0;
     padding-inline: var(--aw-main-column-padding-x);
   }
 
@@ -145,7 +144,7 @@
 
 .app-composer-stack {
   flex-shrink: 0;
-  margin: 0 14px 14px;
+  margin: 0 0 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -231,8 +230,9 @@
 }
 
 .app-messages-inner {
-  max-width: var(--aw-main-content-max-width);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 0 var(--aw-main-column-padding-x) 48px;
   box-sizing: border-box;
 }

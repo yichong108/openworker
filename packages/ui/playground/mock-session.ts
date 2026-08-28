@@ -180,7 +180,7 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
     content: [
       '已经铺了一条带 **Thought / Explored / Shell / Edit** 的回合。窄容器里可以：',
       '',
-      '1. 展开上方「已工作」看过程条',
+      '1. 展开上方「已处理」看过程条',
       '2. 点用户气泡进入就地编辑',
       '3. 输入 `/` 打开技能菜单',
       '4. 继续往下滚，后面还有更长的说明和代码',

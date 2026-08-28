@@ -354,6 +354,7 @@ type WorkedAccordionProps = {
   expanded: boolean
   wallMs: number
   worked: WorkedNode
+  isStreaming: boolean
   onToggle: () => void
 }
 
@@ -363,9 +364,16 @@ type WorkedAccordionProps = {
  * 默认视图只显示一行摘要；展开后展示 Thought / Explored / Shell / Edit 等 L2。
  * 最终回答（Result）与此并列，由外层 Markdown 渲染。
  */
-function WorkedAccordion({ expanded, wallMs, worked, onToggle }: WorkedAccordionProps) {
-  // 对齐 Cursor「Worked for 25s」：标题以耗时为主，步骤数过密时不抢视线
-  const title = `已工作 · ${formatWorkedDurationZh(wallMs)}`
+function WorkedAccordion({
+  expanded,
+  wallMs,
+  worked,
+  isStreaming,
+  onToggle
+}: WorkedAccordionProps) {
+  // 运行中尚无最终回复：处理中；结束后：已处理。耗时始终展示。
+  const label = isStreaming ? '处理中' : '已处理'
+  const title = `${label} · ${formatWorkedDurationZh(wallMs)}`
 
   return (
     <div className="app-timeline-accordion app-worked-accordion">
@@ -410,6 +418,7 @@ function AssistantMessageBody({ msg, view, ctx }: AssistantMessageBodyProps) {
           expanded={view.timelineExpanded}
           wallMs={view.wallMs}
           worked={view.worked}
+          isStreaming={view.isStreaming}
           onToggle={() =>
             ctx.setTimelineOpenOverride((prev) => ({
               ...prev,

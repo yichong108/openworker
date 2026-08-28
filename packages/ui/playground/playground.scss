@@ -25,7 +25,7 @@
   --aw-composer-send: var(--aw-color-accent);
   --aw-composer-send-hover: var(--aw-color-accent-hover);
   --aw-composer-footer-rule: var(--aw-color-border-secondary);
-  --aw-main-content-max-width: 500px;
+  --aw-main-content-max-width: 100%;
   --aw-main-column-padding-x: 20px;
   --aw-font-micro: 10px;
   --aw-font-caption: 11px;
@@ -143,15 +143,20 @@ body {
   overflow: hidden;
   background: var(--aw-color-bg-layout);
   border: 1px solid var(--aw-color-border);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--aw-shadow-card);
 
   &.is-live {
-    width: min(720px, calc(100% - 32px));
+    width: auto;
+    align-self: stretch;
     flex: 1 1 auto;
     min-height: 0;
     height: auto;
-    margin-bottom: 16px;
+    margin: 0;
+    border: none;
+    border-top: 1px solid var(--aw-color-border);
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 
