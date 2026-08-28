@@ -2,11 +2,12 @@ import { EventType, randomUUID, type BaseEvent, type RunErrorEvent } from '@ag-u
 import type { ApAgentWithAGUI } from '@openworker/ap-agent'
 import type { Subscription } from 'rxjs'
 
-import { createApWebAgent } from './ap-agent-runtime'
-import { isAiAuthFailure } from './ai-config'
-import { buildSkillPrompt, findAgentsSkill, readSkillMarkdown } from './skills-fs'
-import { TaskFsError } from './task-fs-error'
-import { getWorkspaceRoot } from './workspace-root'
+import { buildSkillPrompt, findAgentsSkill, readSkillMarkdown } from '@/lib/skills-fs'
+import { TaskFsError } from '@/lib/task-fs-error'
+import { getWorkspaceRoot } from '@/lib/workspace-root'
+
+import { createApWebAgent } from './agent-runtime'
+import { isAiAuthFailure } from './config'
 
 type SkillJob = {
   name: string

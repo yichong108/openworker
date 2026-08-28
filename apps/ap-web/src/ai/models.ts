@@ -1,4 +1,4 @@
-import { defaultDeepseekModel, readAiConfig } from './ai-config'
+import { defaultDeepseekModel, readAiConfig } from './config'
 
 /**
  * 从未知的模型列表响应里抽出 id。

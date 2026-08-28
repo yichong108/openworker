@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { config as loadDotenv } from 'dotenv'
 
-import { getWorkspaceRoot } from './workspace-root'
+import { getWorkspaceRoot } from '@/lib/workspace-root'
 
 let loaded = false
 

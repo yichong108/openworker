@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-import { getApWebLaunchDir } from './ap-web-agents-root'
+import { getApWebLaunchDir } from '@/ai/agents-root'
 import { TaskFsError } from './task-fs-error'
 
 /**

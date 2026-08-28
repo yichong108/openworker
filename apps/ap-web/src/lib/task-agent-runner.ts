@@ -17,8 +17,8 @@ import {
 import type { Subscription } from 'rxjs'
 
 import type { ChatMessage, ChatTranscript } from '@/components/chat/chat-types'
-import { createApWebAgent } from './ap-agent-runtime'
-import { isAiAuthFailure } from './ai-config'
+import { createApWebAgent } from '@/ai/agent-runtime'
+import { isAiAuthFailure } from '@/ai/config'
 import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
 import { TaskFsError } from './task-fs-error'
 import type { TaskDetail } from './task-types'

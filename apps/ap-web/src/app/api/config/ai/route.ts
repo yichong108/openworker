@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { type AiConfigPatch, readAiConfig, toPublicAiConfig, writeAiConfig } from '@/lib/ai-config'
+import { type AiConfigPatch, readAiConfig, toPublicAiConfig, writeAiConfig } from '@/ai/config'
 import { taskErrorResponse } from '@/lib/task-api'
 
 export const runtime = 'nodejs'

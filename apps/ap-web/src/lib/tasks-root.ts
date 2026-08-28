@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { getApWebAgentsRoot } from './ap-web-agents-root'
+import { getApWebAgentsRoot } from '@/ai/agents-root'
 import { TaskFsError } from './task-fs-error'
 
 /**

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { listSkillRunSnapshot } from '@/lib/skill-runner'
+import { listSkillRunSnapshot } from '@/ai/skill-runner'
 import { taskErrorResponse } from '@/lib/task-api'
 
 export const runtime = 'nodejs'

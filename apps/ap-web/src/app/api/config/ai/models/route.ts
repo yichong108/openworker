@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { listAiModels } from '@/lib/ai-models'
+import { listAiModels } from '@/ai/models'
 import { taskErrorResponse } from '@/lib/task-api'
 
 export const runtime = 'nodejs'

@@ -1,4 +1,4 @@
-import { readAiConfig } from './ai-config'
+import { readAiConfig } from './config'
 
 const TITLE_MAX = 32
 

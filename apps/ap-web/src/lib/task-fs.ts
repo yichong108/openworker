@@ -28,7 +28,7 @@ import type {
 } from './task-types'
 import { TASK_COLUMNS } from './task-types'
 import { getTasksRoot } from './tasks-root'
-import { generateTaskTitle, titleFromIdeaFallback } from './task-title'
+import { generateTaskTitle, titleFromIdeaFallback } from '@/ai/task-title'
 
 export { TaskFsError } from './task-fs-error'
 

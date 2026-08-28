@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { getApWebLaunchDir } from '@/lib/ap-web-agents-root'
+import { getApWebLaunchDir } from '@/ai/agents-root'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

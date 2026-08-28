@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 
 import type { ChatMessage } from '@/components/chat/chat-types'
 
-import { getApWebAgentsRoot } from './ap-web-agents-root'
+import { getApWebAgentsRoot } from '@/ai/agents-root'
 
 /** 落盘的一条用户/助手消息（不含过程行） */
 export type TaskChatPersistedMessage = {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { stopSkill } from '@/lib/skill-runner'
+import { stopSkill } from '@/ai/skill-runner'
 import { taskErrorResponse } from '@/lib/task-api'
 
 export const runtime = 'nodejs'

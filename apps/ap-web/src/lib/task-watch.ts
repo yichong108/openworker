@@ -1,7 +1,7 @@
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { dirname } from 'node:path'
 
-import { getApWebAgentsRoot } from './ap-web-agents-root'
+import { getApWebAgentsRoot } from '@/ai/agents-root'
 import { listBoard } from './task-fs'
 import type { TaskBoardPayload } from './task-types'
 

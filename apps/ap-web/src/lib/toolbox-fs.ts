@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { getApWebAgentsRoot } from './ap-web-agents-root'
+import { getApWebAgentsRoot } from '@/ai/agents-root'
 import { TaskFsError } from './task-fs-error'
 
 /** 落盘的定时字段（不含运行时 nextAt） */

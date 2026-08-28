@@ -1,9 +1,10 @@
 import { ApAgentWithAGUI } from '@openworker/ap-agent'
 import { getChatModel } from '@openworker/llm'
 
-import { readAiConfig } from './ai-config'
+import { TaskFsError } from '@/lib/task-fs-error'
+
+import { readAiConfig } from './config'
 import { loadApEnv } from './load-env'
-import { TaskFsError } from './task-fs-error'
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
 

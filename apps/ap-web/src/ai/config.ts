@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import { getWorkspaceRoot } from './workspace-root'
+import { getWorkspaceRoot } from '@/lib/workspace-root'
 
 /** 磁盘上保存的 AI 配置（含密钥） */
 export type AiConfig = {
