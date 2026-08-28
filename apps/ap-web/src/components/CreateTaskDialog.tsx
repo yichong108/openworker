@@ -21,7 +21,7 @@ type CreateTaskDialogProps = {
   onSubmit: (input: {
     title: string
     priority: TaskPriority
-    requirements: string
+    humanNotes: string
     status: TaskColumn
   }) => void
 }
@@ -39,13 +39,13 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   const [priority, setPriority] = useState<TaskPriority>('P1')
   const [status, setStatus] = useState<TaskColumn>(column)
-  const [requirementsError, setRequirementsError] = useState<string | null>(null)
+  const [humanNotesError, setHumanNotesError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setPriority('P1')
       setStatus(column)
-      setRequirementsError(null)
+      setHumanNotesError(null)
     }
   }, [open, column])
 
@@ -64,39 +64,39 @@ export function CreateTaskDialog({
           const form = event.currentTarget
           const data = new FormData(form)
           const title = String(data.get('title') ?? '').trim()
-          const requirements = String(data.get('requirements') ?? '').trim()
-          if (!requirements) {
-            setRequirementsError('请填写事项')
+          const humanNotes = String(data.get('humanNotes') ?? '').trim()
+          if (!humanNotes) {
+            setHumanNotesError('请填写备注')
             return
           }
-          setRequirementsError(null)
-          onSubmit({ title, priority, requirements, status })
+          setHumanNotesError(null)
+          onSubmit({ title, priority, humanNotes, status })
         }}
       >
         <label className="block text-sm font-medium">
           <span className="flex items-center gap-1.5">
-            事项
+            备注
             <span className="font-display text-base leading-none text-[var(--rust)]" aria-hidden>
               *
             </span>
             <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
           </span>
           <ApTextArea
-            name="requirements"
+            name="humanNotes"
             autoFocus
             rows={5}
             className="mt-1 resize-y"
             placeholder="做点什么..."
-            onChange={() => setRequirementsError(null)}
+            onChange={() => setHumanNotesError(null)}
           />
         </label>
-        {requirementsError ? (
-          <p className="mt-1 text-sm text-[var(--rust)]">{requirementsError}</p>
+        {humanNotesError ? (
+          <p className="mt-1 text-sm text-[var(--rust)]">{humanNotesError}</p>
         ) : null}
 
         <label className="mt-4 block text-sm font-medium">
           名称
-          <ApInput name="title" className="mt-1" placeholder="非必填，稍后由 AI 根据事项生成" />
+          <ApInput name="title" className="mt-1" placeholder="非必填，稍后由 AI 根据备注生成" />
         </label>
 
         <div className="mt-4 block text-sm font-medium">

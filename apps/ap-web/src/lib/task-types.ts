@@ -13,7 +13,6 @@ export type TaskSummary = {
   /** 以所在目录为准，不以文件内 Status 字段为准 */
   status: TaskColumn
   priority: TaskPriority
-  dependencies: string
   excerpt: string
   /** 任务 markdown 文件的 mtime，ISO 8601 */
   updatedAt: string
@@ -21,9 +20,7 @@ export type TaskSummary = {
 
 /** 列内展开后展示的完整字段 */
 export type TaskDetail = TaskSummary & {
-  context: string
-  requirements: string
-  constraints: string
+  humanNotes: string
   agentNotes: string
   markdown: string
 }
@@ -38,12 +35,10 @@ export type TaskBoardPayload = {
 
 /** 创建任务时可由前端提交的字段 */
 export type CreateTaskInput = {
-  /** 任务名称；空则先用想法首行落盘，再异步用 AI 起名 */
+  /** 任务名称；空则先用备注首行落盘，再异步用 AI 起名 */
   title?: string
   priority?: TaskPriority
-  context?: string
-  requirements?: string
-  constraints?: string
+  humanNotes?: string
   /** 初始列，默认 todo */
   status?: TaskColumn
 }
@@ -52,9 +47,7 @@ export type CreateTaskInput = {
 export type UpdateTaskInput = {
   title?: string
   priority?: TaskPriority
-  context?: string
-  requirements?: string
-  constraints?: string
+  humanNotes?: string
 }
 
 /** 看板会展示的四列（不含 plan / 工具集） */

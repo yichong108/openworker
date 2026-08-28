@@ -12,7 +12,7 @@ import { TaskCard } from './TaskCard'
 type TaskUpdateInput = {
   title: string
   priority: TaskPriority
-  requirements: string
+  humanNotes: string
 }
 
 /**

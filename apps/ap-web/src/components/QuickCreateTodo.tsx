@@ -27,15 +27,15 @@ function readErrorMessage(payload: unknown, fallback: string): string {
  * 待办列顶部快捷创建：仅 textarea + 创建按钮。
  */
 export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
-  const [requirements, setRequirements] = useState('')
+  const [humanNotes, setHumanNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
 
   const submit = useCallback(async () => {
-    const trimmed = requirements.trim()
+    const trimmed = humanNotes.trim()
     if (!trimmed) {
-      setValidationError('请填写事项')
+      setValidationError('请填写备注')
       return
     }
 
@@ -46,30 +46,30 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requirements: trimmed, status: 'todo' })
+        body: JSON.stringify({ humanNotes: trimmed, status: 'todo' })
       })
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) {
         setError(readErrorMessage(payload, '创建失败'))
         return
       }
-      setRequirements('')
+      setHumanNotes('')
       await onCreated?.()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '创建失败')
     } finally {
       setBusy(false)
     }
-  }, [requirements, onCreated])
+  }, [humanNotes, onCreated])
 
-  const canSubmit = requirements.trim().length > 0 && !busy
+  const canSubmit = humanNotes.trim().length > 0 && !busy
 
   return (
     <div className="mb-3 mr-2 rounded-xl bg-[var(--paper)] px-3 py-3 text-[var(--ink)] shadow-card">
       <ApTextArea
-        value={requirements}
+        value={humanNotes}
         onChange={(value) => {
-          setRequirements(value)
+          setHumanNotes(value)
           setValidationError(null)
           setError(null)
         }}

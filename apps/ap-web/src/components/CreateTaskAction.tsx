@@ -39,7 +39,7 @@ export function CreateTaskAction({ column, onCreated }: CreateTaskActionProps) {
     async (input: {
       title: string
       priority: TaskPriority
-      requirements: string
+      humanNotes: string
       status: TaskColumn
     }) => {
       setBusy(true)

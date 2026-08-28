@@ -53,18 +53,12 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
       status?: unknown
       title?: unknown
       priority?: unknown
-      context?: unknown
-      requirements?: unknown
-      constraints?: unknown
+      humanNotes?: unknown
     }
 
     const hasStatus = body.status !== undefined
     const hasFields =
-      body.title !== undefined ||
-      body.priority !== undefined ||
-      body.context !== undefined ||
-      body.requirements !== undefined ||
-      body.constraints !== undefined
+      body.title !== undefined || body.priority !== undefined || body.humanNotes !== undefined
 
     if (!hasStatus && !hasFields) {
       return NextResponse.json({ error: '缺少更新字段' }, { status: 400 })
@@ -83,14 +77,8 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
     ) {
       return NextResponse.json({ error: '优先级必须是 P0–P3' }, { status: 400 })
     }
-    if (body.context !== undefined && typeof body.context !== 'string') {
-      return NextResponse.json({ error: 'Context 必须是字符串' }, { status: 400 })
-    }
-    if (body.requirements !== undefined && typeof body.requirements !== 'string') {
-      return NextResponse.json({ error: '想法必须是字符串' }, { status: 400 })
-    }
-    if (body.constraints !== undefined && typeof body.constraints !== 'string') {
-      return NextResponse.json({ error: 'Constraints 必须是字符串' }, { status: 400 })
+    if (body.humanNotes !== undefined && typeof body.humanNotes !== 'string') {
+      return NextResponse.json({ error: '备注必须是字符串' }, { status: 400 })
     }
 
     let currentId = id
@@ -100,9 +88,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
       if (typeof body.priority === 'string' && isTaskPriority(body.priority)) {
         input.priority = body.priority
       }
-      if (typeof body.context === 'string') input.context = body.context
-      if (typeof body.requirements === 'string') input.requirements = body.requirements
-      if (typeof body.constraints === 'string') input.constraints = body.constraints
+      if (typeof body.humanNotes === 'string') input.humanNotes = body.humanNotes
       const updated = updateTask(currentId, input)
       currentId = updated.id
       if (!hasStatus) {

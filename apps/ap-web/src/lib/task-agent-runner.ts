@@ -140,14 +140,8 @@ function buildTaskPrompt(task: TaskDetail): string {
     '',
     `# ${task.title}`,
     '',
-    '## Requirements',
-    task.requirements.trim() || '（空）',
-    '',
-    '## Context',
-    task.context.trim() || '（空）',
-    '',
-    '## Constraints',
-    task.constraints.trim() || '（空）'
+    '# Human Notes',
+    task.humanNotes.trim() || '（空）'
   ].join('\n')
 }
 
@@ -163,14 +157,8 @@ function buildTaskContextPrefix(task: TaskDetail): string {
     '',
     `# ${task.title}`,
     '',
-    '## Requirements',
-    task.requirements.trim() || '（空）',
-    '',
-    '## Context',
-    task.context.trim() || '（空）',
-    '',
-    '## Constraints',
-    task.constraints.trim() || '（空）'
+    '# Human Notes',
+    task.humanNotes.trim() || '（空）'
   ].join('\n')
 }
 

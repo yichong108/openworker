@@ -226,7 +226,7 @@ export function TaskBoard() {
   const updateTask = useCallback(
     async (
       id: string,
-      input: { title: string; priority: TaskPriority; requirements: string }
+      input: { title: string; priority: TaskPriority; humanNotes: string }
     ): Promise<boolean> => {
       setSavingId(id)
       try {

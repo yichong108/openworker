@@ -34,7 +34,7 @@ type TaskCardProps = {
   onUpdate: (input: {
     title: string
     priority: TaskPriority
-    requirements: string
+    humanNotes: string
   }) => Promise<boolean>
   onDelete: () => void
 }
@@ -166,7 +166,7 @@ export function TaskCard({
   const [pendingEdit, setPendingEdit] = useState(false)
   const [title, setTitle] = useState(task.title)
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
-  const [requirements, setRequirements] = useState('')
+  const [humanNotes, setHumanNotes] = useState('')
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
@@ -180,14 +180,14 @@ export function TaskCard({
     if (!detail || editing) return
     setTitle(detail.title)
     setPriority(detail.priority)
-    setRequirements(detail.requirements)
+    setHumanNotes(detail.humanNotes)
   }, [detail, editing])
 
   useEffect(() => {
     if (!pendingEdit || loading || !detail) return
     setTitle(detail.title)
     setPriority(detail.priority)
-    setRequirements(detail.requirements)
+    setHumanNotes(detail.humanNotes)
     setEditing(true)
     setPendingEdit(false)
   }, [pendingEdit, loading, detail])
@@ -215,7 +215,7 @@ export function TaskCard({
     if (!detail) return
     setTitle(detail.title)
     setPriority(detail.priority)
-    setRequirements(detail.requirements)
+    setHumanNotes(detail.humanNotes)
     setEditing(true)
   }
 
@@ -290,12 +290,12 @@ export function TaskCard({
               className="space-y-3 text-sm"
               onSubmit={(event) => {
                 event.preventDefault()
-                const idea = requirements.trim()
-                if (!idea) return
+                const notes = humanNotes.trim()
+                if (!notes) return
                 void onUpdate({
                   title: title.trim(),
                   priority,
-                  requirements: idea
+                  humanNotes: notes
                 }).then((ok) => {
                   if (ok) setEditing(false)
                 })
@@ -303,7 +303,7 @@ export function TaskCard({
             >
               <label className="block font-medium">
                 <span className="flex items-center gap-1.5">
-                  想法
+                  备注
                   <span
                     className="font-display text-base leading-none text-[var(--rust)]"
                     aria-hidden
@@ -313,8 +313,8 @@ export function TaskCard({
                   <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
                 </span>
                 <ApTextArea
-                  value={requirements}
-                  onChange={setRequirements}
+                  value={humanNotes}
+                  onChange={setHumanNotes}
                   required
                   autoFocus
                   rows={5}
@@ -362,9 +362,7 @@ export function TaskCard({
           ) : null}
           {detail && !loading && !editing ? (
             <div className="space-y-3 text-sm leading-6">
-              <DetailBlock title="Context" body={detail.context} />
-              <DetailBlock title="Requirements" body={detail.requirements} />
-              <DetailBlock title="Constraints" body={detail.constraints} />
+              <DetailBlock title="Human Notes" body={detail.humanNotes || '（空）'} />
               <DetailBlock title="Agent Notes" body={detail.agentNotes || '（空）'} />
             </div>
           ) : null}

@@ -12,10 +12,7 @@ type TaskMarkdownFields = {
   title: string
   status: TaskColumn
   priority: TaskPriority
-  dependencies: string
-  context: string
-  requirements: string
-  constraints: string
+  humanNotes: string
   agentNotes: string
 }
 
@@ -26,10 +23,7 @@ type ParsedSections = {
   title: string
   statusText: string
   priorityText: string
-  dependencies: string
-  context: string
-  requirements: string
-  constraints: string
+  humanNotes: string
   agentNotes: string
 }
 
@@ -59,6 +53,38 @@ function trimSection(lines: string[]): string {
   while (start < end && lines[start].trim() === '') start += 1
   while (end > start && lines[end - 1].trim() === '') end -= 1
   return lines.slice(start, end).join('\n').trim()
+}
+
+/**
+ * 从 Human Notes 分区或旧版 Context/Requirements/Constraints 拼出正文。
+ *
+ * @param sections - 原始分区行
+ * @param pick - 按键取正文
+ * @returns Human Notes 正文
+ */
+function resolveHumanNotes(
+  sections: Record<string, string[]>,
+  pick: (key: string) => string
+): string {
+  const direct = trimSection(sections['human notes'] ?? [])
+  if (direct) return direct
+
+  const parts: string[] = []
+  const dependencies = pick('task dependencies')
+  if (dependencies && dependencies !== '- None') {
+    parts.push(`## Task Dependencies\n\n${dependencies}`)
+  }
+  for (const [key, label] of [
+    ['context', 'Context'],
+    ['requirements', 'Requirements'],
+    ['constraints', 'Constraints']
+  ] as const) {
+    const value = pick(key)
+    if (value && value !== '- None') {
+      parts.push(`## ${label}\n\n${value}`)
+    }
+  }
+  return parts.join('\n\n')
 }
 
 /**
@@ -92,7 +118,9 @@ function parseSections(markdown: string): ParsedSections {
         continue
       }
       if (key === 'human notes') {
-        current = null
+        inAgentNotes = false
+        current = 'human notes'
+        sections[current] = []
         continue
       }
       if (!title && !META_TITLES.has(key)) {
@@ -124,10 +152,7 @@ function parseSections(markdown: string): ParsedSections {
     title,
     statusText: pick('task status'),
     priorityText: pick('task priority'),
-    dependencies: pick('task dependencies') || '- None',
-    context: pick('context') || '- None',
-    requirements: pick('requirements') || '- None',
-    constraints: pick('constraints') || '- None',
+    humanNotes: resolveHumanNotes(sections, pick),
     agentNotes: pick('agent notes')
   }
 }
@@ -146,14 +171,15 @@ function parsePriority(text: string): TaskPriority {
 }
 
 /**
- * 生成卡片摘要：优先 Requirements 首行，否则 Context。
+ * 生成卡片摘要：取 Human Notes 首行有效文字。
  *
- * @param parsed - 已解析分区
+ * @param humanNotes - Human Notes 正文
  * @returns 截断后的摘要
  */
-function makeExcerpt(parsed: ParsedSections): string {
-  const source = parsed.requirements !== '- None' ? parsed.requirements : parsed.context
-  const firstLine = source.split('\n').find((line) => line.trim() && line.trim() !== '- None')
+function makeExcerpt(humanNotes: string): string {
+  const firstLine = humanNotes
+    .split('\n')
+    .find((line) => line.trim() && line.trim() !== '- None' && !/^#{1,6}\s/.test(line.trim()))
   if (!firstLine) return ''
   const text = firstLine.replace(/^[-*]\s+/, '').trim()
   return text.length > 80 ? `${text.slice(0, 79)}…` : text
@@ -191,8 +217,7 @@ export function toTaskSummary(
     title,
     status: column,
     priority: parsePriority(parsed.priorityText),
-    dependencies: parsed.dependencies,
-    excerpt: makeExcerpt(parsed),
+    excerpt: makeExcerpt(parsed.humanNotes),
     updatedAt
   }
 }
@@ -217,9 +242,7 @@ export function toTaskDetail(
   const parsed = parseSections(markdown)
   return {
     ...toTaskSummary(id, fileName, column, markdown, updatedAt),
-    context: parsed.context,
-    requirements: parsed.requirements,
-    constraints: parsed.constraints,
+    humanNotes: parsed.humanNotes,
     agentNotes: parsed.agentNotes,
     markdown
   }
@@ -263,17 +286,15 @@ export function replaceTaskStatus(markdown: string, column: TaskColumn): string 
 }
 
 /**
- * 按约定拼出任务 markdown，保留状态、依赖与 Agent Notes。
+ * 按约定拼出任务 markdown，保留状态与 Agent Notes。
  *
  * @param fields - 完整字段
  * @returns 完整 markdown
  */
 export function serializeTaskMarkdown(fields: TaskMarkdownFields): string {
   const title = fields.title.trim()
-  const dependencies = fields.dependencies.trim() || '- None'
-  const context = fields.context.trim() || '- None'
-  const requirements = fields.requirements.trim() || '- None'
-  const constraints = fields.constraints.trim() || '- None'
+  const humanNotes = fields.humanNotes.trim()
+  const humanBlock = humanNotes ? `\n${humanNotes}\n` : '\n'
   const agentNotes = fields.agentNotes.trim()
   const agentBlock = agentNotes ? `\n${agentNotes}\n` : '\n'
 
@@ -287,24 +308,8 @@ ${COLUMN_STATUS_TEXT[fields.status]}
 
 ${fields.priority}
 
-## Task Dependencies
-
-${dependencies}
-
 # Human Notes
-
-## Context
-
-${context}
-
-## Requirements
-
-${requirements}
-
-## Constraints
-
-${constraints}
-
+${humanBlock}
 # Agent Notes
 ${agentBlock}`
 }
@@ -320,10 +325,7 @@ export function buildTaskMarkdown(input: CreateTaskInput): string {
     title: input.title?.trim() ?? '',
     status: input.status ?? 'todo',
     priority: input.priority ?? 'P1',
-    dependencies: '- None',
-    context: input.context?.trim() || '- None',
-    requirements: input.requirements?.trim() || '- None',
-    constraints: input.constraints?.trim() || '- None',
+    humanNotes: input.humanNotes?.trim() ?? '',
     agentNotes: ''
   })
 }
