@@ -6,6 +6,7 @@ import { COLUMN_LABELS } from '@/lib/task-types'
 import type { ChatTranscript } from './chat/chat-types'
 import { columnAccent } from '@/lib/task-column-style'
 import { CreateTaskAction } from './CreateTaskAction'
+import { QuickCreateTodo } from './QuickCreateTodo'
 import { TaskCard } from './TaskCard'
 
 type TaskUpdateInput = {
@@ -106,6 +107,8 @@ export function TaskColumnView({
         </div>
         {onTaskCreated ? <CreateTaskAction column={column} onCreated={onTaskCreated} /> : null}
       </header>
+
+      {column === 'todo' && onTaskCreated ? <QuickCreateTodo onCreated={onTaskCreated} /> : null}
 
       <div className="column-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {tasks.length === 0 ? (

@@ -96,7 +96,7 @@ export function CreateTaskDialog({
 
         <label className="mt-4 block text-sm font-medium">
           名称
-          <ApInput name="title" className="mt-1" placeholder="非必填，默认AI根据想法自动生成" />
+          <ApInput name="title" className="mt-1" placeholder="非必填，默认AI根据事项自动生成" />
         </label>
 
         <div className="mt-4 block text-sm font-medium">
