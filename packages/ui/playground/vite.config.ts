@@ -18,7 +18,12 @@ function workspaceSrc(pkg: string): string {
  */
 function hydrateProcessEnv(mode: string): void {
   process.env.OW_PLAYGROUND_REPO_ROOT = repoRoot
-  const dirs = [repoRoot, resolve(repoRoot, 'apps/ap-web'), resolve(repoRoot, 'apps/ap-cli')]
+  const dirs = [
+    playgroundRoot,
+    repoRoot,
+    resolve(repoRoot, 'apps/ap-web'),
+    resolve(repoRoot, 'apps/ap-cli')
+  ]
   for (const dir of dirs) {
     const env = loadEnv(mode, dir, '')
     for (const [key, value] of Object.entries(env)) {

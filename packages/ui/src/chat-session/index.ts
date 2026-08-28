@@ -1,3 +1,10 @@
+export {
+  applyAguiEvent,
+  emptyLiveSession,
+  finalizeLiveSession,
+  nextMessageId
+} from './apply-agui-event.js'
+export type { LiveAgentSession } from './apply-agui-event.js'
 export { aguiEventsToToolTimeline, isAguiTimelineSourceEvent } from './agui-timeline.js'
 export {
   CURSOR_THINKING_CUSTOM_NAME,
@@ -10,6 +17,7 @@ export { ChatMessageList } from './ChatMessageList.js'
 export type { ChatMessageListProps } from './ChatMessageList.js'
 export { ChatPlanCard } from './ChatPlanCard.js'
 export { ChatSessionView } from './ChatSessionView.js'
+export { ChatSessionWithHttp } from './ChatSessionWithHttp.js'
 export { ComposerSkillMenu } from './ComposerSkillMenu.js'
 export type { ComposerSkillMenuProps } from './ComposerSkillMenu.js'
 export { MessageTurnItem } from './MessageTurnItem.js'
@@ -26,6 +34,8 @@ export type {
   ChatPlanCardProps,
   ChatSessionMessage,
   ChatSessionRole,
+  ChatSessionRunRequest,
   ChatSessionRunStats,
-  ChatSessionViewProps
+  ChatSessionViewProps,
+  ChatSessionWithHttpProps
 } from './types.js'

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-/** playground 页面：模拟数据 / BaseAgentWithAGUI */
-export type PlaygroundPage = 'mock' | 'agent'
+/** playground 页面：模拟数据 / BaseAgentWithAGUI / ChatSessionWithHttp */
+export type PlaygroundPage = 'mock' | 'agent' | 'http'
 
 /**
  * 从 location.hash 解析当前页。
@@ -11,7 +11,9 @@ export type PlaygroundPage = 'mock' | 'agent'
  */
 export function parsePlaygroundPage(hash = window.location.hash): PlaygroundPage {
   const path = hash.replace(/^#\/?/, '')
-  return path.startsWith('agent') ? 'agent' : 'mock'
+  if (path.startsWith('agent')) return 'agent'
+  if (path.startsWith('http')) return 'http'
+  return 'mock'
 }
 
 /**
@@ -20,7 +22,15 @@ export function parsePlaygroundPage(hash = window.location.hash): PlaygroundPage
  * @param page - 目标页
  */
 export function setPlaygroundPage(page: PlaygroundPage): void {
-  window.location.hash = page === 'agent' ? '/agent' : '/mock'
+  if (page === 'agent') {
+    window.location.hash = '/agent'
+    return
+  }
+  if (page === 'http') {
+    window.location.hash = '/http'
+    return
+  }
+  window.location.hash = '/mock'
 }
 
 /**

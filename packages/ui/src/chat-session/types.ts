@@ -124,3 +124,29 @@ export type ChatSessionViewProps = {
   composer: ChatComposerProps
   className?: string
 }
+
+/** onRunRequest 传入的消息条目（user / assistant） */
+export type ChatSessionRunMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/**
+ * 宿主 run 回调入参：组件只交出消息与取消信号，传输协议由宿主实现。
+ */
+export type ChatSessionRunRequest = {
+  messages: ChatSessionRunMessage[]
+  signal: AbortSignal
+  onEvent: (event: BaseEvent) => void
+}
+
+/**
+ * 自包含会话组件：内部管 AG-UI 事件与会话状态，传输层通过回调注入。
+ */
+export type ChatSessionWithHttpProps = {
+  onRunRequest: (request: ChatSessionRunRequest) => void | Promise<void>
+  onStopRequest: () => void | Promise<void>
+  sessionKey?: string | null
+  className?: string
+}

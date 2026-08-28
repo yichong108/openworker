@@ -12,10 +12,10 @@ import {
   isAguiTimelineSourceEvent,
   TEXT_DELTA_CUSTOM_NAME,
   TEXT_REVOKE_CUSTOM_NAME
-} from '../src/chat-session/agui-timeline.js'
-import type { ChatSessionMessage, ChatSessionRunStats } from '../src/chat-session/types.js'
+} from './agui-timeline.js'
+import type { ChatSessionMessage, ChatSessionRunStats } from './types.js'
 
-/** playground 侧消费 BaseAgentWithAGUI 事件流的会话快照 */
+/** 消费 AG-UI 事件流的会话快照 */
 export type LiveAgentSession = {
   messages: ChatSessionMessage[]
   liveEvents: BaseEvent[]
@@ -108,10 +108,10 @@ function patchAssistantContent(
 }
 
 /**
- * 将一条 AG-UI `BaseEvent` 写入 playground 会话（对齐 ap-web / desktop 宿主）。
+ * 将一条 AG-UI `BaseEvent` 写入会话（对齐 ap-web / desktop 宿主）。
  *
  * @param session - 当前快照
- * @param event - BaseAgentWithAGUI.run() 流出的事件
+ * @param event - Agent.run() 流出的事件
  * @returns 更新后的快照
  */
 export function applyAguiEvent(session: LiveAgentSession, event: BaseEvent): LiveAgentSession {
@@ -127,7 +127,7 @@ export function applyAguiEvent(session: LiveAgentSession, event: BaseEvent): Liv
       liveEvents: [],
       runStats: {
         runId: e.runId,
-        traceId: `${e.threadId ?? 'playground'}:${e.runId}`,
+        traceId: `${e.threadId ?? 'session'}:${e.runId}`,
         startedAt,
         durationMs: 0
       },

@@ -11,7 +11,8 @@ import {
   finalizeLiveSession,
   nextMessageId,
   type LiveAgentSession
-} from './apply-agui-event'
+} from '../src/chat-session/apply-agui-event.js'
+import { consumeSse } from './consume-sse'
 import { PlaygroundHeader } from './PlaygroundHeader'
 
 const STORAGE_KEY = 'ow-ui-playground-base-agent'
@@ -52,38 +53,6 @@ function loadConn(): AgentConn {
 }
 
 /**
- * 消费 SSE：每条 `data:` 回调一次（BaseAgentWithAGUI 的 BaseEvent）。
- *
- * @param response - fetch 响应
- * @param onEvent - 事件回调
- * @param signal - 取消
- */
-async function consumeSse(
-  response: Response,
-  onEvent: (event: unknown) => void,
-  signal: AbortSignal
-): Promise<void> {
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('响应没有可读流')
-  const decoder = new TextDecoder()
-  let buf = ''
-  while (!signal.aborted) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-    const blocks = buf.split('\n\n')
-    buf = blocks.pop() ?? ''
-    for (const block of blocks) {
-      const dataLine = block.split('\n').find((line) => line.startsWith('data:'))
-      if (!dataLine) continue
-      const data = dataLine.slice(5).trim()
-      if (!data || data === '{}') continue
-      onEvent(JSON.parse(data) as unknown)
-    }
-  }
-}
-
-/**
  * ChatSessionView 接入 BaseAgentWithAGUI 的预览页。
  *
  * 浏览器只消费 AG-UI SSE；真正的 `agent.run()` 在 Vite 中间件里执行。
@@ -93,8 +62,6 @@ export function AgentPlaygroundApp() {
   const [input, setInput] = useState('')
   const [composerMode, setComposerMode] = useState<AgentComposerMode>('build')
   const [conn, setConn] = useState<AgentConn>(loadConn)
-  const [hasEnvKey, setHasEnvKey] = useState(false)
-  const [cwdLabel, setCwdLabel] = useState('')
   const [messages, setMessages] = useState<ChatSessionMessage[]>([])
   const [liveEvents, setLiveEvents] = useState(emptyLiveSession().liveEvents)
   const [isRun, setIsRun] = useState(false)
@@ -119,33 +86,10 @@ export function AgentPlaygroundApp() {
   }, [conn])
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/agent/status')
-        if (!res.ok) return
-        const data = (await res.json()) as {
-          hasEnvKey?: boolean
-          defaultBaseURL?: string
-          defaultModel?: string
-          cwd?: string
-        }
-        setHasEnvKey(Boolean(data.hasEnvKey))
-        if (typeof data.cwd === 'string') setCwdLabel(data.cwd)
-        setConn((prev) => ({
-          ...prev,
-          baseURL: prev.baseURL || data.defaultBaseURL || DEFAULT_CONN.baseURL,
-          model: prev.model || data.defaultModel || DEFAULT_CONN.model
-        }))
-      } catch {
-        /* 中间件未就绪时保持默认 */
-      }
-    })()
     return () => {
       abortRef.current?.abort()
     }
   }, [])
-
-  const hasKey = Boolean(conn.apiKey.trim() || hasEnvKey)
 
   const runAgent = useCallback(
     async (history: ChatSessionMessage[]) => {
@@ -201,14 +145,10 @@ export function AgentPlaygroundApp() {
   const send = useCallback(() => {
     const text = input.trim()
     if (!text || isRun) return
-    if (!hasKey) {
-      msgApi.warning('请先填写 API Key，或配置 DEEPSEEK_API_KEY')
-      return
-    }
     const user: ChatSessionMessage = { id: nextMessageId('u'), role: 'user', content: text }
     setInput('')
     void runAgent([...sessionRef.current.messages, user])
-  }, [hasKey, input, isRun, msgApi, runAgent])
+  }, [input, isRun, runAgent])
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort()
@@ -223,11 +163,7 @@ export function AgentPlaygroundApp() {
     setInput('')
   }, [flush, isRun, stopRun])
 
-  const workspaceName =
-    cwdLabel
-      .replace(/[\\/]+$/, '')
-      .split(/[\\/]/)
-      .pop() || '仓库根目录'
+  const workspaceName = '仓库根目录'
 
   return (
     <div className="ow-ui-playground">
@@ -242,7 +178,7 @@ export function AgentPlaygroundApp() {
       <div className="ow-ui-playground-config">
         <Input.Password
           size="small"
-          placeholder={hasEnvKey ? 'API Key（已读到环境变量，可留空）' : 'API Key'}
+          placeholder="API Key（可留空，走 DEEPSEEK_API_KEY）"
           value={conn.apiKey}
           onChange={(e) => setConn((prev) => ({ ...prev, apiKey: e.target.value }))}
           autoComplete="off"
@@ -259,7 +195,7 @@ export function AgentPlaygroundApp() {
           value={conn.model}
           onChange={(e) => setConn((prev) => ({ ...prev, model: e.target.value }))}
         />
-        <span className="ow-ui-playground-config-cwd" title={cwdLabel}>
+        <span className="ow-ui-playground-config-cwd" title={workspaceName}>
           cwd {workspaceName}
         </span>
       </div>
@@ -276,10 +212,6 @@ export function AgentPlaygroundApp() {
           onEditResend={(messageId, text) => {
             const trimmed = text.trim()
             if (!trimmed || isRun) return
-            if (!hasKey) {
-              msgApi.warning('请先填写 API Key')
-              return
-            }
             const idx = sessionRef.current.messages.findIndex((item) => item.id === messageId)
             if (idx < 0 || sessionRef.current.messages[idx]?.role !== 'user') return
             const history = [
@@ -305,11 +237,8 @@ export function AgentPlaygroundApp() {
             value: input,
             onChange: (value) => setInput(value),
             onSend: send,
-            canSend: input.trim().length > 0 && hasKey,
-            sendDisabled: !hasKey,
-            placeholder: hasKey
-              ? '接入 BaseAgentWithAGUI，Enter 发送（仅 shell）'
-              : '先填写 API Key 或配置 DEEPSEEK_API_KEY',
+            canSend: input.trim().length > 0,
+            placeholder: '接入 BaseAgentWithAGUI，Enter 发送（仅 shell）',
             composerMode,
             onComposerModeChange: setComposerMode
           }}

@@ -15,8 +15,7 @@ const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
 const DEFAULT_MODEL = 'deepseek-chat'
 
 const playgroundDir = dirname(fileURLToPath(import.meta.url))
-const repoRoot =
-  process.env.OW_PLAYGROUND_REPO_ROOT?.trim() || resolve(playgroundDir, '../../../..')
+const repoRoot = resolve(playgroundDir, '../../../..')
 
 type AgentRunBody = {
   messages?: Array<{ id?: string; role?: string; content?: string }>
@@ -68,8 +67,16 @@ function envKey(): string {
   return process.env.DEEPSEEK_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || ''
 }
 
+function envBaseURL(): string {
+  return process.env.DEEPSEEK_BASE_URL?.trim() || DEEPSEEK_BASE_URL
+}
+
+function envModel(): string {
+  return process.env.DEEPSEEK_MODEL?.trim() || DEFAULT_MODEL
+}
+
 function resolveCwd(raw?: string): string {
-  const trimmed = raw?.trim()
+  const trimmed = raw?.trim() || process.env.OW_PLAYGROUND_REPO_ROOT?.trim()
   return trimmed ? resolve(trimmed) : repoRoot
 }
 
@@ -103,15 +110,6 @@ function initSse(res: ServerResponse): void {
   if (typeof res.flushHeaders === 'function') res.flushHeaders()
 }
 
-function handleStatus(res: ServerResponse): void {
-  sendJson(res, 200, {
-    hasEnvKey: Boolean(envKey()),
-    defaultBaseURL: DEEPSEEK_BASE_URL,
-    defaultModel: DEFAULT_MODEL,
-    cwd: repoRoot
-  })
-}
-
 function handleStop(res: ServerResponse): void {
   activeAgent?.abortRun()
   activeAgent = null
@@ -128,8 +126,8 @@ async function handleRun(req: IncomingMessage, res: ServerResponse): Promise<voi
   }
 
   const apiKey = body.apiKey?.trim() || envKey()
-  const baseURL = body.baseURL?.trim() || DEEPSEEK_BASE_URL
-  const model = body.model?.trim() || DEFAULT_MODEL
+  const baseURL = body.baseURL?.trim() || envBaseURL()
+  const model = body.model?.trim() || envModel()
   const cwd = resolveCwd(body.cwd)
 
   let provider
@@ -209,7 +207,7 @@ async function handleRun(req: IncomingMessage, res: ServerResponse): Promise<voi
 }
 
 /**
- * Vite connect 中间件：/api/agent/status|run|stop。
+ * Vite connect 中间件：/api/agent/run|stop。
  *
  * @param req - 请求
  * @param res - 响应
@@ -227,10 +225,6 @@ export async function handleAgentApi(
   }
 
   try {
-    if (req.method === 'GET' && path === '/api/agent/status') {
-      handleStatus(res)
-      return
-    }
     if (req.method === 'POST' && path === '/api/agent/stop') {
       handleStop(res)
       return
