@@ -38,7 +38,7 @@ export type TaskBoardPayload = {
 
 /** 创建任务时可由前端提交的字段 */
 export type CreateTaskInput = {
-  /** 任务名称；空则根据想法生成 */
+  /** 任务名称；空则先用想法首行落盘，再异步用 AI 起名 */
   title?: string
   priority?: TaskPriority
   context?: string

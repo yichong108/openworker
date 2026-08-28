@@ -18,21 +18,16 @@ export function titleFromIdeaFallback(idea: string): string {
 }
 
 /**
- * 未填名称时：优先用 AI 根据想法起名，失败则用想法首行。
+ * 未填名称时用 AI 根据想法起短标题；未配置、超时或失败则返回空串。
  *
- * @param title - 用户填写的名称
  * @param idea - 想法正文
- * @returns 最终任务名称
+ * @returns 清洗后的短名称，不可用则为空
  */
-export async function resolveTaskTitle(title: string | undefined, idea: string): Promise<string> {
-  const given = title?.trim()
-  if (given) return given
-  const fallback = titleFromIdeaFallback(idea)
+export async function generateTaskTitle(idea: string): Promise<string> {
   try {
-    const generated = sanitizeGeneratedTitle(await generateTitleWithAi(idea))
-    return generated || fallback
+    return sanitizeGeneratedTitle(await generateTitleWithAi(idea))
   } catch {
-    return fallback
+    return ''
   }
 }
 

@@ -19,7 +19,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * 在指定列目录创建任务，默认 todo/。
+ * 在指定列目录创建任务，默认 todo/。未填名称时立即落盘，标题稍后由 AI 写回。
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: '状态必须是 todo/doing/done/blocked' }, { status: 400 })
     }
 
-    const task = await createTask({
+    const task = createTask({
       title: typeof body.title === 'string' ? body.title : '',
       priority:
         typeof body.priority === 'string' && isTaskPriority(body.priority)

@@ -62,6 +62,8 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
     }
   }, [requirements, onCreated])
 
+  const canSubmit = requirements.trim().length > 0 && !busy
+
   return (
     <div className="mb-3 mr-2 rounded-xl bg-[var(--paper)] px-3 py-3 text-[var(--ink)] shadow-card">
       <ApTextArea
@@ -76,7 +78,7 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
         placeholder="做点什么..."
         disabled={busy}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSubmit) {
             event.preventDefault()
             void submit()
           }
@@ -89,8 +91,8 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
       <div className="mt-2 flex justify-start">
         <button
           type="button"
-          className="rounded-md bg-[var(--ink)] px-2.5 py-1 text-[11px] text-[var(--paper)] disabled:opacity-60"
-          disabled={busy}
+          className="rounded-md bg-[var(--ink)] px-2.5 py-1 text-[11px] text-[var(--paper)] disabled:cursor-not-allowed disabled:bg-[var(--ink-soft)] disabled:opacity-25"
+          disabled={!canSubmit}
           onClick={() => void submit()}
         >
           {busy ? '创建中…' : '创建'}

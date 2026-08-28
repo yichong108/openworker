@@ -28,7 +28,7 @@ import type {
 } from './task-types'
 import { TASK_COLUMNS } from './task-types'
 import { getTasksRoot } from './tasks-root'
-import { resolveTaskTitle } from './task-title'
+import { generateTaskTitle, titleFromIdeaFallback } from './task-title'
 
 export { TaskFsError } from './task-fs-error'
 
@@ -212,15 +212,19 @@ function destinationDir(column: TaskColumn): string {
 /**
  * 在指定列目录创建任务文件，文件名为 task-YYYYMMDDHHmmSS.md。
  *
+ * 未填名称时先用想法首行落盘并立即返回，再后台用 AI 起名写回
+ * （用户已改名或改过想法则不覆盖）。看板经文件监听刷新。
+ *
  * @param input - 名称、想法、初始列等字段
  * @returns 新任务详情
  */
-export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
+export function createTask(input: CreateTaskInput): TaskDetail {
   const requirements = input.requirements?.trim() ?? ''
   if (!requirements) {
     throw new TaskFsError('想法不能为空', 400)
   }
-  const title = await resolveTaskTitle(input.title, requirements)
+  const given = input.title?.trim() ?? ''
+  const title = given || titleFromIdeaFallback(requirements)
   const column: TaskColumn = input.status ?? 'todo'
 
   const tasksRoot = getTasksRoot()
@@ -244,7 +248,60 @@ export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
     status: column
   })
   writeFileSync(dest, markdown, 'utf8')
-  return readTask(toPosixId(tasksRoot, dest))
+  const detail = readTask(toPosixId(tasksRoot, dest))
+  if (!given) {
+    scheduleGeneratedTitle(detail.id, title, requirements)
+  }
+  return detail
+}
+
+/**
+ * 按创建时的 id 定位当前任务：文件还在原路径则用之，否则按文件名在四列中查找
+ * （创建后可能被移到其他列）。
+ *
+ * @param id - 创建时的任务 id
+ * @returns 当前 id；已删除则为 null
+ */
+function locateTaskId(id: string): string | null {
+  try {
+    if (existsSync(resolveSafeTaskFile(id))) return id
+  } catch {
+    /* 可能已移动或删除 */
+  }
+  const fileName = basename(id)
+  if (!fileName) return null
+  const board = listBoard()
+  for (const column of TASK_COLUMNS) {
+    const hit = board[column].find((task) => task.fileName === fileName)
+    if (hit) return hit.id
+  }
+  return null
+}
+
+/**
+ * 后台用 AI 起名并写回；失败或用户已改标题/想法则保留落盘时的首行标题。
+ *
+ * @param id - 创建时的任务 id
+ * @param placeholder - 落盘时写入的首行标题
+ * @param idea - 创建时的想法正文
+ */
+function scheduleGeneratedTitle(id: string, placeholder: string, idea: string): void {
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const generated = await generateTaskTitle(idea)
+        if (!generated || generated === placeholder) return
+        const currentId = locateTaskId(id)
+        if (!currentId) return
+        const current = readTask(currentId)
+        if (current.title !== placeholder) return
+        if (current.requirements.trim() !== idea.trim()) return
+        updateTask(currentId, { title: generated })
+      } catch {
+        /* 起名失败保留首行标题 */
+      }
+    })()
+  }, 0)
 }
 
 /**
