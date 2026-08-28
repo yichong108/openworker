@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 
 import { taskErrorResponse, taskIdFromParams } from '@/lib/task-api'
-import { recordTaskAgentError, startTaskAgent, stopTaskAgent } from '@/lib/task-agent-runner'
-import { moveTask, readTask, updateTask } from '@/lib/task-fs'
+import {
+  forgetTaskChat,
+  recordTaskAgentError,
+  startTaskAgent,
+  stopTaskAgent
+} from '@/lib/task-agent-runner'
+import { deleteTaskChatFile } from '@/lib/task-chat-fs'
+import { deleteTask, moveTask, readTask, updateTask } from '@/lib/task-fs'
 import { TaskFsError } from '@/lib/task-fs-error'
 import { isTaskColumn, isTaskPriority } from '@/lib/task-types'
 import type { TaskColumn, UpdateTaskInput } from '@/lib/task-types'
@@ -131,6 +137,23 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
     }
 
     return NextResponse.json(moved)
+  } catch (error) {
+    return taskErrorResponse(error)
+  }
+}
+
+/**
+ * 删除任务文件，并停止 Agent、清掉对话落盘与内存会话。
+ */
+export async function DELETE(_request: Request, context: RouteContext): Promise<NextResponse> {
+  try {
+    const id = taskIdFromParams(context.params.id)
+    const current = readTask(id)
+    await stopTaskAgent(current.fileName)
+    deleteTaskChatFile(current.fileName)
+    forgetTaskChat(current.fileName)
+    deleteTask(id)
+    return NextResponse.json({ ok: true })
   } catch (error) {
     return taskErrorResponse(error)
   }

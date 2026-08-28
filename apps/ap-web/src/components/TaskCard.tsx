@@ -36,6 +36,7 @@ type TaskCardProps = {
     priority: TaskPriority
     requirements: string
   }) => Promise<boolean>
+  onDelete: () => void
 }
 
 const PRIORITY_CLASS = PRIORITY_BADGE_CLASS
@@ -144,7 +145,7 @@ function ChatButtonIcon({ chat }: { chat: TaskChatHint }) {
 }
 
 /**
- * 单张任务卡片：折叠显示标题；展开后可查看或编辑详情。
+ * 单张任务卡片：折叠显示标题；右键编辑或删除；展开后可查看或编辑详情。
  */
 export function TaskCard({
   task,
@@ -158,15 +159,21 @@ export function TaskCard({
   onCollapse,
   onMove,
   onOpenChat,
-  onUpdate
+  onUpdate,
+  onDelete
 }: TaskCardProps) {
   const [editing, setEditing] = useState(false)
+  const [pendingEdit, setPendingEdit] = useState(false)
   const [title, setTitle] = useState(task.title)
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [requirements, setRequirements] = useState('')
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
-    if (!expanded) setEditing(false)
+    if (!expanded) {
+      setEditing(false)
+      setPendingEdit(false)
+    }
   }, [expanded])
 
   useEffect(() => {
@@ -176,12 +183,50 @@ export function TaskCard({
     setRequirements(detail.requirements)
   }, [detail, editing])
 
+  useEffect(() => {
+    if (!pendingEdit || loading || !detail) return
+    setTitle(detail.title)
+    setPriority(detail.priority)
+    setRequirements(detail.requirements)
+    setEditing(true)
+    setPendingEdit(false)
+  }, [pendingEdit, loading, detail])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = (): void => setContextMenu(null)
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') close()
+    }
+    const timer = window.requestAnimationFrame(() => {
+      window.addEventListener('click', close)
+      window.addEventListener('contextmenu', close)
+    })
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.cancelAnimationFrame(timer)
+      window.removeEventListener('click', close)
+      window.removeEventListener('contextmenu', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [contextMenu])
+
   const startEdit = () => {
     if (!detail) return
     setTitle(detail.title)
     setPriority(detail.priority)
     setRequirements(detail.requirements)
     setEditing(true)
+  }
+
+  const requestEdit = () => {
+    setContextMenu(null)
+    if (!expanded) onToggle()
+    if (detail && !loading) {
+      startEdit()
+      return
+    }
+    setPendingEdit(true)
   }
 
   const updatedAtLabel = formatUpdatedAt(task.updatedAt)
@@ -196,6 +241,15 @@ export function TaskCard({
         }
         event.dataTransfer.setData('text/plain', task.id)
         event.dataTransfer.effectAllowed = 'move'
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const menuWidth = 120
+        const menuHeight = 72
+        const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8)
+        const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8)
+        setContextMenu({ x: Math.max(8, x), y: Math.max(8, y) })
       }}
       className={`rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition-shadow ${
         expanded ? 'shadow-lift' : 'hover:shadow-lift'
@@ -387,6 +441,40 @@ export function TaskCard({
           <span className="w-5 shrink-0" aria-hidden="true" />
         </button>
       </div>
+
+      {contextMenu ? (
+        <div
+          role="menu"
+          aria-label="任务操作"
+          className="fixed z-[80] min-w-[7.5rem] overflow-hidden rounded-lg border border-black/10 bg-[var(--paper)] py-1 text-sm text-[var(--ink)] shadow-lift"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left hover:bg-black/5"
+            onClick={requestEdit}
+          >
+            编辑
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left text-[var(--rust)] hover:bg-black/5"
+            onClick={() => {
+              setContextMenu(null)
+              onDelete()
+            }}
+          >
+            删除
+          </button>
+        </div>
+      ) : null}
     </article>
   )
 }

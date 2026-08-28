@@ -368,3 +368,16 @@ export function moveTask(id: string, column: TaskColumn): TaskDetail {
 
   return readTask(toPosixId(getTasksRoot(), dest))
 }
+
+/**
+ * 删除任务 markdown 文件。不改动对话 JSON，由调用方另行清理。
+ *
+ * @param id - 当前 id
+ */
+export function deleteTask(id: string): void {
+  const abs = resolveSafeTaskFile(id)
+  if (!existsSync(abs)) {
+    throw new TaskFsError('任务不存在', 404)
+  }
+  unlinkSync(abs)
+}

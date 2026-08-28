@@ -256,6 +256,37 @@ export function TaskBoard() {
     [refresh]
   )
 
+  const deleteTask = useCallback(
+    async (id: string) => {
+      try {
+        const response = await fetch(taskApiPath(id), { method: 'DELETE' })
+        const payload = (await response.json()) as { error?: string }
+        if (!response.ok) {
+          setLoadError(readErrorMessage(payload, '无法删除任务'))
+          return
+        }
+        setChatTask((current) => (current?.id === id ? null : current))
+        setDetails((current) => {
+          const next = { ...current }
+          delete next[id]
+          return next
+        })
+        setExpanded((current) => {
+          const next = { ...current }
+          for (const column of TASK_COLUMNS) {
+            if (next[column] === id) next[column] = null
+          }
+          return next
+        })
+        setLoadError(null)
+        await refresh()
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : '无法删除任务')
+      }
+    },
+    [refresh]
+  )
+
   return (
     <main className="relative h-screen overflow-hidden p-4">
       <button
@@ -314,6 +345,7 @@ export function TaskBoard() {
                   })
                 }}
                 onUpdate={updateTask}
+                onDelete={(id) => void deleteTask(id)}
                 onTaskCreated={refresh}
               />
             ))

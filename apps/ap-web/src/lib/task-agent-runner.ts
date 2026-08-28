@@ -703,6 +703,19 @@ export async function editResendTaskAgentMessage(
 }
 
 /**
+ * 从内存去掉该任务会话，供删除任务后不再出现在 SSE 快照里。
+ *
+ * @param fileName - 任务文件名
+ */
+export function forgetTaskChat(fileName: string): void {
+  transcripts.delete(fileName)
+  hydratedFiles.delete(fileName)
+  streamBuf.delete(fileName)
+  assistantMsgId.delete(fileName)
+  notify()
+}
+
+/**
  * 停止该任务 Agent。未在跑则忽略。
  *
  * @param fileName - 任务文件名

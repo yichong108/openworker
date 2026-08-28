@@ -73,7 +73,7 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
           setValidationError(null)
           setError(null)
         }}
-        rows={3}
+        rows={5}
         className="resize-y text-[13px]"
         placeholder="做点什么..."
         disabled={busy}

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { ChatMessage } from '@/components/chat/chat-types'
@@ -116,4 +116,15 @@ export function writeTaskChatFile(fileName: string, messages: ChatMessage[]): vo
   if (!payload) return
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+}
+
+/**
+ * 删除任务对话落盘文件；不存在或路径非法则忽略。
+ *
+ * @param fileName - 任务文件名
+ */
+export function deleteTaskChatFile(fileName: string): void {
+  const path = getTaskChatFilePath(fileName)
+  if (!path || !existsSync(path)) return
+  unlinkSync(path)
 }

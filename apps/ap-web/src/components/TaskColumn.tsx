@@ -61,6 +61,7 @@ type TaskColumnProps = {
   onDropTask: (id: string, status: TaskColumn) => void
   onOpenChat: (task: TaskSummary) => void
   onUpdate: (id: string, input: TaskUpdateInput) => Promise<boolean>
+  onDelete: (id: string) => void
   onTaskCreated?: () => void | Promise<void>
 }
 
@@ -82,6 +83,7 @@ export function TaskColumnView({
   onDropTask,
   onOpenChat,
   onUpdate,
+  onDelete,
   onTaskCreated
 }: TaskColumnProps) {
   return (
@@ -129,6 +131,7 @@ export function TaskColumnView({
               onMove={(status) => onMove(task.id, status)}
               onOpenChat={() => onOpenChat(task)}
               onUpdate={(input) => onUpdate(task.id, input)}
+              onDelete={() => onDelete(task.id)}
             />
           ))
         )}
