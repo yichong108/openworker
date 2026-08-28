@@ -44,6 +44,20 @@ body,
   margin: 0;
 }
 
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* antd App 默认不占满视口；不拉高的话 live 舞台会随内容收缩，消息区 flex+height:0 变成 0 */
+#root > .ant-app {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 body {
   font-family:
     'Segoe UI',
@@ -56,6 +70,7 @@ body {
 
 .ow-ui-playground {
   height: 100%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -85,6 +100,38 @@ body {
   color: var(--aw-color-text-tertiary);
 }
 
+.ow-ui-playground-config {
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-bottom: 1px solid var(--aw-color-border);
+
+  .ant-input-affix-wrapper,
+  .ant-input {
+    width: 220px;
+    max-width: 28vw;
+  }
+
+  .ant-input-affix-wrapper {
+    width: 200px;
+  }
+}
+
+.ow-ui-playground-config-cwd {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--aw-color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
 .ow-ui-playground-stage {
   width: 500px;
   height: 600px;
@@ -98,6 +145,14 @@ body {
   border: 1px solid var(--aw-color-border);
   border-radius: 8px;
   box-shadow: var(--aw-shadow-card);
+
+  &.is-live {
+    width: min(720px, calc(100% - 32px));
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    margin-bottom: 16px;
+  }
 }
 
 .app-shell {

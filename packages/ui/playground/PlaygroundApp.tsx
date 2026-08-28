@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ChatSessionView } from '../src/index.js'
 import type { ChatComposerSkill, ChatSessionMessage } from '../src/chat-session/types.js'
+import { PlaygroundHeader } from './PlaygroundHeader'
 import {
   MOCK_HISTORY_MESSAGES,
   MOCK_PLAN_MARKDOWN,
@@ -195,19 +196,20 @@ export function PlaygroundApp() {
 
   return (
     <div className="ow-ui-playground">
-      <header className="ow-ui-playground-bar">
-        <span className="ow-ui-playground-title">ChatSession 预览</span>
-        <Segmented
-          size="small"
-          value={scene}
-          onChange={(value) => applyScene(value as PlaygroundScene)}
-          options={PLAYGROUND_SCENES.map((item) => ({
-            label: item.label,
-            value: item.id
-          }))}
-        />
-        <span className="ow-ui-playground-hint">500×600 · 模拟数据 · 输入 / 可打开技能菜单</span>
-      </header>
+      <PlaygroundHeader
+        extra={
+          <Segmented
+            size="small"
+            value={scene}
+            onChange={(value) => applyScene(value as PlaygroundScene)}
+            options={PLAYGROUND_SCENES.map((item) => ({
+              label: item.label,
+              value: item.id
+            }))}
+          />
+        }
+        hint="500×600 · 模拟数据 · 输入 / 可打开技能菜单"
+      />
       <div className="ow-ui-playground-stage app-shell">
         <ChatSessionView
           isLoading={isLoading}
