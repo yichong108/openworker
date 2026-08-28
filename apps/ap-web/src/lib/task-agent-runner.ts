@@ -192,6 +192,31 @@ function toAgentRunMessages(messages: ChatMessage[]): AgentRunMessage[] {
 }
 
 /**
+ * 发给 Agent 的消息：首条 user 注入任务上下文（仅进模型，UI 仍用原文）。
+ *
+ * @param task - 任务详情
+ * @param messages - 客户端会话消息
+ * @returns run 消息列表
+ */
+function prepareAgentRunMessages(task: TaskDetail, messages: ChatMessage[]): AgentRunMessage[] {
+  const runMessages = toAgentRunMessages(messages)
+  if (runMessages.length === 0) return runMessages
+
+  const firstUserIdx = runMessages.findIndex((item) => item.role === 'user')
+  if (firstUserIdx < 0) return runMessages
+
+  const first = runMessages[firstUserIdx]!
+  if (first.content.includes('当前任务文件：') && first.content.includes('## Requirements')) {
+    return runMessages
+  }
+
+  const prefix = buildTaskContextPrefix(task)
+  const out = [...runMessages]
+  out[firstUserIdx] = { ...first, content: `${prefix}\n\n${first.content}` }
+  return out
+}
+
+/**
  * 更新当前 assistant 流式正文。
  *
  * @param fileName - 任务文件名
@@ -410,14 +435,20 @@ function applyAguiEvent(fileName: string, event: BaseEvent): void {
  *
  * @param fileName - 任务文件名
  * @param runMessages - 发给 Agent 的消息
- * @param options - 运行前 transcript 调整
+ * @param options - 运行前 transcript 调整 / SSE 回调
+ * @returns 带 onStreamEvent 时返回 Promise，否则 fire-and-forget
  */
 function runTaskAgentJob(
   fileName: string,
   runMessages: AgentRunMessage[],
-  options?: { resetMessages?: boolean }
-): void {
-  if (jobs.has(fileName)) return
+  options?: { resetMessages?: boolean; onStreamEvent?: (event: BaseEvent) => void }
+): Promise<void> | void {
+  if (jobs.has(fileName)) {
+    if (options?.onStreamEvent) {
+      return Promise.reject(new TaskFsError('当前任务 Agent 正在运行', 409, 'agent_busy'))
+    }
+    return
+  }
 
   const agent = createTaskAgent(fileName)
   const job: TaskAgentJob = { fileName, agent }
@@ -436,7 +467,7 @@ function runTaskAgentJob(
     })
   }
 
-  void (async () => {
+  const runPromise = (async () => {
     try {
       await new Promise<void>((resolve, reject) => {
         const subscription = agent
@@ -457,6 +488,7 @@ function runTaskAgentJob(
             next: (streamEvent) => {
               if (job.cancelled) return
               applyAguiEvent(fileName, streamEvent)
+              options?.onStreamEvent?.(streamEvent)
             },
             error: reject,
             complete: resolve
@@ -482,6 +514,7 @@ function runTaskAgentJob(
       } else {
         patchTranscript(fileName, { running: false, liveEvents: [] })
       }
+      throw error
     } finally {
       job.subscription?.unsubscribe()
       jobs.delete(fileName)
@@ -498,6 +531,11 @@ function runTaskAgentJob(
       persistCompletedRound(fileName)
     }
   })()
+
+  if (options?.onStreamEvent) {
+    return runPromise
+  }
+  void runPromise
 }
 
 /**
@@ -559,6 +597,48 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
   runTaskAgentJob(fileName, [{ id: randomUUID(), role: 'user', content: prompt }], {
     resetMessages: true
   })
+}
+
+/**
+ * 以客户端交出的完整 messages 覆盖 transcript 并 run，SSE 逐条回调 AG-UI 事件。
+ *
+ * @param task - 任务详情
+ * @param clientMessages - 客户端当前会话
+ * @param onStreamEvent - 每条 AG-UI 事件
+ */
+export async function runTaskAgentFromClientMessages(
+  task: TaskDetail,
+  clientMessages: AgentRunMessage[],
+  onStreamEvent: (event: BaseEvent) => void
+): Promise<void> {
+  const fileName = task.fileName
+  if (jobs.has(fileName)) {
+    throw new TaskFsError('当前任务 Agent 正在运行', 409, 'agent_busy')
+  }
+
+  const chatMessages: ChatMessage[] = clientMessages.map((item) => ({
+    id: item.id,
+    role: item.role,
+    content: item.content
+  }))
+  patchTranscript(fileName, {
+    messages: chatMessages,
+    error: undefined,
+    liveEvents: [],
+    started: true
+  })
+
+  const runMessages = prepareAgentRunMessages(task, chatMessages)
+  await runTaskAgentJob(fileName, runMessages, { onStreamEvent })
+}
+
+/**
+ * 该任务 Agent 是否正在 run。
+ *
+ * @param fileName - 任务文件名
+ */
+export function isTaskAgentRunning(fileName: string): boolean {
+  return jobs.has(fileName)
 }
 
 /**

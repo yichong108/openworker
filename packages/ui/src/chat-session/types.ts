@@ -147,4 +147,12 @@ export type ChatSessionWithHttpProps = {
   onStopRequest: () => void | Promise<void>
   sessionKey?: string | null
   className?: string
+  /** 挂载时的历史消息（仅初值，之后由组件内部维护） */
+  initialMessages?: ChatSessionMessage[]
+  /** 挂载时的未落盘 AG-UI 事件 */
+  initialLiveEvents?: BaseEvent[]
+  /** 挂载时是否正在 run */
+  initialIsRun?: boolean
+  /** 挂载时的 run 统计 */
+  initialRunStats?: ChatSessionRunStats
 }

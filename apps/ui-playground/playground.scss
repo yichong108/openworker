@@ -167,3 +167,68 @@ body {
   color: var(--aw-color-text);
   background: var(--aw-color-bg-layout);
 }
+
+.ow-ui-playground-stage--dialog-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ow-ui-playground-dialog-hint {
+  margin: 0;
+  max-width: 28rem;
+  text-align: center;
+  font-size: 13px;
+  color: var(--aw-color-text-secondary);
+  line-height: 1.6;
+}
+
+.ow-playground-modal-content--chat.ant-modal-content {
+  display: flex !important;
+  flex-direction: column;
+  max-height: min(40rem, 88vh);
+  overflow: hidden;
+}
+
+.ow-playground-modal-content--chat .ant-modal-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.ow-playground-chat-session {
+  display: flex;
+  min-height: min(28rem, 68vh);
+  height: 100%;
+  flex: 1;
+  flex-direction: column;
+}
+
+.ow-playground-chat-session .app-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ow-playground-chat-session .app-messages-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.ow-playground-chat-session .app-composer-stack {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 0 var(--aw-main-column-padding-x) 16px;
+}
+
+.ow-playground-chat-session .app-composer-plus-btn {
+  display: none;
+}

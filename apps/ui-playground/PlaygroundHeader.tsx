@@ -6,7 +6,8 @@ import { setPlaygroundPage, usePlaygroundPage, type PlaygroundPage } from './pla
 const PAGE_OPTIONS: { label: string; value: PlaygroundPage }[] = [
   { label: '模拟数据', value: 'mock' },
   { label: 'Base Agent', value: 'agent' },
-  { label: 'HTTP 封装', value: 'http' }
+  { label: 'HTTP 封装', value: 'http' },
+  { label: '对话框', value: 'dialog' }
 ]
 
 type PlaygroundHeaderProps = {

@@ -24,6 +24,21 @@ function toRunMessages(messages: ChatSessionMessage[]) {
     }))
 }
 
+function buildInitialSession(
+  props: Pick<
+    ChatSessionWithHttpProps,
+    'initialMessages' | 'initialLiveEvents' | 'initialIsRun' | 'initialRunStats'
+  >
+): LiveAgentSession {
+  return {
+    ...emptyLiveSession(),
+    messages: props.initialMessages ?? [],
+    liveEvents: props.initialLiveEvents ?? [],
+    isRun: props.initialIsRun ?? false,
+    runStats: props.initialRunStats
+  }
+}
+
 /**
  * 自包含聊天会话：内部管 AG-UI 事件与会话状态，run/stop 由宿主回调实现。
  *
@@ -33,16 +48,26 @@ export function ChatSessionWithHttp({
   onRunRequest,
   onStopRequest,
   sessionKey = 'http-session',
-  className
+  className,
+  initialMessages,
+  initialLiveEvents,
+  initialIsRun,
+  initialRunStats
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
+  const initialSession = buildInitialSession({
+    initialMessages,
+    initialLiveEvents,
+    initialIsRun,
+    initialRunStats
+  })
   const [input, setInput] = useState('')
   const [composerMode, setComposerMode] = useState<AgentComposerMode>('build')
-  const [messages, setMessages] = useState<ChatSessionMessage[]>([])
-  const [liveEvents, setLiveEvents] = useState(emptyLiveSession().liveEvents)
-  const [isRun, setIsRun] = useState(false)
-  const [runStats, setRunStats] = useState(emptyLiveSession().runStats)
-  const sessionRef = useRef<LiveAgentSession>(emptyLiveSession())
+  const [messages, setMessages] = useState<ChatSessionMessage[]>(initialSession.messages)
+  const [liveEvents, setLiveEvents] = useState(initialSession.liveEvents)
+  const [isRun, setIsRun] = useState(initialSession.isRun)
+  const [runStats, setRunStats] = useState(initialSession.runStats)
+  const sessionRef = useRef<LiveAgentSession>(initialSession)
   const abortRef = useRef<AbortController | null>(null)
 
   const flush = useCallback((next: LiveAgentSession) => {
