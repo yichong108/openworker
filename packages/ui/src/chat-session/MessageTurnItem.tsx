@@ -639,6 +639,7 @@ type MessageCardProps = {
 
 /** 单条消息卡片：用户消息支持停止/编辑，assistant 走专用正文组件 */
 function MessageCard({ msg, ctx }: MessageCardProps) {
+  // 重输入，在消息卡片上进行
   if (msg.role === 'user') {
     return <UserMessageCard msg={msg} ctx={ctx} />
   }

@@ -17,7 +17,7 @@ import SimpleBar from 'simplebar-react'
 
 import { aguiEventsToToolTimeline } from './agui-timeline.js'
 import { MessageTurnItem } from './MessageTurnItem.js'
-import { buildMessageTurns } from './session-utils.js'
+import { buildMessageTurns, type MessageTurn } from './session-utils.js'
 import type { ChatSessionMessage, ChatSessionRunStats } from './types.js'
 
 export type ChatMessageListProps = {
@@ -64,7 +64,7 @@ function useChatMessageList({
     [liveEvents, runStats?.runId, runStats?.traceId]
   )
 
-  const messageTurns = useMemo(() => buildMessageTurns(messages), [messages])
+  const messageTurns: MessageTurn[] = useMemo(() => buildMessageTurns(messages), [messages])
 
   const latestAssistantMessageId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
