@@ -1,0 +1,173 @@
+
+> openworker@1.0.0 test D:\wishzhang\project\owner\agent-weave
+> turbo run test
+
+• turbo 2.9.12
+
+   • Packages in scope: @openworker/agent, @openworker/ap, @openworker/ap-agent, @openworker/ap-web, @openworker/base-agent, @openworker/desktop, @openworker/landing, @openworker/llm, @openworker/log, @openworker/mcp, @openworker/memory, @openworker/native, @openworker/shared, @openworker/skills, @openworker/tools, @openworker/ui, @openworker/ui-playground
+   • Running test in 17 packages
+   • Remote caching disabled
+
+@openworker/tools:test: cache bypass, force executing 87ee82e492772bef
+@openworker/skills:test: cache bypass, force executing 62ba875acdf5d5df
+@openworker/memory:test: cache bypass, force executing 3841ad25f33e2efa
+@openworker/ap-agent:test: cache bypass, force executing 9d9c3c9bdcdd8291
+@openworker/llm:test: cache bypass, force executing 40bffcf9dff70975
+@openworker/base-agent:test: cache bypass, force executing 297b4f0d312bac53
+@openworker/mcp:test: cache bypass, force executing 11918e88cafe6ca0
+@openworker/agent:test: cache bypass, force executing ab333daabbbaf7d8
+@openworker/tools:test: 
+@openworker/tools:test: > @openworker/tools@1.1.0 test D:\wishzhang\project\owner\agent-weave\packages\tools
+@openworker/tools:test: > vitest run
+@openworker/tools:test: 
+@openworker/llm:test: 
+@openworker/llm:test: > @openworker/llm@1.1.0 test D:\wishzhang\project\owner\agent-weave\packages\llm
+@openworker/llm:test: > vitest run
+@openworker/llm:test: 
+@openworker/skills:test: 
+@openworker/skills:test: > @openworker/skills@1.1.0 test D:\wishzhang\project\owner\agent-weave\packages\skills
+@openworker/skills:test: > vitest run
+@openworker/skills:test: 
+@openworker/memory:test: 
+@openworker/memory:test: > @openworker/memory@0.0.0 test D:\wishzhang\project\owner\agent-weave\packages\memory
+@openworker/memory:test: > vitest run
+@openworker/memory:test: 
+@openworker/ap-agent:test: 
+@openworker/ap-agent:test: > @openworker/ap-agent@0.0.0 test D:\wishzhang\project\owner\agent-weave\apps\ap-agent
+@openworker/ap-agent:test: > vitest run
+@openworker/ap-agent:test: 
+@openworker/base-agent:test: 
+@openworker/base-agent:test: > @openworker/base-agent@1.1.0 test D:\wishzhang\project\owner\agent-weave\packages\base-agent
+@openworker/base-agent:test: > vitest run
+@openworker/base-agent:test: 
+@openworker/agent:test: 
+@openworker/agent:test: > @openworker/agent@0.0.0 test D:\wishzhang\project\owner\agent-weave\packages\agent
+@openworker/agent:test: > vitest run
+@openworker/agent:test: 
+@openworker/mcp:test: 
+@openworker/mcp:test: > @openworker/mcp@1.1.0 test D:\wishzhang\project\owner\agent-weave\packages\mcp
+@openworker/mcp:test: > vitest run
+@openworker/mcp:test: 
+@openworker/tools:test: 
+@openworker/tools:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/tools[39m
+@openworker/tools:test: 
+@openworker/llm:test: 
+@openworker/llm:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/llm[39m
+@openworker/llm:test: 
+@openworker/ap-agent:test: 
+@openworker/ap-agent:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/apps/ap-agent[39m
+@openworker/ap-agent:test: 
+@openworker/mcp:test: 
+@openworker/mcp:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/mcp[39m
+@openworker/mcp:test: 
+@openworker/memory:test: 
+@openworker/memory:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/memory[39m
+@openworker/memory:test: 
+@openworker/skills:test: 
+@openworker/skills:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/skills[39m
+@openworker/skills:test: 
+@openworker/base-agent:test: 
+@openworker/base-agent:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/base-agent[39m
+@openworker/base-agent:test: 
+@openworker/agent:test: 
+@openworker/agent:test: [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mD:/wishzhang/project/owner/agent-weave/packages/agent[39m
+@openworker/agent:test: 
+@openworker/memory:test:  [32m✓[39m tests/format.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 130[2mms[22m[39m
+@openworker/memory:test:  [32m✓[39m tests/budget.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 143[2mms[22m[39m
+@openworker/agent:test:  [32m✓[39m tests/tool-context.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 128[2mms[22m[39m
+@openworker/memory:test:  [32m✓[39m tests/profile.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 303[2mms[22m[39m
+@openworker/memory:test:  [32m✓[39m tests/compact.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 247[2mms[22m[39m
+@openworker/llm:test:  [32m✓[39m tests/stream-chat.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+@openworker/memory:test: 
+@openworker/memory:test: [2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+@openworker/memory:test: [2m      Tests [22m [1m[32m20 passed[39m[22m[90m (20)[39m
+@openworker/memory:test: [2m   Start at [22m 20:05:46
+@openworker/memory:test: [2m   Duration [22m 6.70s[2m (transform 8.76s, setup 0ms, import 12.15s, tests 823ms, environment 1ms)[22m
+@openworker/memory:test: 
+@openworker/tools:test:  [32m✓[39m tests/fs.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 507[2mms[22m[39m
+@openworker/tools:test:      [33m[2m✓[22m[39m lists workspace files and rejects empty or unsafe patterns [33m 466[2mms[22m[39m
+@openworker/mcp:test:  [32m✓[39m tests/load-config.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1374[2mms[22m[39m
+@openworker/mcp:test:      [33m[2m✓[22m[39m 空文件返回 [] [33m 307[2mms[22m[39m
+@openworker/mcp:test:      [33m[2m✓[22m[39m 解析 Cursor 对象形态 mcpServers [33m 304[2mms[22m[39m
+@openworker/tools:test: [90mstdout[2m | tests/shell.test.ts[2m > [22m[2mbuildShellTool[2m > [22m[2maborts the running child and reports cancelled
+@openworker/tools:test: [22m[39m[@openworker/tools] execute tool start { id: [32m'shell'[39m }
+@openworker/tools:test: [@openworker/tools] execute tool start detail { id: [32m'shell'[39m, args: [32m'{"command":"ping -n 30 127.0.0.1 >NUL"}'[39m }
+@openworker/tools:test: 
+@openworker/tools:test: [90mstdout[2m | tests/shell.test.ts[2m > [22m[2mbuildShellTool[2m > [22m[2maborts the running child and reports cancelled
+@openworker/tools:test: [22m[39m[@openworker/tools] execute tool end { id: [32m'shell'[39m, durationMs: [33m1554[39m }
+@openworker/tools:test: [@openworker/tools] execute tool end detail { id: [32m'shell'[39m, result: [32m'\n[Command cancelled]'[39m }
+@openworker/tools:test: 
+@openworker/tools:test:  [31m❯[39m tests/shell.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1817[2mms[22m[39m
+@openworker/tools:test: [31m     [31m×[31m registers only the shell tool[39m[32m 222[2mms[22m[39m
+@openworker/tools:test:      [33m[2m✓[22m[39m aborts the running child and reports cancelled [33m 1579[2mms[22m[39m
+@openworker/tools:test: 
+@openworker/tools:test: [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+@openworker/tools:test: 
+@openworker/tools:test: [41m[1m FAIL [22m[49m tests/shell.test.ts[2m > [22mbuildShellTool[2m > [22mregisters only the shell tool
+@openworker/tools:test: [31m[1mAssertionError[22m: expected '默认在目录D:\wishzhang\project\owner\agent…' to contain '工作区根目录'[39m
+@openworker/tools:test: 
+@openworker/tools:test: [32m- Expected[39m
+@openworker/tools:test: [31m+ Received[39m
+@openworker/tools:test: 
+@openworker/tools:test: [32m- 工作区根目录[39m
+@openworker/tools:test: [31m+ 默认在目录D:\wishzhang\project\owner\agent-weave\packages\tools执行一条 shell 命令，阻塞直到进程结束，返回合并后的 stdout/stderr。你可以指定其他目录。[39m
+@openworker/tools:test: [31m+ 用法：[39m
+@openworker/tools:test: [31m+ - 适合一次性命令：安装依赖、构建、测试、git、包管理器、格式化等。[39m
+@openworker/tools:test: [31m+ - 不要用本工具长期挂起（dev server、watch、REPL）；这类进程会一直等到结束或被取消。[39m
+@openworker/tools:test: 
+@openworker/llm:test:  [32m✓[39m tests/llm.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 53[2mms[22m[39m
+@openworker/tools:test: [36m [2m❯[22m tests/shell.test.ts:[2m13:38[22m[39m
+@openworker/tools:test:     [90m 11|[39m
+@openworker/tools:test:     [90m 12|[39m     [34mexpect[39m([33mObject[39m[33m.[39m[34mkeys[39m(tools))[33m.[39m[34mtoEqual[39m([[32m'shell'[39m])
+@openworker/tools:test:     [90m 13|[39m     [34mexpect[39m(tools[33m.[39mshell[33m?.[39mdescription)[33m.[39m[34mtoContain[39m([32m'工作区根目录'[39m)
+@openworker/tools:test:     [90m   |[39m                                      [31m^[39m
+@openworker/tools:test:     [90m 14|[39m   })
+@openworker/tools:test:     [90m 15|[39m
+@openworker/llm:test: 
+@openworker/llm:test: [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+@openworker/llm:test: [2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+@openworker/llm:test: [2m   Start at [22m 20:05:46
+@openworker/tools:test: 
+@openworker/tools:test: 
+@openworker/tools:test: [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+@openworker/tools:test: 
+@openworker/tools:test: [2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+@openworker/tools:test: [2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+@openworker/tools:test: [2m   Start at [22m 20:05:46
+@openworker/llm:test: [2m   Duration [22m 8.84s[2m (transform 3.10s, setup 0ms, import 11.89s, tests 169ms, environment 51ms)[22m
+@openworker/tools:test: [2m   Duration [22m 8.82s[2m (transform 3.75s, setup 0ms, import 10.51s, tests 2.32s, environment 1ms)[22m
+@openworker/llm:test: 
+@openworker/tools:test: 
+@openworker/tools:test:  ELIFECYCLE  Test failed. See above for more details.
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mlists skills per pathKey and dedupes by skillRootDirs order
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=2 from 1 root(s)
+@openworker/skills:test: 
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mlists skills per pathKey and dedupes by skillRootDirs order
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=3 from 2 root(s)
+@openworker/skills:test: 
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mexposes progressive hint and read tools
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=1 from 1 root(s)
+@openworker/skills:test: 
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mreadSkillFile returns SKILL.md body
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=1 from 1 root(s)
+@openworker/skills:test: 
+@openworker/skills:test: [90mstdout[2m | tests/load-skills.test.ts[2m > [22m[2mloadSkillsFromPaths[2m > [22m[2mregisters tools with matching names from listSkillsFromPaths
+@openworker/skills:test: [22m[39m[@openworker/skills] [loadSkillsFromPaths] loaded=1 from 1 path(s)
+@openworker/skills:test: 
+@openworker/skills:test:  [32m✓[39m tests/load-skills.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1661[2mms[22m[39m
+@openworker/skills:test:      [33m[2m✓[22m[39m lists skill metadata without requiring tools [33m 634[2mms[22m[39m
+@openworker/skills:test:      [33m[2m✓[22m[39m dedupes by name with first path winning [33m 458[2mms[22m[39m
+@openworker/skills:test:      [33m[2m✓[22m[39m registers tools with matching names from listSkillsFromPaths [33m 443[2mms[22m[39m
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mreadSkillRelativeFile reads files under skill dir and rejects escape
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=1 from 1 root(s)
+@openworker/skills:test: 
+@openworker/base-agent:test:  [32m✓[39m tests/createBaseAgent.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 202[2mms[22m[39m
+@openworker/base-agent:test: 
+@openworker/base-agent:test: [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+@openworker/base-agent:test: [2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+@openworker/base-agent:test: [2m   Start at [22m 20:05:46
+@openworker/base-agent:test: [2m   Duration [22m 11.72s[2m (transform 5.00s, setup 0ms, import 9.61s, tests 202ms, environment 0ms)[22m
+@openworker/base-agent:test: 
+@openworker/skills:test: [90mstdout[2m | tests/skill-manager.test.ts[2m > [22m[2mSkillManager[2m > [22m[2mremoveSkillRootDir drops skills from that pathKey
+@openworker/skills:test: [22m[39m[@openworker/skills] [SkillManager] refreshed=1 from 1 root(s)
+@openworker/skills:test: 

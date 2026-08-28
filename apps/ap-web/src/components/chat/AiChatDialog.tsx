@@ -8,9 +8,18 @@ import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
 import { consumeSse } from '@/ai/consume-sse'
 import { App, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import '../../../../../packages/ui/src/chat-session/chat-session.scss'
+
+const transcriptCache = new Map<string, ChatTranscript>()
+
+const emptyTranscript = (): ChatTranscript => ({
+  running: false,
+  started: false,
+  messages: [],
+  liveEvents: []
+})
 
 type AiChatDialogProps = {
   open: boolean
@@ -35,19 +44,26 @@ export function AiChatDialog({
   const [hydrated, setHydrated] = useState<ChatTranscript | null>(null)
   const [hydrating, setHydrating] = useState(false)
   const [working, setWorking] = useState(false)
+  const readyFileNameRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!open || !fileName) {
-      setHydrated(null)
+    if (!open || !fileName) return
+
+    if (readyFileNameRef.current === fileName) {
+      return
+    }
+
+    const cached = transcriptCache.get(fileName)
+    if (cached) {
+      setHydrated(cached)
       setHydrating(false)
-      setWorking(false)
+      setWorking(Boolean(cached.running))
+      readyFileNameRef.current = fileName
       return
     }
 
     let cancelled = false
     setHydrating(true)
-    setHydrated(null)
-    setWorking(false)
 
     void fetch(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`, {
       cache: 'no-store'
@@ -59,21 +75,23 @@ export function AiChatDialog({
           code?: string
         }
         if (cancelled) return
-        if (!response.ok) {
-          if (payload.code === 'ai_auth') {
-            onAiAuthError(payload.error || '模型鉴权失败')
-          }
-          setHydrated({ running: false, started: false, messages: [], liveEvents: [] })
-          return
+        const transcript = !response.ok
+          ? emptyTranscript()
+          : (payload.transcript ?? emptyTranscript())
+        if (!response.ok && payload.code === 'ai_auth') {
+          onAiAuthError(payload.error || '模型鉴权失败')
         }
-        setHydrated(
-          payload.transcript ?? { running: false, started: false, messages: [], liveEvents: [] }
-        )
-        setWorking(Boolean(payload.transcript?.running))
+        transcriptCache.set(fileName, transcript)
+        setHydrated(transcript)
+        setWorking(Boolean(transcript.running))
+        readyFileNameRef.current = fileName
       })
       .catch(() => {
         if (!cancelled) {
-          setHydrated({ running: false, started: false, messages: [], liveEvents: [] })
+          const transcript = emptyTranscript()
+          transcriptCache.set(fileName, transcript)
+          setHydrated(transcript)
+          readyFileNameRef.current = fileName
         }
       })
       .finally(() => {
@@ -84,6 +102,8 @@ export function AiChatDialog({
       cancelled = true
     }
   }, [open, fileName, onAiAuthError])
+
+  const sessionKey = fileName || readyFileNameRef.current || ''
 
   const onRunRequest = useCallback(
     async ({
@@ -144,7 +164,6 @@ export function AiChatDialog({
       onClose={onClose}
       width={820}
       footer={null}
-      destroyOnClose
       classNames={{ content: 'ap-modal-content--chat' }}
       title={
         <div className="min-w-0 pr-6">
@@ -156,14 +175,10 @@ export function AiChatDialog({
       <ConfigProvider locale={zhCN} theme={apWebAntdTheme}>
         <App>
           <div className="ap-task-chat-session flex min-h-0 flex-1 flex-col">
-            {hydrating || !hydrated ? (
-              <div className="flex flex-1 items-center justify-center">
-                <Spin />
-              </div>
-            ) : (
+            {sessionKey && hydrated && !hydrating ? (
               <ChatSessionWithHttp
-                key={fileName}
-                sessionKey={fileName}
+                key={sessionKey}
+                sessionKey={sessionKey}
                 initialMessages={initialMessages}
                 initialLiveEvents={hydrated.liveEvents}
                 initialIsRun={hydrated.running}
@@ -171,7 +186,11 @@ export function AiChatDialog({
                 onRunRequest={onRunRequest}
                 onStopRequest={onStopRequest}
               />
-            )}
+            ) : open && fileName ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Spin />
+              </div>
+            ) : null}
           </div>
         </App>
       </ConfigProvider>
