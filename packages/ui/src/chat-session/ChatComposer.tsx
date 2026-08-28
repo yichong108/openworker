@@ -34,7 +34,6 @@ export function ChatComposer({
   onSend,
   onStop,
   placeholder = '输入 / 选择技能，Enter 发送，Shift+Enter 换行',
-  isEmptyConversation = false,
   isRun = false,
   canSend,
   sendDisabled = false,
@@ -107,7 +106,7 @@ export function ChatComposer({
           onBlur={() => {
             window.setTimeout(() => skillMenu?.onClose(), 120)
           }}
-          autoSize={isEmptyConversation ? { minRows: 4, maxRows: 16 } : { minRows: 1, maxRows: 12 }}
+          autoSize={{ minRows: 1, maxRows: 12 }}
           variant="borderless"
           placeholder={placeholder}
           className="app-composer-input"

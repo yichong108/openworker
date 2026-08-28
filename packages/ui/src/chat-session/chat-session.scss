@@ -10,24 +10,22 @@
   overflow: hidden;
   background: var(--aw-color-bg-layout);
 
+  align-items: center;
+
   &.is-empty-conversation {
     min-height: 0;
   }
 
-  /* 有会话时：输入区与空状态同宽并居中；消息区全宽，滚动条贴主栏右侧，正文在 inner 居中 */
-  &:not(.is-empty-conversation) {
-    align-items: center;
-  }
-
-  &:not(.is-empty-conversation) .app-messages-shell {
+  /* 输入区居中同宽；消息区全宽，滚动条贴主栏右侧，正文在 inner 居中 */
+  .app-messages-shell {
     align-self: stretch;
     width: 100%;
     max-width: none;
     min-width: 0;
   }
 
-  &:not(.is-empty-conversation) .app-composer-stack,
-  &:not(.is-empty-conversation) .app-plan-card-stack {
+  .app-composer-stack,
+  .app-plan-card-stack {
     width: 100%;
     max-width: var(--aw-main-content-max-width);
     box-sizing: border-box;
@@ -35,12 +33,16 @@
     padding-inline: var(--aw-main-column-padding-x);
   }
 
-  &:not(.is-empty-conversation) .app-composer-stack {
+  .app-composer-stack {
     margin-bottom: 14px;
   }
 
-  &:not(.is-empty-conversation) .app-plan-card-stack {
+  .app-plan-card-stack {
     margin-bottom: 8px;
+  }
+
+  &.is-empty-conversation .app-messages-shell::after {
+    display: none;
   }
 }
 
@@ -68,27 +70,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.app-composer-hero {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  padding: 24px 0 32px;
-}
-
-.app-composer-hero-inner {
-  width: 100%;
-  max-width: var(--aw-main-content-max-width);
-  padding: 0 14px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .app-composer-toolbar {

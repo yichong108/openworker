@@ -56,8 +56,6 @@ export type ChatComposerProps = {
   /** 停止当前 run；省略时由 ChatSessionView 注入 onStopRun */
   onStop?: () => void
   placeholder?: string
-  /** 空会话时 TextArea 更高 */
-  isEmptyConversation?: boolean
   isRun?: boolean
   /** 有正文且未在跑时可点发送 */
   canSend: boolean
@@ -89,7 +87,7 @@ export type ChatPlanCardProps = {
 }
 
 /**
- * 中间栏聊天会话视图：消息列表 + 输入框 + 空态/加载/计划卡。
+ * 中间栏聊天会话视图：消息列表 + 底部输入框 + 加载/计划卡。
  *
  * 对话面吃 AG-UI `BaseEvent`；输入框与计划编辑仍是 UI 插槽。
  */
