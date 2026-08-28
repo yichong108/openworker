@@ -1,30 +1,22 @@
 'use client'
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { useEffect } from 'react'
 
 import type { ApModalProps } from './ApModalBundle'
 
-const ApModalBundle = lazy(() =>
-  import('./ApModalBundle').then((module) => ({
-    default: module.ApModalBundle
-  }))
+const ApModalBundle = dynamic(
+  () => import('./ApModalBundle').then((module) => ({ default: module.ApModalBundle })),
+  { ssr: false }
 )
 
 /** 懒加载 antd Modal，业务弹窗统一经此入口。 */
 export function ApModal(props: ApModalProps) {
-  const [mounted, setMounted] = useState(false)
-
   useEffect(() => {
-    setMounted(true)
+    void import('./ApModalBundle')
   }, [])
 
-  if (!mounted) return null
-
-  return (
-    <Suspense fallback={null}>
-      <ApModalBundle {...props} />
-    </Suspense>
-  )
+  return <ApModalBundle {...props} />
 }
 
 export type { ApModalProps } from './ApModalBundle'

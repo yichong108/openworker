@@ -64,7 +64,7 @@ export function ApModalBundle({
         centered={centered}
         closable={closable}
         maskClosable={maskClosable}
-        destroyOnClose={destroyOnClose}
+        destroyOnHidden={destroyOnClose}
         zIndex={zIndex}
         className="ap-modal"
         classNames={classNames}

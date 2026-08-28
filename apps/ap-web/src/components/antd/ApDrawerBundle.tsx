@@ -46,7 +46,7 @@ export function ApDrawerBundle({
         width={width}
         closable={closable}
         maskClosable={maskClosable}
-        destroyOnClose={destroyOnClose}
+        destroyOnHidden={destroyOnClose}
         zIndex={zIndex}
         className="ap-drawer"
         classNames={classNames}

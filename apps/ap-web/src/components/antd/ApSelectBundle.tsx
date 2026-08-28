@@ -53,7 +53,7 @@ export const ApSelectBundle = memo(function ApSelectBundle({
         {...props}
         options={selectOptions}
         className={['w-full', className].filter(Boolean).join(' ')}
-        popupClassName="ap-select-dropdown"
+        classNames={{ popup: { root: 'ap-select-dropdown' } }}
         getPopupContainer={popupContainer}
         onChange={handleChange}
       />

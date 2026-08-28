@@ -338,10 +338,12 @@ export function TaskBoard() {
                 onMove={moveTask}
                 onDropTask={moveTask}
                 onOpenChat={(task) => {
-                  setChatTask({
-                    id: task.id,
-                    fileName: task.fileName,
-                    title: task.title
+                  queueMicrotask(() => {
+                    setChatTask({
+                      id: task.id,
+                      fileName: task.fileName,
+                      title: task.title
+                    })
                   })
                 }}
                 onUpdate={updateTask}

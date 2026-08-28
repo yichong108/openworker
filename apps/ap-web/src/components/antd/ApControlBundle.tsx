@@ -88,7 +88,7 @@ export function ApTimePickerBundle({
         value={parseTime(value)}
         defaultValue={parseTime(defaultValue)}
         needConfirm={false}
-        popupClassName="ap-time-picker-dropdown"
+        classNames={{ popup: { root: 'ap-time-picker-dropdown' } }}
         className={['w-full', className].filter(Boolean).join(' ')}
         onChange={(time) => onChange?.(time ? time.format(TIME_FORMAT) : '')}
       />

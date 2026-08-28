@@ -142,7 +142,7 @@ export function AiChatDialog({
     <ApModal
       open={open}
       onClose={onClose}
-      width={672}
+      width={800}
       footer={null}
       destroyOnClose
       classNames={{ content: 'ap-modal-content--chat' }}

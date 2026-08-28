@@ -23,6 +23,7 @@ export function SelectFallback({
     <select
       id={id}
       value={current}
+      readOnly
       disabled={disabled}
       className={[FIELD_FALLBACK, className].filter(Boolean).join(' ')}
       aria-busy="true"
