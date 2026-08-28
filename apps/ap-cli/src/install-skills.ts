@@ -146,7 +146,9 @@ function getApConfigJsonPath(startDir: string): string {
  */
 export function ensureApConfigJson(startDir: string = process.cwd()): string {
   const destFile = getApConfigJsonPath(startDir)
-  mkdirSync(join(resolve(startDir), '.agents', 'ap-config'), { recursive: true })
+  mkdirSync(join(resolve(startDir), '.agents', 'ap-config'), {
+    recursive: true
+  })
 
   if (!existsSync(destFile)) {
     const initial = { 'data-version': INITIAL_DATA_VERSION }

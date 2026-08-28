@@ -119,7 +119,10 @@ export function useWorkspaceLeftPane() {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSidebarResizing, setIsSidebarResizing] = useState(false)
-  const sidebarResizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const sidebarResizeStartRef = useRef<{
+    startX: number
+    startWidth: number
+  } | null>(null)
   const sidebarExpandedWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH)
 
   const [draggingWorkspaceId, setDraggingWorkspaceId] = useState<string | null>(null)
@@ -410,7 +413,9 @@ export function useWorkspaceLeftPane() {
   const handleRemoveSessionFromSidebar = useCallback(
     (workspaceId: string, session: SessionInfo) => {
       const { byWorkspace, activeSessionId } = useUiStore.getState()
-      const prev: WorkspaceUiState = byWorkspace[workspaceId] ?? { ...defaultWorkspaceUiState }
+      const prev: WorkspaceUiState = byWorkspace[workspaceId] ?? {
+        ...defaultWorkspaceUiState
+      }
       const prevHidden = prev.sidebarHiddenSessionIds ?? []
       if (prevHidden.includes(session.id)) return
       const sidebarHiddenSessionIds = [...prevHidden, session.id]

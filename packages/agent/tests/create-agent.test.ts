@@ -36,7 +36,10 @@ describe('createAgent', () => {
   })
 
   it('返回含 send 的实例，不含 mcp', () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
     expect(agent.messages).toEqual([])
@@ -52,7 +55,10 @@ describe('createAgent', () => {
   })
 
   it('send 未传 workspacePath 时回退 local.cwd', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     const callbacks = createCallbacks()
 
     const result = await agent.send('ping', {
@@ -78,7 +84,10 @@ describe('createAgent', () => {
   })
 
   it('send 优先使用本轮 workspacePath', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     const callbacks = createCallbacks()
 
     await agent.send('ping', {
@@ -98,7 +107,10 @@ describe('createAgent', () => {
   })
 
   it('send 空 userText 抛错', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     await expect(agent.send('   ')).rejects.toThrow('userText is empty')
   })
 
@@ -124,7 +136,10 @@ describe('createAgent', () => {
   })
 
   it('send 取消时抛错且不写回助手消息', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     const callbacks = createCallbacks()
     const abortController = new AbortController()
     vi.mocked(runReActLoop).mockImplementation(async () => {
@@ -144,7 +159,10 @@ describe('createAgent', () => {
   })
 
   it('失败时 send 抛错', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     const callbacks = createCallbacks()
     const boom = new Error('model failed')
     vi.mocked(runReActLoop).mockRejectedValueOnce(boom)
@@ -158,7 +176,10 @@ describe('createAgent', () => {
   })
 
   it('未注入 resolveCapabilities 时不出现技能摘要', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     await agent.send('修一下报错', { composerMode: 'build' })
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
@@ -194,7 +215,10 @@ describe('createAgent', () => {
   })
 
   it('ask 模式不暴露 shell', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     await agent.send('这段代码做什么？', { composerMode: 'ask' })
 
     const [{ systemPrompt: runPrompt, tools }] = vi.mocked(runReActLoop).mock.calls[0]!
@@ -203,7 +227,10 @@ describe('createAgent', () => {
   })
 
   it('plan 模式使用计划 prompt', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     await agent.send('设计会话压缩', { composerMode: 'plan' })
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
@@ -212,7 +239,10 @@ describe('createAgent', () => {
   })
 
   it('build 注入 planMarkdown 到 system prompt', async () => {
-    const agent = createAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     await agent.send('执行', {
       composerMode: 'build',
       planMarkdown: '# 计划\n- 改 A'

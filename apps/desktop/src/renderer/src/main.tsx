@@ -35,7 +35,14 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, AppError
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 16, color: '#fff', background: '#141414', height: '100%' }}>
+        <div
+          style={{
+            padding: 16,
+            color: '#fff',
+            background: '#141414',
+            height: '100%'
+          }}
+        >
           <h3 style={{ marginTop: 0 }}>渲染异常（已阻止白屏）</h3>
           <pre style={{ whiteSpace: 'pre-wrap' }}>{this.state.error.message}</pre>
         </div>

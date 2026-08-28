@@ -42,7 +42,9 @@ export function TextAreaFallback({
 }
 
 const ApTextAreaBundle = lazy(() =>
-  import('./ApInputBundle').then((module) => ({ default: module.ApTextAreaBundle }))
+  import('./ApInputBundle').then((module) => ({
+    default: module.ApTextAreaBundle
+  }))
 )
 
 /** 懒加载 antd Input.TextArea，业务组件只依赖此入口。 */

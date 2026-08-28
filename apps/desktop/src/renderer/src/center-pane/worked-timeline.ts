@@ -339,7 +339,11 @@ function flushExploredBuffer(buffer: ToolCallEvent[], exploreSeq: { n: number })
   if (buffer.length === 0) return []
   const onlyShell = buffer.every((t) => t.name === 'shell')
   if (onlyShell) {
-    return buffer.map((event) => ({ kind: 'shell' as const, id: event.id, event }))
+    return buffer.map((event) => ({
+      kind: 'shell' as const,
+      id: event.id,
+      event
+    }))
   }
   exploreSeq.n += 1
   return [

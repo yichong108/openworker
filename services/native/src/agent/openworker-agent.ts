@@ -40,7 +40,9 @@ export type OpenWorkerAgentConfig = {
 }
 
 /** 创建时占位模型（run 时经 send.provider 覆盖） */
-const PLACEHOLDER_PROVIDER = { modelId: 'openworker-placeholder' } as LanguageModel
+const PLACEHOLDER_PROVIDER = {
+  modelId: 'openworker-placeholder'
+} as LanguageModel
 
 /**
  * OpenWorker 产品 Agent：createAgent + 约定 Skills/MCP 装配 + 自有 mcp API。

@@ -186,7 +186,12 @@ export class McpManager {
         } catch (e) {
           await this.evict(srv.id)
           const message = e instanceof Error ? e.message : String(e)
-          return { id: srv.id, name: srv.name, ok: false as const, error: message }
+          return {
+            id: srv.id,
+            name: srv.name,
+            ok: false as const,
+            error: message
+          }
         }
       }
       try {
@@ -490,7 +495,10 @@ export class McpManager {
         command: entry.command.trim(),
         args: entry.args ?? [],
         cwd: entry.cwd?.trim() || undefined,
-        env: { ...getDefaultEnvironment(), ...flattenMcpEnvForSpawn(entry.env) },
+        env: {
+          ...getDefaultEnvironment(),
+          ...flattenMcpEnvForSpawn(entry.env)
+        },
         stderr: 'pipe'
       })
       const client = new Client({ name: 'openworker', version: '0.1.0' })

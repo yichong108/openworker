@@ -138,7 +138,11 @@ export function cpSafe(src, dest, options = {}) {
       mkdirSync(dest, { recursive: true })
       for (const name of readdirSync(src)) {
         if (skipNames.has(name)) continue
-        cpSafe(join(src, name), join(dest, name), { skipRoots, skipNames, walkStack })
+        cpSafe(join(src, name), join(dest, name), {
+          skipRoots,
+          skipNames,
+          walkStack
+        })
       }
       return
     }

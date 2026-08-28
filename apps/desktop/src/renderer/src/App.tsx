@@ -160,7 +160,10 @@ export function App() {
   const [rightPaneWidth, setRightPaneWidth] = useState(RIGHT_PANE_DEFAULT_WIDTH)
   const [isRightPaneCollapsed, setIsRightPaneCollapsed] = useState(true)
   const [isRightPaneResizing, setIsRightPaneResizing] = useState(false)
-  const rightPaneResizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const rightPaneResizeStartRef = useRef<{
+    startX: number
+    startWidth: number
+  } | null>(null)
   const rightPaneExpandedWidthRef = useRef(RIGHT_PANE_DEFAULT_WIDTH)
   const [leftTogglePortalHost, setLeftTogglePortalHost] = useState<HTMLDivElement | null>(null)
 

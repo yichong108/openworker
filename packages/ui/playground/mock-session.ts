@@ -21,7 +21,12 @@ function toolTriple(
   start: number
 ): BaseEvent[] {
   return [
-    ev({ type: EventType.TOOL_CALL_START, toolCallId: id, toolCallName: name, timestamp: start }),
+    ev({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: id,
+      toolCallName: name,
+      timestamp: start
+    }),
     ev({
       type: EventType.TOOL_CALL_ARGS,
       toolCallId: id,
@@ -39,11 +44,31 @@ function toolTriple(
 
 /** 斜杠技能菜单模拟数据 */
 export const MOCK_SKILLS: ChatComposerSkill[] = [
-  { name: 'refactor', description: '对选中代码做行为保持的重构，不新增功能', source: 'user' },
-  { name: 'review', description: '审查变更并列出风险点、测试缺口与回归面', source: 'user' },
-  { name: 'test', description: '为当前改动补充表征测试与边界用例', source: 'user' },
-  { name: 'docs', description: '根据实现补一节简明说明，不写空话', source: 'user' },
-  { name: 'plan', description: '先拆步骤再动手，适合不确定范围的任务', source: 'user' }
+  {
+    name: 'refactor',
+    description: '对选中代码做行为保持的重构，不新增功能',
+    source: 'user'
+  },
+  {
+    name: 'review',
+    description: '审查变更并列出风险点、测试缺口与回归面',
+    source: 'user'
+  },
+  {
+    name: 'test',
+    description: '为当前改动补充表征测试与边界用例',
+    source: 'user'
+  },
+  {
+    name: 'docs',
+    description: '根据实现补一节简明说明，不写空话',
+    source: 'user'
+  },
+  {
+    name: 'plan',
+    description: '先拆步骤再动手，适合不确定范围的任务',
+    source: 'user'
+  }
 ]
 
 const FILE_AFTER = [
@@ -247,7 +272,10 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
       ev({
         type: EventType.CUSTOM,
         name: 'cursor.thinking',
-        value: { text: '补第三回合长文案，确保 sticky 与滚动同时可测。', thinkingDurationMs: 900 },
+        value: {
+          text: '补第三回合长文案，确保 sticky 与滚动同时可测。',
+          thinkingDurationMs: 900
+        },
         timestamp: T0 + 12_000
       }),
       ...toolTriple(

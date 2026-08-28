@@ -9,7 +9,10 @@ import { ensureWorkspaceExists } from './path-guard.js'
  * @param buf - 待拆分的字节
  * @returns complete 可安全解码的前缀；rest 需留到下一 chunk
  */
-function splitIncompleteUtf8Tail(buf: Buffer): { complete: Buffer; rest: Buffer } {
+function splitIncompleteUtf8Tail(buf: Buffer): {
+  complete: Buffer
+  rest: Buffer
+} {
   if (buf.length === 0) return { complete: buf, rest: Buffer.alloc(0) }
   const last = buf[buf.length - 1]!
   if (last < 0x80) return { complete: buf, rest: Buffer.alloc(0) }

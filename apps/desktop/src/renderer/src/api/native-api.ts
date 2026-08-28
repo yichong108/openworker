@@ -81,7 +81,10 @@ function unwrap<T>(result: RequestResult<T>): T {
  */
 export async function apiListWorkspaces(): Promise<WorkspaceInfo[]> {
   const data = unwrap(
-    await request<{ list: WorkspaceDto[] }>({ method: 'GET', url: '/workspaces' })
+    await request<{ list: WorkspaceDto[] }>({
+      method: 'GET',
+      url: '/workspaces'
+    })
   )
   return (data?.list ?? []).map(toWorkspaceInfo)
 }
@@ -93,7 +96,11 @@ export async function apiListWorkspaces(): Promise<WorkspaceInfo[]> {
  */
 export async function apiCreateWorkspace(body: CreateWorkspaceRequest): Promise<WorkspaceInfo> {
   const data = unwrap(
-    await request<{ workspace: WorkspaceDto }>({ method: 'POST', url: '/workspaces', data: body })
+    await request<{ workspace: WorkspaceDto }>({
+      method: 'POST',
+      url: '/workspaces',
+      data: body
+    })
   )
   return toWorkspaceInfo(data.workspace)
 }
@@ -254,7 +261,11 @@ export async function apiGetSettings(): Promise<AppSettings> {
  */
 export async function apiSetSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   return unwrap(
-    await requestDataEnvelope<AppSettings>({ method: 'PUT', url: '/settings', data: patch })
+    await requestDataEnvelope<AppSettings>({
+      method: 'PUT',
+      url: '/settings',
+      data: patch
+    })
   )
 }
 
@@ -280,7 +291,13 @@ export async function apiListSkills(workspaceId?: string): Promise<SkillListItem
  * @param entry - MCP 配置
  */
 export async function apiMcpProbe(entry: McpServerEntry): Promise<McpProbeResult> {
-  return unwrap(await request<McpProbeResult>({ method: 'POST', url: '/mcp/probe', data: entry }))
+  return unwrap(
+    await request<McpProbeResult>({
+      method: 'POST',
+      url: '/mcp/probe',
+      data: entry
+    })
+  )
 }
 
 /**
@@ -356,7 +373,10 @@ export async function apiSendAgentMessage(
     )
     return { ok: true }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    }
   }
 }
 

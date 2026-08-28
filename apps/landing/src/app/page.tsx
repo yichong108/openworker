@@ -33,7 +33,9 @@ export default function Home() {
       <section className="relative flex min-h-screen items-end overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('${withBasePath('/openworker-ui.png')}')` }}
+          style={{
+            backgroundImage: `url('${withBasePath('/openworker-ui.png')}')`
+          }}
           aria-hidden
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--panel)] via-[rgba(12,18,34,0.78)] to-[rgba(12,18,34,0.45)]" />

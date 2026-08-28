@@ -8,7 +8,10 @@ declare global {
   }
 }
 
-function normalizeArgs(args: unknown[]): { msg?: string; bindings?: Record<string, unknown> } {
+function normalizeArgs(args: unknown[]): {
+  msg?: string
+  bindings?: Record<string, unknown>
+} {
   if (args.length === 0) return {}
   const [first, ...rest] = args
   if (typeof first === 'string') {

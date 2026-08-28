@@ -193,7 +193,12 @@ export function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
 
       const parts: Array<
         | { type: 'text'; text: string }
-        | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+        | {
+            type: 'tool-call'
+            toolCallId: string
+            toolName: string
+            input: unknown
+          }
       > = []
       if (message.content) {
         parts.push({ type: 'text', text: message.content })

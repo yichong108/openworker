@@ -31,7 +31,9 @@ const api = {
    * @param rootPath - 工作区绝对路径；null 表示清除
    */
   setWorkspaceFsRoot: (rootPath: string | null) =>
-    ipcRenderer.invoke(IPC.WORKSPACE_FS_ROOT, rootPath) as Promise<{ ok: true }>,
+    ipcRenderer.invoke(IPC.WORKSPACE_FS_ROOT, rootPath) as Promise<{
+      ok: true
+    }>,
   /**
    * 列出工作区文件树
    *

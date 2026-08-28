@@ -50,7 +50,9 @@ export type ApAgentWithAGUIConfig = AgentConfig & {
 }
 
 /** 创建时占位模型（run 时经 forwardedProps.provider 覆盖） */
-const PLACEHOLDER_PROVIDER = { modelId: 'ap-agent-placeholder' } as LanguageModel
+const PLACEHOLDER_PROVIDER = {
+  modelId: 'ap-agent-placeholder'
+} as LanguageModel
 
 /**
  * 从 RunAgentInput.forwardedProps 解析可覆盖的运行参数。
@@ -179,7 +181,12 @@ function aguiMessagesToCore(messages: Message[]): CoreMessage[] {
 
       const parts: Array<
         | { type: 'text'; text: string }
-        | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+        | {
+            type: 'tool-call'
+            toolCallId: string
+            toolName: string
+            input: unknown
+          }
       > = []
       if (message.content) {
         parts.push({ type: 'text', text: message.content })

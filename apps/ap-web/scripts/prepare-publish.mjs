@@ -99,7 +99,9 @@ cpSafe(standaloneSrc, distDir, {
 })
 
 mkdirSync(join(stagingDir, 'bin'), { recursive: true })
-cpSafe(binSrc, join(stagingDir, 'bin', 'ap-web.mjs'), { skipRoots: [stagingDir] })
+cpSafe(binSrc, join(stagingDir, 'bin', 'ap-web.mjs'), {
+  skipRoots: [stagingDir]
+})
 
 const publishPkg = {
   name: sourcePkg.name,

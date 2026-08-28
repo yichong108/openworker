@@ -152,7 +152,10 @@ export function ChatComposer({
         <div className="app-composer-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Dropdown
-              menu={{ items: composerPlusMenuItems, onClick: handleComposerPlusMenuClick }}
+              menu={{
+                items: composerPlusMenuItems,
+                onClick: handleComposerPlusMenuClick
+              }}
               trigger={['hover']}
               placement="topLeft"
             >

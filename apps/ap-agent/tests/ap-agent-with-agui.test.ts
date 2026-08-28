@@ -99,7 +99,9 @@ describe('ApAgentWithAGUI', () => {
             err.name = 'AbortError'
             reject(err)
           }
-          abortController?.signal.addEventListener('abort', onAbort, { once: true })
+          abortController?.signal.addEventListener('abort', onAbort, {
+            once: true
+          })
           setTimeout(() => {
             abortController?.signal.removeEventListener('abort', onAbort)
             resolve([...messages, { role: 'assistant' as const, content: 'hello' }])

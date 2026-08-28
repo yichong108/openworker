@@ -411,7 +411,11 @@ function mergeToolSets(...sets: ToolSet[]): ToolSet {
  */
 export async function listSkillsFromPaths(paths: string[]): Promise<SkillListItem[]> {
   const merged = await resolveSkillDefinitions(paths)
-  return merged.map(({ name, description, source }) => ({ name, description, source }))
+  return merged.map(({ name, description, source }) => ({
+    name,
+    description,
+    source
+  }))
 }
 
 /**

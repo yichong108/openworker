@@ -4,7 +4,10 @@
 
 import { jsonSchema, type JSONSchema7 } from 'ai'
 
-const EMPTY_OBJECT_SCHEMA: JSONSchema7 = { type: 'object', additionalProperties: true }
+const EMPTY_OBJECT_SCHEMA: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: true
+}
 
 export function mcpInputSchemaToParameters(inputSchema: unknown) {
   if (inputSchema && typeof inputSchema === 'object') {

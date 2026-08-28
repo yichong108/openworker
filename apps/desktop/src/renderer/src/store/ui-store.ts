@@ -184,7 +184,9 @@ export const useUiStore = create<UiStoreState>((set, get) => ({
     set({ inputDraft: text, byWorkspace })
     if (draftTimer) clearTimeout(draftTimer)
     draftTimer = setTimeout(() => {
-      persistPatch({ byWorkspace: { [workspaceId]: byWorkspace[workspaceId]! } })
+      persistPatch({
+        byWorkspace: { [workspaceId]: byWorkspace[workspaceId]! }
+      })
       draftTimer = null
     }, 150)
   },
@@ -202,7 +204,10 @@ export const useUiStore = create<UiStoreState>((set, get) => ({
     if (prev.unreadBySessionId?.[sessionId] === kind) return
     const nextWs: WorkspaceUiState = {
       ...prev,
-      unreadBySessionId: { ...(prev.unreadBySessionId ?? {}), [sessionId]: kind }
+      unreadBySessionId: {
+        ...(prev.unreadBySessionId ?? {}),
+        [sessionId]: kind
+      }
     }
     const byWorkspace = { ...currentByWorkspace, [workspaceId]: nextWs }
     set({ byWorkspace })

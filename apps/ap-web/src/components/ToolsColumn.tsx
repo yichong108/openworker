@@ -129,9 +129,11 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [contextMenu, setContextMenu] = useState<{ name: string; x: number; y: number } | null>(
-    null
-  )
+  const [contextMenu, setContextMenu] = useState<{
+    name: string
+    x: number
+    y: number
+  } | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [nextAtByName, setNextAtByName] = useState<Record<string, number | null>>({})
 
@@ -242,7 +244,10 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
 
   const refreshCatalog = useCallback(async () => {
     const response = await fetch('/api/skills', { cache: 'no-store' })
-    const payload = (await response.json()) as { skills?: CatalogSkill[]; error?: string }
+    const payload = (await response.json()) as {
+      skills?: CatalogSkill[]
+      error?: string
+    }
     if (!response.ok) {
       throw new Error(payload.error || '无法读取 skill')
     }
@@ -251,7 +256,10 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
 
   const refreshRuns = useCallback(async () => {
     const response = await fetch('/api/skills/runs', { cache: 'no-store' })
-    const payload = (await response.json()) as { running?: string[]; error?: string }
+    const payload = (await response.json()) as {
+      running?: string[]
+      error?: string
+    }
     if (!response.ok) return
     setRunning(payload.running ?? [])
   }, [])
@@ -274,7 +282,10 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     const load = async (): Promise<void> => {
       try {
         const response = await fetch('/api/toolbox', { cache: 'no-store' })
-        const payload = (await response.json()) as { items?: ToolboxRecord[]; error?: string }
+        const payload = (await response.json()) as {
+          items?: ToolboxRecord[]
+          error?: string
+        }
         if (!response.ok) {
           throw new Error(payload.error || '无法读取工具集')
         }
@@ -357,7 +368,10 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
           ...(path === '/api/skills/run' && input ? { input } : {})
         })
       })
-      const payload = (await response.json()) as { error?: string; code?: string }
+      const payload = (await response.json()) as {
+        error?: string
+        code?: string
+      }
       if (!response.ok) {
         const message = payload.error || '操作失败'
         setError(message)
@@ -611,12 +625,19 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
                             const current = scheduleOf(itemsRef.current, name)
                             if (!enabled) {
                               invalidate(name)
-                              patchSchedule(name, { enabled: false, nextAt: null })
+                              patchSchedule(name, {
+                                enabled: false,
+                                nextAt: null
+                              })
                               return
                             }
                             const loops = Math.max(1, Math.min(99, current.loops))
                             invalidate(name)
-                            patchSchedule(name, { enabled: true, loops, remaining: loops })
+                            patchSchedule(name, {
+                              enabled: true,
+                              loops,
+                              remaining: loops
+                            })
                             arm(name)
                           }}
                         />

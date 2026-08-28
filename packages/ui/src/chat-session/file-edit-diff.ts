@@ -31,7 +31,10 @@ function strField(obj: Record<string, unknown> | null, key: string): string | un
   return typeof value === 'string' ? value : undefined
 }
 
-function parseLegacyWriteSummary(summary: string): { path?: string; content?: string } {
+function parseLegacyWriteSummary(summary: string): {
+  path?: string
+  content?: string
+} {
   const idx = summary.indexOf(', ')
   if (idx <= 0) {
     const trimmed = summary.trim()

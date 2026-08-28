@@ -18,10 +18,24 @@ describe('mergeProfileFacts', () => {
   it('同 key 高 confidence 覆盖', () => {
     const merged = mergeProfileFacts(
       {
-        facts: [fact({ key: 'preference.pm', value: 'npm', confidence: 0.4, updatedAt: 1 })],
+        facts: [
+          fact({
+            key: 'preference.pm',
+            value: 'npm',
+            confidence: 0.4,
+            updatedAt: 1
+          })
+        ],
         updatedAt: 1
       },
-      [fact({ key: 'preference.pm', value: 'pnpm', confidence: 0.9, updatedAt: 2 })]
+      [
+        fact({
+          key: 'preference.pm',
+          value: 'pnpm',
+          confidence: 0.9,
+          updatedAt: 2
+        })
+      ]
     )
     expect(merged.facts).toHaveLength(1)
     expect(merged.facts[0]?.value).toBe('pnpm')
@@ -94,8 +108,16 @@ describe('parseExtractedFactsJson / extractProfileFacts', () => {
       summarizer: {
         async summarize() {
           return JSON.stringify([
-            { key: 'preference.language', value: 'TypeScript', confidence: 0.9 },
-            { key: 'preference.packageManager', value: 'pnpm', confidence: 0.85 }
+            {
+              key: 'preference.language',
+              value: 'TypeScript',
+              confidence: 0.9
+            },
+            {
+              key: 'preference.packageManager',
+              value: 'pnpm',
+              confidence: 0.85
+            }
           ])
         }
       }

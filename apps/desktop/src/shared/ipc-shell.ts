@@ -95,8 +95,18 @@ export type McpProbeToolInfo = {
 
 export type McpProbeResult = { ok: true; tools: McpProbeToolInfo[] } | { ok: false; error: string }
 
-export type McpWarmupServerOk = { id: string; name: string; ok: true; toolCount: number }
-export type McpWarmupServerErr = { id: string; name: string; ok: false; error: string }
+export type McpWarmupServerOk = {
+  id: string
+  name: string
+  ok: true
+  toolCount: number
+}
+export type McpWarmupServerErr = {
+  id: string
+  name: string
+  ok: false
+  error: string
+}
 export type McpWarmupServerResult = McpWarmupServerOk | McpWarmupServerErr
 
 export type McpWarmupReport = {

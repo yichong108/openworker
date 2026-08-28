@@ -10,5 +10,10 @@ import pino from 'pino'
  */
 export function createFileDestination(filePath: string): pino.DestinationStream {
   mkdirSync(dirname(filePath), { recursive: true })
-  return pino.destination({ dest: filePath, append: true, mkdir: true, sync: false })
+  return pino.destination({
+    dest: filePath,
+    append: true,
+    mkdir: true,
+    sync: false
+  })
 }

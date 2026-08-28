@@ -28,7 +28,10 @@ describe('createApAgent', () => {
   })
 
   it('返回含 send 的实例，不含 mcp', () => {
-    const agent = createApAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createApAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
     expect(agent.messages).toEqual([])
@@ -44,7 +47,10 @@ describe('createApAgent', () => {
   })
 
   it('send 能跑通', async () => {
-    const agent = createApAgent({ provider: stubModel, local: { cwd: '/tmp/ws' } })
+    const agent = createApAgent({
+      provider: stubModel,
+      local: { cwd: '/tmp/ws' }
+    })
 
     const result = await agent.send('ping', {
       composerMode: 'ask',

@@ -210,7 +210,10 @@ export async function prepareSessionMemory(input: {
   const sessionSection = formatSessionSystemSection(summary, compacted.pinned, budget.summaryChars)
   const profile = await loadUserProfile()
   const profileSection = formatProfileSection(profile)
-  const systemSection = composeMemorySystemSection({ profileSection, sessionSection })
+  const systemSection = composeMemorySystemSection({
+    profileSection,
+    sessionSection
+  })
 
   const working = { summary, pinned: compacted.pinned }
   saveSessionWorking(input.sessionId, working)

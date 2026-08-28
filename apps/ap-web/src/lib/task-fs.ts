@@ -237,7 +237,12 @@ export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
     throw new TaskFsError('文件已存在，请重试', 409)
   }
 
-  const markdown = buildTaskMarkdown({ ...input, title, requirements, status: column })
+  const markdown = buildTaskMarkdown({
+    ...input,
+    title,
+    requirements,
+    status: column
+  })
   writeFileSync(dest, markdown, 'utf8')
   return readTask(toPosixId(tasksRoot, dest))
 }

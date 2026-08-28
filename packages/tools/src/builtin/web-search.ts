@@ -154,7 +154,10 @@ export function buildWebSearchTool(options: BuildWebSearchToolOptions): ToolSet 
         max_results: z.number().int().min(1).max(20).optional()
       }),
       execute: ({ query, max_results }) =>
-        tavilyWebSearch(query, { maxResults: max_results, apiKey: tavilyApiKey })
+        tavilyWebSearch(query, {
+          maxResults: max_results,
+          apiKey: tavilyApiKey
+        })
     },
     onTool
   )

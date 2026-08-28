@@ -71,7 +71,9 @@ export async function loadOpenWorkerSkillsAndMcp(
   if (composerMode === 'ask' || composerMode === 'plan') {
     return {
       tools: {},
-      promptExtras: { extraPrompt: `mcp 配置文件路径：${getOpenworkerMcpConfigPath()}；` }
+      promptExtras: {
+        extraPrompt: `mcp 配置文件路径：${getOpenworkerMcpConfigPath()}；`
+      }
     }
   }
 

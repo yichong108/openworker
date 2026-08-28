@@ -53,7 +53,10 @@ export async function listDeepseekModels(
   const key =
     apiKey?.trim() || readAiConfig().deepseek.apiKey.trim() || process.env.DEEPSEEK_API_KEY?.trim()
   if (!key) {
-    return { models: [defaultDeepseekModel()], authError: '未填写 DeepSeek API Key' }
+    return {
+      models: [defaultDeepseekModel()],
+      authError: '未填写 DeepSeek API Key'
+    }
   }
   try {
     const response = await fetch('https://api.deepseek.com/models', {
@@ -65,7 +68,10 @@ export async function listDeepseekModels(
         payload && typeof payload === 'object' && 'error' in payload
           ? JSON.stringify((payload as { error: unknown }).error)
           : `HTTP ${response.status}`
-      return { models: [defaultDeepseekModel()], authError: `DeepSeek 鉴权失败：${detail}` }
+      return {
+        models: [defaultDeepseekModel()],
+        authError: `DeepSeek 鉴权失败：${detail}`
+      }
     }
     const models = withFallback(extractModelIds(payload), defaultDeepseekModel())
     return { models }

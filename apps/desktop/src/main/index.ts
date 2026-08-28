@@ -134,7 +134,9 @@ async function loadDevtoolsExtension(): Promise<void> {
 
   if (existsSync(extensionPath)) {
     try {
-      await session.defaultSession.loadExtension(extensionPath, { allowFileAccess: true })
+      await session.defaultSession.loadExtension(extensionPath, {
+        allowFileAccess: true
+      })
       mainLog.info('[react-devtools] 本地离线扩展加载成功')
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)

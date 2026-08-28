@@ -122,7 +122,10 @@ export function PlaygroundApp() {
         const last = prev[prev.length - 1]
         if (!last || last.role !== 'assistant') return prev
         const next = [...prev]
-        next[next.length - 1] = { ...last, content: `正在读取 \`chat-session\` 目录${slice}` }
+        next[next.length - 1] = {
+          ...last,
+          content: `正在读取 \`chat-session\` 目录${slice}`
+        }
         return next
       })
       if (i >= MOCK_STREAM_TAIL.length) {
@@ -164,7 +167,11 @@ export function PlaygroundApp() {
   const send = useCallback(() => {
     const text = input.trim()
     if (!text || isRun) return
-    const user: ChatSessionMessage = { id: nextId('u'), role: 'user', content: text }
+    const user: ChatSessionMessage = {
+      id: nextId('u'),
+      role: 'user',
+      content: text
+    }
     const assistant: ChatSessionMessage = {
       id: nextId('a'),
       role: 'assistant',
@@ -194,7 +201,10 @@ export function PlaygroundApp() {
           size="small"
           value={scene}
           onChange={(value) => applyScene(value as PlaygroundScene)}
-          options={PLAYGROUND_SCENES.map((item) => ({ label: item.label, value: item.id }))}
+          options={PLAYGROUND_SCENES.map((item) => ({
+            label: item.label,
+            value: item.id
+          }))}
         />
         <span className="ow-ui-playground-hint">500×600 · 模拟数据 · 输入 / 可打开技能菜单</span>
       </header>
@@ -207,7 +217,11 @@ export function PlaygroundApp() {
           isRun={isRun}
           runStats={
             scene === 'streaming'
-              ? { startedAt: streamStartedAtRef.current, runId: 'play-run', traceId: 'play-trace' }
+              ? {
+                  startedAt: streamStartedAtRef.current,
+                  runId: 'play-run',
+                  traceId: 'play-trace'
+                }
               : { durationMs: 4200 }
           }
           sessionKey={scene}

@@ -47,7 +47,10 @@ describe('loadMcpServersFromConfig', () => {
       path,
       JSON.stringify({
         mcpServers: {
-          github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] }
+          github: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-github']
+          }
         }
       }),
       'utf8'

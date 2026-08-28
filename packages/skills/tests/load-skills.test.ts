@@ -16,7 +16,12 @@ const tempDirs: string[] = []
  * 创建临时技能目录并写入 SKILL.md。
  */
 async function makeSkillRoot(
-  entries: Array<{ folder: string; name: string; description: string; body?: string }>
+  entries: Array<{
+    folder: string
+    name: string
+    description: string
+    body?: string
+  }>
 ): Promise<string> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ow-skills-'))
   tempDirs.push(root)
@@ -68,7 +73,11 @@ description: Short inline text
 describe('listSkillsFromPaths', () => {
   it('lists skill metadata without requiring tools', async () => {
     const root = await makeSkillRoot([
-      { folder: 'code-review', name: 'code_review', description: 'Review code' },
+      {
+        folder: 'code-review',
+        name: 'code_review',
+        description: 'Review code'
+      },
       { folder: 'bug-fix', name: 'bug_fix', description: 'Fix bugs' }
     ])
     const list = await listSkillsFromPaths([root])
@@ -95,7 +104,12 @@ describe('listSkillsFromPaths', () => {
 describe('loadSkillsFromPaths', () => {
   it('registers tools with matching names from listSkillsFromPaths', async () => {
     const root = await makeSkillRoot([
-      { folder: 'code-review', name: 'code_review', description: 'Review code', body: 'Do review' }
+      {
+        folder: 'code-review',
+        name: 'code_review',
+        description: 'Review code',
+        body: 'Do review'
+      }
     ])
     const listed = await listSkillsFromPaths([root])
     const loaded = await loadSkillsFromPaths([root], () => undefined)

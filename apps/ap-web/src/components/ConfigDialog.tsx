@@ -308,7 +308,9 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                   })
                 })
                   .then(async (response) => {
-                    const payload = (await response.json()) as { error?: string }
+                    const payload = (await response.json()) as {
+                      error?: string
+                    }
                     if (!response.ok) {
                       setSaveError(payload.error || '保存失败')
                       return

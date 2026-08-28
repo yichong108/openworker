@@ -60,7 +60,11 @@ describe('createBaseAgent', () => {
   it('toolsMode replace 时作为完整工具集，不合并内置 shell', async () => {
     const agent = createBaseAgent({ cwd: '/tmp/ws' })
     const custom = { ping: { description: 'ping' } } as unknown as ToolSet
-    await agent.send('hi', { provider: stubModel, tools: custom, toolsMode: 'replace' })
+    await agent.send('hi', {
+      provider: stubModel,
+      tools: custom,
+      toolsMode: 'replace'
+    })
 
     const [{ tools }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(Object.keys(tools as ToolSet)).toEqual(['ping'])

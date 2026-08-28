@@ -136,7 +136,10 @@ export function defineTool<T extends FlexibleSchema>(
       })
 
       toolsLog.info('execute tool start', { id })
-      toolsLog.debug('execute tool start detail', { id, args: truncateForLog(args) })
+      toolsLog.debug('execute tool start detail', {
+        id,
+        args: truncateForLog(args)
+      })
 
       const result = await execute?.(parsed, options)
       const resultStr = toolResultToObservation(result)
@@ -151,7 +154,10 @@ export function defineTool<T extends FlexibleSchema>(
       })
 
       toolsLog.info('execute tool end', { id, durationMs })
-      toolsLog.debug('execute tool end detail', { id, result: truncateForLog(resultStr) })
+      toolsLog.debug('execute tool end detail', {
+        id,
+        result: truncateForLog(resultStr)
+      })
 
       return result
     }

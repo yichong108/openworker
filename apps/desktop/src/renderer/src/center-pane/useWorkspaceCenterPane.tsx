@@ -1064,7 +1064,10 @@ export function useWorkspaceCenterPane({
   const composerWorkspaceToolbar = (
     <div className="app-composer-toolbar">
       <Dropdown
-        menu={{ items: composerWorkspaceMenuItems, onClick: handleComposerWorkspaceMenuClick }}
+        menu={{
+          items: composerWorkspaceMenuItems,
+          onClick: handleComposerWorkspaceMenuClick
+        }}
         trigger={['click']}
       >
         <button type="button" className="app-composer-workspace-trigger" aria-haspopup="menu">
@@ -1165,7 +1168,10 @@ export function useWorkspaceCenterPane({
         <div className="app-composer-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Dropdown
-              menu={{ items: composerPlusMenuItems, onClick: handleComposerPlusMenuClick }}
+              menu={{
+                items: composerPlusMenuItems,
+                onClick: handleComposerPlusMenuClick
+              }}
               trigger={['hover']}
               placement="topLeft"
             >

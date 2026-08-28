@@ -54,9 +54,11 @@ export function TaskBoard() {
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<Record<string, ChatTranscript>>({})
-  const [chatTask, setChatTask] = useState<{ id: string; fileName: string; title: string } | null>(
-    null
-  )
+  const [chatTask, setChatTask] = useState<{
+    id: string
+    fileName: string
+    title: string
+  } | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const detailsRef = useRef(details)
@@ -114,7 +116,9 @@ export function TaskBoard() {
 
   const refresh = useCallback(async () => {
     const response = await fetch('/api/tasks', { cache: 'no-store' })
-    const payload = (await response.json()) as TaskBoardPayload & { error?: string }
+    const payload = (await response.json()) as TaskBoardPayload & {
+      error?: string
+    }
     if (!response.ok) {
       throw new Error(payload.error || '无法读取任务')
     }
@@ -157,7 +161,9 @@ export function TaskBoard() {
     const source = new EventSource('/api/tasks/chat/stream')
     const onSnapshot = (event: MessageEvent<string>) => {
       try {
-        const payload = JSON.parse(event.data) as { transcripts?: Record<string, ChatTranscript> }
+        const payload = JSON.parse(event.data) as {
+          transcripts?: Record<string, ChatTranscript>
+        }
         setTranscripts(payload.transcripts ?? {})
       } catch {
         /* 忽略单帧解析失败 */
@@ -208,7 +214,10 @@ export function TaskBoard() {
             ...(editMessageId ? { editMessageId } : {})
           })
         })
-        const payload = (await response.json()) as { error?: string; code?: string }
+        const payload = (await response.json()) as {
+          error?: string
+          code?: string
+        }
         if (!response.ok) {
           setLoadError(payload.error || '无法发送消息')
           if (payload.code === 'ai_auth') {
@@ -302,7 +311,9 @@ export function TaskBoard() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input)
         })
-        const payload = (await response.json()) as TaskDetail & { error?: string }
+        const payload = (await response.json()) as TaskDetail & {
+          error?: string
+        }
         if (!response.ok) {
           setLoadError(readErrorMessage(payload, '无法保存任务'))
           return false
@@ -372,7 +383,11 @@ export function TaskBoard() {
                 onMove={moveTask}
                 onDropTask={moveTask}
                 onOpenChat={(task) => {
-                  setChatTask({ id: task.id, fileName: task.fileName, title: task.title })
+                  setChatTask({
+                    id: task.id,
+                    fileName: task.fileName,
+                    title: task.title
+                  })
                 }}
                 onUpdate={updateTask}
                 onTaskCreated={refresh}

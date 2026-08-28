@@ -44,7 +44,9 @@ export function InputFallback({
 }
 
 const ApInputBundle = lazy(() =>
-  import('./ApInputBundle').then((module) => ({ default: module.ApInputBundle }))
+  import('./ApInputBundle').then((module) => ({
+    default: module.ApInputBundle
+  }))
 )
 
 /** 懒加载 antd Input，业务组件只依赖此入口。 */

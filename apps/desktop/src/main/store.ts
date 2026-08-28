@@ -72,7 +72,9 @@ export function setWorkspaceUiState(
   patch: Partial<WorkspaceUiState>
 ): RendererUiState {
   const current = getUiState()
-  const prevWs = current.byWorkspace[workspaceId] || { ...defaultWorkspaceUiState }
+  const prevWs = current.byWorkspace[workspaceId] || {
+    ...defaultWorkspaceUiState
+  }
   return setUiState({
     byWorkspace: {
       [workspaceId]: { ...prevWs, ...patch }

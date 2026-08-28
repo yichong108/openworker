@@ -23,7 +23,10 @@ function levelForModule(module: string): LogLevel {
   return filters.get(module) ?? getLogLevel()
 }
 
-function normalizeArgs(args: unknown[]): { obj: Record<string, unknown>; msg?: string } {
+function normalizeArgs(args: unknown[]): {
+  obj: Record<string, unknown>
+  msg?: string
+} {
   if (args.length === 0) return { obj: {} }
   const [first, ...rest] = args
   if (typeof first === 'string') {
