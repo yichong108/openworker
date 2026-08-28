@@ -15,7 +15,7 @@ const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
 const DEFAULT_MODEL = 'deepseek-chat'
 
 const playgroundDir = dirname(fileURLToPath(import.meta.url))
-const repoRoot = resolve(playgroundDir, '../../../..')
+const repoRoot = resolve(playgroundDir, '../../..')
 
 type AgentRunBody = {
   messages?: Array<{ id?: string; role?: string; content?: string }>

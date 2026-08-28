@@ -1,6 +1,6 @@
 import { EventType, type BaseEvent } from '@ag-ui/client'
 
-import type { ChatComposerSkill, ChatSessionMessage } from '../src/chat-session/types.js'
+import type { ChatComposerSkill, ChatSessionMessage } from '@openworker/ui'
 
 const T0 = 1_720_000_000_000
 
@@ -95,7 +95,7 @@ const historyAssistantEvents: BaseEvent[] = [
     'tc-grep-1',
     'grep',
     { pattern: 'ChatSessionView', glob: 'packages/ui/**/*.{ts,tsx}' },
-    'packages/ui/src/chat-session/ChatSessionView.tsx\npackages/ui/src/chat-session/index.ts\npackages/ui/playground/PlaygroundApp.tsx',
+    'packages/ui/src/chat-session/ChatSessionView.tsx\npackages/ui/src/chat-session/index.ts\napps/ui-playground/PlaygroundApp.tsx',
     T0 + 800
   ),
   ...toolTriple(
@@ -129,9 +129,9 @@ const historyAssistantEvents: BaseEvent[] = [
   ...toolTriple(
     'tc-write-1',
     'write_file',
-    { path: 'packages/ui/playground/mock-session.ts', content: FILE_AFTER },
+    { path: 'apps/ui-playground/mock-session.ts', content: FILE_AFTER },
     JSON.stringify({
-      path: 'packages/ui/playground/mock-session.ts',
+      path: 'apps/ui-playground/mock-session.ts',
       before: 'export const MOCK_HISTORY_MESSAGES = []\n',
       after: FILE_AFTER,
       created: false
@@ -262,7 +262,7 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
       '5. **计划卡片**：列表上方出现可编辑计划',
       '',
       '```bash',
-      'pnpm --filter @openworker/ui playground',
+      'pnpm --filter @openworker/ui-playground dev',
       '# 默认尝试 5179，占用则顺延（当前常见是 :5180）',
       '```',
       '',
@@ -282,7 +282,7 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
         'tc-grep-3',
         'grep',
         { pattern: 'ow-ui-playground-stage' },
-        'packages/ui/playground/playground.scss',
+        'apps/ui-playground/playground.scss',
         T0 + 12_400
       )
     ]

@@ -2,7 +2,7 @@ import type { BaseEvent } from '@ag-ui/client'
 import { Button } from 'antd'
 import { useCallback, useState } from 'react'
 
-import { ChatSessionWithHttp } from '../src/index.js'
+import { ChatSessionWithHttp } from '@openworker/ui'
 import { consumeSse } from './consume-sse'
 import { PlaygroundHeader } from './PlaygroundHeader'
 

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@openworker/ui": ["../../packages/ui/src/index.ts"],
+      "@openworker/base-agent": ["../../packages/base-agent/src/index.ts"],
+      "@openworker/llm": ["../../packages/llm/src/index.ts"],
+      "@openworker/tools": ["../../packages/tools/src/index.ts"],
+      "@openworker/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 
 const playgroundRoot = fileURLToPath(new URL('.', import.meta.url))
-const repoRoot = resolve(playgroundRoot, '../../..')
+const repoRoot = resolve(playgroundRoot, '../..')
 const packagesRoot = resolve(repoRoot, 'packages')
 
 function workspaceSrc(pkg: string): string {
@@ -49,9 +49,10 @@ function playgroundAgentPlugin(): Plugin {
         }
         void server
           .ssrLoadModule('/server/agent-api.ts')
-          .then((mod: { handleAgentApi: typeof import('./server/agent-api').handleAgentApi }) =>
-            mod.handleAgentApi(req, res, next)
-          )
+          .then((mod) => {
+            const { handleAgentApi } = mod as typeof import('./server/agent-api')
+            return handleAgentApi(req, res, next)
+          })
           .catch((error: unknown) => {
             if (res.headersSent || res.writableEnded) return
             res.statusCode = 500
@@ -75,7 +76,9 @@ export default defineConfig(({ mode }) => {
     envDir: repoRoot,
     plugins: [react(), playgroundAgentPlugin()],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
+        '@openworker/ui': workspaceSrc('ui'),
         '@openworker/base-agent': workspaceSrc('base-agent'),
         '@openworker/llm': workspaceSrc('llm'),
         '@openworker/tools': workspaceSrc('tools'),
@@ -84,6 +87,7 @@ export default defineConfig(({ mode }) => {
     },
     ssr: {
       noExternal: [
+        '@openworker/ui',
         '@openworker/base-agent',
         '@openworker/llm',
         '@openworker/tools',
@@ -98,7 +102,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     optimizeDeps: {
-      exclude: ['@openworker/base-agent', '@openworker/llm', '@openworker/tools']
+      exclude: ['@openworker/ui', '@openworker/base-agent', '@openworker/llm', '@openworker/tools']
     }
   }
 })

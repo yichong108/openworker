@@ -1,0 +1,32 @@
+{
+  "name": "@openworker/ui-playground",
+  "version": "0.0.0",
+  "description": "ChatSession UI 预览 — 模拟数据 / Base Agent / HTTP",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ag-ui/client": "catalog:",
+    "@ant-design/icons": "^5.6.1",
+    "@openworker/base-agent": "workspace:*",
+    "@openworker/llm": "workspace:*",
+    "@openworker/shared": "workspace:*",
+    "@openworker/tools": "workspace:*",
+    "@openworker/ui": "workspace:*",
+    "antd": "^5.24.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "@vitejs/plugin-react": "^4.3.4",
+    "sass": "^1.99.0",
+    "typescript": "catalog:",
+    "vite": "^6.2.6"
+  }
+}

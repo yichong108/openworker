@@ -3,15 +3,15 @@ import type { AgentComposerMode } from '@openworker/shared'
 import { App as AntdApp, Button, Input } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { ChatSessionView } from '../src/index.js'
-import type { ChatSessionMessage } from '../src/chat-session/types.js'
 import {
   applyAguiEvent,
+  ChatSessionView,
   emptyLiveSession,
   finalizeLiveSession,
   nextMessageId,
+  type ChatSessionMessage,
   type LiveAgentSession
-} from '../src/chat-session/apply-agui-event.js'
+} from '@openworker/ui'
 import { consumeSse } from './consume-sse'
 import { PlaygroundHeader } from './PlaygroundHeader'
 

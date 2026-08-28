@@ -5,9 +5,9 @@
  * @param onEvent - 事件回调
  * @param signal - 取消
  */
-export async function consumeSse(
+export async function consumeSse<T = unknown>(
   response: Response,
-  onEvent: (event: unknown) => void,
+  onEvent: (event: T) => void,
   signal: AbortSignal
 ): Promise<void> {
   const reader = response.body?.getReader()
@@ -25,7 +25,7 @@ export async function consumeSse(
       if (!dataLine) continue
       const data = dataLine.slice(5).trim()
       if (!data || data === '{}') continue
-      onEvent(JSON.parse(data) as unknown)
+      onEvent(JSON.parse(data) as T)
     }
   }
 }

@@ -37,7 +37,7 @@
     "ai-pipeline:task-execute": "pnpm ap:start:dist task-execute",
     "ai-pipeline:decision-create": "pnpm ap:start:dist decision-create",
     "ai-pipeline:refactor": "pnpm ap:start:dist refactor",
-    "ui:playground": "pnpm --filter @openworker/ui playground",
+    "ui:playground": "pnpm --filter @openworker/ui-playground dev",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "typecheck": "turbo run typecheck",

@@ -2,8 +2,7 @@ import type { AgentComposerMode } from '@openworker/shared'
 import { App as AntdApp, Segmented } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { ChatSessionView } from '../src/index.js'
-import type { ChatComposerSkill, ChatSessionMessage } from '../src/chat-session/types.js'
+import { ChatSessionView, type ChatComposerSkill, type ChatSessionMessage } from '@openworker/ui'
 import { PlaygroundHeader } from './PlaygroundHeader'
 import {
   MOCK_HISTORY_MESSAGES,
