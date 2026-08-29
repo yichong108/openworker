@@ -155,7 +155,7 @@ function StopIcon() {
 }
 
 /**
- * 单张任务卡片：折叠显示标题；右键编辑或删除；展开后可查看或编辑详情。
+ * 单张任务卡片
  */
 export function TaskCard({
   task,

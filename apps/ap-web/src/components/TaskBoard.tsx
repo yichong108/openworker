@@ -42,7 +42,7 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 }
 
 /**
- * 五列任务看板：拉取列表、列内展开详情、编辑字段、拖拽或按钮改状态、新建任务。
+ * 整个任务看板列表和工具集列。
  */
 export function TaskBoard() {
   const [board, setBoard] = useState<TaskBoardPayload | null>(null)

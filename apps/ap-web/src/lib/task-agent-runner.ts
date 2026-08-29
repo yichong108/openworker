@@ -740,7 +740,7 @@ export function subscribeTaskChatEvents(
 }
 
 /**
- * 进入进行中后启动该任务的独立 Agent。已在跑则忽略。
+ * 执行单个卡片任务
  *
  * @param task - 移动后的任务详情
  */

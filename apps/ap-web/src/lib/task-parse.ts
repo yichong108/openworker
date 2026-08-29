@@ -171,21 +171,6 @@ function parsePriority(text: string): TaskPriority {
 }
 
 /**
- * 生成卡片摘要：取 Human Notes 首行有效文字。
- *
- * @param humanNotes - Human Notes 正文
- * @returns 截断后的摘要
- */
-function makeExcerpt(humanNotes: string): string {
-  const firstLine = humanNotes
-    .split('\n')
-    .find((line) => line.trim() && line.trim() !== '- None' && !/^#{1,6}\s/.test(line.trim()))
-  if (!firstLine) return ''
-  const text = firstLine.replace(/^[-*]\s+/, '').trim()
-  return text.length > 80 ? `${text.slice(0, 79)}…` : text
-}
-
-/**
  * 把 markdown 转成列表卡片字段。
  *
  * 标题若仍是模板占位 `Task Notes`，回退为文件名（去掉 .md）。
@@ -217,7 +202,6 @@ export function toTaskSummary(
     title,
     status: column,
     priority: parsePriority(parsed.priorityText),
-    excerpt: makeExcerpt(parsed.humanNotes),
     updatedAt
   }
 }

@@ -13,7 +13,6 @@ export type TaskSummary = {
   /** 以所在目录为准，不以文件内 Status 字段为准 */
   status: TaskColumn
   priority: TaskPriority
-  excerpt: string
   /** 任务 markdown 文件的 mtime，ISO 8601 */
   updatedAt: string
 }
