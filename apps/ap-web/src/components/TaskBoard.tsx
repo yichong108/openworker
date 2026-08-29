@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { request } from '@/lib/request'
@@ -14,11 +15,24 @@ import type {
 import { TASK_COLUMNS } from '@/lib/task-types'
 
 import type { TaskChatHint } from './chat/chat-types'
-import { AiChatDialog } from './chat/AiChatDialog'
-import { ConfigDialog } from './ConfigDialog'
-import { EditTaskDialog } from './EditTaskDialog'
 import { TaskColumnView } from './TaskColumn'
-import { ToolsColumn } from './ToolsColumn'
+
+const AiChatDialog = dynamic(
+  () => import('./chat/AiChatDialog').then((module) => ({ default: module.AiChatDialog })),
+  { ssr: false }
+)
+const ConfigDialog = dynamic(
+  () => import('./ConfigDialog').then((module) => ({ default: module.ConfigDialog })),
+  { ssr: false }
+)
+const EditTaskDialog = dynamic(
+  () => import('./EditTaskDialog').then((module) => ({ default: module.EditTaskDialog })),
+  { ssr: false }
+)
+const ToolsColumn = dynamic(
+  () => import('./ToolsColumn').then((module) => ({ default: module.ToolsColumn })),
+  { ssr: false }
+)
 
 /**
  * 从接口 JSON 中取出 error 字段，否则返回回退文案。
@@ -152,6 +166,7 @@ export function TaskBoard() {
   }, [applyBoard])
 
   useEffect(() => {
+    if (!board) return
     const source = new EventSource('/api/tasks/chat/stream')
     const onHints = (event: MessageEvent<string>) => {
       try {
@@ -168,7 +183,7 @@ export function TaskBoard() {
       source.removeEventListener('chat-hints', onHints)
       source.close()
     }
-  }, [])
+  }, [board])
 
   const openEditTask = useCallback(
     (task: TaskSummary) => {

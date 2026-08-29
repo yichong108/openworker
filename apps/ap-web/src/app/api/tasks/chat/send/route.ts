@@ -10,6 +10,7 @@ import {
 import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
 import { readTask } from '@/lib/task-fs'
 import { TaskFsError } from '@/lib/task-fs-error'
+import { withApiLogContext } from '@/lib/with-api-log-context'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,52 +51,56 @@ function parseMessageId(raw: unknown): string | undefined {
  * 历史由 GET 拉取；本轮 AG-UI 事件由 chat/stream?fileName= 推送。
  */
 export async function POST(request: Request): Promise<NextResponse> {
-  try {
-    const body = (await request.json()) as {
-      taskId?: unknown
-      text?: unknown
-      messageId?: unknown
-      userMessageId?: unknown
-    }
+  return withApiLogContext(request, async () => {
+    try {
+      const body = (await request.json()) as {
+        taskId?: unknown
+        text?: unknown
+        messageId?: unknown
+        userMessageId?: unknown
+      }
 
-    if (typeof body.taskId !== 'string' || !body.taskId.trim()) {
-      return NextResponse.json({ error: '缺少 taskId' }, { status: 400 })
-    }
+      if (typeof body.taskId !== 'string' || !body.taskId.trim()) {
+        return NextResponse.json({ error: '缺少 taskId' }, { status: 400 })
+      }
 
-    const text = parseText(body.text)
-    const messageId = parseMessageId(body.messageId)
-    const task = readTask(body.taskId.trim())
-    if (isTaskAgentRunning(task.fileName)) {
-      return NextResponse.json(
-        { error: '当前任务 Agent 正在运行', code: 'agent_busy' },
-        { status: 409 }
-      )
-    }
+      const text = parseText(body.text)
+      const messageId = parseMessageId(body.messageId)
+      const task = readTask(body.taskId.trim())
+      if (isTaskAgentRunning(task.fileName)) {
+        return NextResponse.json(
+          { error: '当前任务 Agent 正在运行', code: 'agent_busy' },
+          { status: 409 }
+        )
+      }
 
-    if (messageId) {
-      await editResendTaskAgentMessage(task, messageId, text)
-    } else {
-      await sendTaskAgentMessage(task, text, { id: parseMessageId(body.userMessageId) })
+      if (messageId) {
+        await editResendTaskAgentMessage(task, messageId, text)
+      } else {
+        await sendTaskAgentMessage(task, text, { id: parseMessageId(body.userMessageId) })
+      }
+      return NextResponse.json({ ok: true })
+    } catch (error) {
+      return taskErrorResponse(error)
     }
-    return NextResponse.json({ ok: true })
-  } catch (error) {
-    return taskErrorResponse(error)
-  }
+  })
 }
 
 /**
  * 打开弹窗时 hydrate 磁盘历史。
  */
 export async function GET(request: Request): Promise<NextResponse> {
-  try {
-    const url = new URL(request.url)
-    const fileName = url.searchParams.get('fileName')?.trim()
-    if (!fileName || !isSafeTaskChatFileName(fileName)) {
-      throw new TaskFsError('缺少或非法 fileName', 400)
+  return withApiLogContext(request, async () => {
+    try {
+      const url = new URL(request.url)
+      const fileName = url.searchParams.get('fileName')?.trim()
+      if (!fileName || !isSafeTaskChatFileName(fileName)) {
+        throw new TaskFsError('缺少或非法 fileName', 400)
+      }
+      const transcript = hydrateTaskChatTranscript(fileName)
+      return NextResponse.json({ transcript })
+    } catch (error) {
+      return taskErrorResponse(error)
     }
-    const transcript = hydrateTaskChatTranscript(fileName)
-    return NextResponse.json({ transcript })
-  } catch (error) {
-    return taskErrorResponse(error)
-  }
+  })
 }

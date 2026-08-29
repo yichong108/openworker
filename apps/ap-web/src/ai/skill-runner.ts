@@ -3,6 +3,12 @@ import type { ApAgentWithAGUI } from '@openworker/ap-agent'
 import type { Subscription } from 'rxjs'
 
 import { buildSkillPrompt, findAgentsSkill, readSkillMarkdown } from '@/lib/skills-fs'
+import {
+  isSkillRunning,
+  markSkillRunEnd,
+  markSkillRunStart,
+  type SkillRunLast
+} from '@/lib/skill-run-state'
 import { TaskFsError } from '@/lib/task-fs-error'
 import { getWorkspaceRoot } from '@/lib/workspace-root'
 
@@ -17,59 +23,34 @@ type SkillJob = {
   cancelled?: boolean
 }
 
-export type SkillRunLast = {
-  ok: boolean
-  error?: string
-  cancelled?: boolean
-  finishedAt: number
-}
-
 const jobs = new Map<string, SkillJob>()
-const lastResults = new Map<string, SkillRunLast>()
 
 function rememberResult(job: SkillJob): void {
-  lastResults.set(job.name, {
+  const result: SkillRunLast = {
     ok: !job.cancelled && !job.error,
     ...(job.error ? { error: job.error } : {}),
     ...(job.cancelled ? { cancelled: true } : {}),
     finishedAt: Date.now()
-  })
+  }
+  markSkillRunEnd(job.name, result)
 }
 
 /**
  * 当前正在执行的 skill 名列表。
- *
- * @returns 目录名数组
  */
 export function listRunningSkills(): string[] {
   return [...jobs.keys()]
 }
 
 /**
- * 运行中的 skill 以及最近一次结束结果（供定时循环判断成败）。
- */
-export function listSkillRunSnapshot(): {
-  running: string[]
-  last: Record<string, SkillRunLast>
-} {
-  return {
-    running: [...jobs.keys()],
-    last: Object.fromEntries(lastResults)
-  }
-}
-
-/**
  * 用 ApAgentWithAGUI 启动指定 skill（后台跑完，不阻塞 HTTP）。
- *
- * @param name - skill 目录名
- * @param userInput - 可选用户补充，空则按 skill 默认流程
  */
 export async function startSkill(name: string, userInput?: string): Promise<void> {
   const skill = findAgentsSkill(name)
   if (!skill) {
     throw new TaskFsError(`未找到 skill: ${name}`, 404)
   }
-  if (jobs.has(name)) {
+  if (jobs.has(name) || isSkillRunning(name)) {
     throw new TaskFsError(`${name} 已在执行`, 409)
   }
 
@@ -96,6 +77,7 @@ export async function startSkill(name: string, userInput?: string): Promise<void
 
   const job: SkillJob = { name, agent }
   jobs.set(name, job)
+  markSkillRunStart(name)
 
   void (async () => {
     try {
@@ -144,8 +126,6 @@ export async function startSkill(name: string, userInput?: string): Promise<void
 
 /**
  * 取消正在执行的 skill。
- *
- * @param name - skill 目录名
  */
 export async function stopSkill(name: string): Promise<void> {
   const job = jobs.get(name)

@@ -17,6 +17,7 @@
     "@openworker/agent": "workspace:*",
     "@openworker/base-agent": "workspace:*",
     "@openworker/tools": "workspace:*",
+    "@openworker/skills": "workspace:*",
     "ai": "catalog:",
     "rxjs": "catalog:"
   },

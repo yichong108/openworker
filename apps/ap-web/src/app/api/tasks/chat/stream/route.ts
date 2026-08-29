@@ -2,12 +2,8 @@ import { EventType, type BaseEvent } from '@ag-ui/client'
 
 import type { TaskChatHint } from '@/components/chat/chat-types'
 import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
-import {
-  isTaskAgentRunning,
-  listTaskChatHints,
-  subscribeTaskChatEvents,
-  subscribeTaskChatHints
-} from '@/lib/task-agent-runner'
+import { listTaskChatHints, subscribeTaskChatHints } from '@/lib/task-chat-store'
+import { withApiLogContext } from '@/lib/with-api-log-context'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,17 +31,19 @@ function sseHeaders(): HeadersInit {
  * - 有 fileName：该任务 AG-UI BaseEvent（弹窗 onListenRequest）
  */
 export async function GET(request: Request): Promise<Response> {
-  const fileName = new URL(request.url).searchParams.get('fileName')?.trim()
-  if (fileName) {
-    if (!isSafeTaskChatFileName(fileName)) {
-      return new Response(JSON.stringify({ error: '非法 fileName' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+  return withApiLogContext(request, async () => {
+    const fileName = new URL(request.url).searchParams.get('fileName')?.trim()
+    if (fileName) {
+      if (!isSafeTaskChatFileName(fileName)) {
+        return new Response(JSON.stringify({ error: '非法 fileName' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return eventStream(request, fileName)
     }
-    return eventStream(request, fileName)
-  }
-  return hintStream(request)
+    return hintStream(request)
+  })
 }
 
 function hintStream(request: Request): Response {
@@ -101,7 +99,9 @@ function hintStream(request: Request): Response {
   return new Response(stream, { headers: sseHeaders() })
 }
 
-function eventStream(request: Request, fileName: string): Response {
+async function eventStream(request: Request, fileName: string): Promise<Response> {
+  const { isTaskAgentRunning, subscribeTaskChatEvents } = await import('@/lib/task-agent-runner')
+
   let unsubscribe: (() => void) | undefined
   let heartbeat: ReturnType<typeof setInterval> | undefined
 

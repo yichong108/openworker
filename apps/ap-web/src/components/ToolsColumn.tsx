@@ -275,7 +275,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     void refreshRuns()
     const timer = window.setInterval(() => {
       void refreshRuns()
-    }, 2000)
+    }, 5000)
     return () => window.clearInterval(timer)
   }, [refreshRuns])
 

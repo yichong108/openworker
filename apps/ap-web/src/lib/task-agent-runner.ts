@@ -10,21 +10,32 @@ import {
   type TextMessageContentEvent
 } from '@ag-ui/client'
 import type { ApAgentWithAGUI } from '@openworker/ap-agent'
+import { runWithLogContextAsync } from '@openworker/log'
 import {
   isAguiTimelineSourceEvent,
   TEXT_DELTA_CUSTOM_NAME,
   TEXT_REVOKE_CUSTOM_NAME
-} from '../../../../packages/ui/src/chat-session/agui-timeline.js'
+} from '@openworker/ui/agui-timeline'
 import type { Subscription } from 'rxjs'
 
-import type { ChatTranscript, TaskChatHint } from '@/components/chat/chat-types'
+import type { ChatTranscript } from '@/components/chat/chat-types'
 import { createApWebAgent } from '@/ai/agent-runtime'
 import { buildTaskPrompt } from '@/ai/build-prompt'
 import { isAiAuthFailure } from '@/ai/config'
-import { chatTranscriptHint, hasAssistantText, messageText } from './agui-message'
-import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
+import { hasAssistantText, messageText } from './agui-message'
+import { writeTaskChatFile } from './task-chat-fs'
+import {
+  forgetTaskChatTranscript,
+  getOrCreateTranscript,
+  getTranscript,
+  hydrateTaskChatTranscript,
+  nextChatMessageId,
+  notifyTaskChatHints,
+  patchTranscript
+} from './task-chat-store'
 import { findTaskByFileName, moveTask } from './task-fs'
 import { TaskFsError } from './task-fs-error'
+import { logScope } from './logger'
 import type { TaskDetail } from './task-types'
 import { getWorkspaceRoot } from './workspace-root'
 
@@ -35,157 +46,40 @@ type TaskAgentJob = {
   cancelled?: boolean
 }
 
-type TaskChatStore = {
+type TaskAgentStore = {
   jobs: Map<string, TaskAgentJob>
-  transcripts: Map<string, ChatTranscript>
-  hydratedFiles: Set<string>
   streamBuf: Map<string, string>
   assistantMsgId: Map<string, string | null>
-  hintListeners: Set<(payload: Record<string, TaskChatHint>) => void>
   eventListeners: Map<string, Set<(event: BaseEvent) => void>>
   runEventBuf: Map<string, BaseEvent[]>
-  hintTimer: ReturnType<typeof setTimeout> | undefined
-  messageSeq: number
 }
 
-const globalStore = globalThis as typeof globalThis & {
-  __apWebTaskChat?: TaskChatStore
-}
+const AGENT_STORE_KEY = '__apWebTaskAgent'
 
-function getStore(): TaskChatStore {
-  if (!globalStore.__apWebTaskChat) {
-    globalStore.__apWebTaskChat = {
+function getAgentStore(): TaskAgentStore {
+  const g = globalThis as typeof globalThis & { [AGENT_STORE_KEY]?: TaskAgentStore }
+  if (!g[AGENT_STORE_KEY]) {
+    g[AGENT_STORE_KEY] = {
       jobs: new Map(),
-      transcripts: new Map(),
-      hydratedFiles: new Set(),
       streamBuf: new Map(),
       assistantMsgId: new Map(),
-      hintListeners: new Set(),
       eventListeners: new Map(),
-      runEventBuf: new Map(),
-      hintTimer: undefined,
-      messageSeq: 0
+      runEventBuf: new Map()
     }
   }
-  const store = globalStore.__apWebTaskChat
-  if (!store.hintListeners) store.hintListeners = new Set()
-  if (!store.eventListeners) store.eventListeners = new Map()
-  if (!store.runEventBuf) store.runEventBuf = new Map()
-  return store
+  return g[AGENT_STORE_KEY]
 }
 
-const jobs = getStore().jobs
-const transcripts = getStore().transcripts
-const hydratedFiles = getStore().hydratedFiles
-const streamBuf = getStore().streamBuf
-const assistantMsgId = getStore().assistantMsgId
-const hintListeners = getStore().hintListeners
-const eventListeners = getStore().eventListeners
-const runEventBuf = getStore().runEventBuf
+const jobs = getAgentStore().jobs
+const streamBuf = getAgentStore().streamBuf
+const assistantMsgId = getAgentStore().assistantMsgId
+const eventListeners = getAgentStore().eventListeners
+const runEventBuf = getAgentStore().runEventBuf
 
-/**
- * 生成会话消息 id。
- *
- * @returns 唯一 id
- */
-function nextMessageId(): string {
-  const store = getStore()
-  store.messageSeq += 1
-  return `m${store.messageSeq}`
-}
-
-/**
- * 空会话快照。
- *
- * @returns 初始 transcript
- */
-function emptyTranscript(): ChatTranscript {
-  return { running: false, started: false, messages: [], liveEvents: [] }
-}
-
-/**
- * 从磁盘恢复历史（仅首次）。
- *
- * @param fileName - 任务文件名
- */
-function hydrateFromDisk(fileName: string): void {
-  if (hydratedFiles.has(fileName) || transcripts.has(fileName)) {
-    hydratedFiles.add(fileName)
-    return
-  }
-  hydratedFiles.add(fileName)
-  const fromDisk = readTaskChatFile(fileName)
-  if (fromDisk.length === 0) return
-  transcripts.set(fileName, {
-    running: false,
-    started: true,
-    messages: fromDisk,
-    liveEvents: []
-  })
-}
-
-/**
- * 获取或创建内存 transcript，必要时从磁盘 hydrate。
- *
- * @param fileName - 任务文件名
- * @returns 会话快照
- */
 function getOrCreate(fileName: string): ChatTranscript {
-  hydrateFromDisk(fileName)
-  const current = transcripts.get(fileName)
-  if (current) return current
-  const created = emptyTranscript()
-  transcripts.set(fileName, created)
-  return created
+  return getOrCreateTranscript(fileName)
 }
 
-/**
- * 当前全部任务的卡片 hint。
- */
-export function listTaskChatHints(): Record<string, TaskChatHint> {
-  const out: Record<string, TaskChatHint> = {}
-  for (const [fileName, transcript] of transcripts) {
-    out[fileName] = chatTranscriptHint(transcript)
-  }
-  return out
-}
-
-function flushHints(): void {
-  const store = getStore()
-  if (store.hintTimer) {
-    clearTimeout(store.hintTimer)
-    store.hintTimer = undefined
-  }
-  const payload = listTaskChatHints()
-  for (const listener of hintListeners) {
-    listener(payload)
-  }
-}
-
-/**
- * 广播卡片 hint。running/error 变化立刻推；正文预览节流。
- *
- * @param immediate - 是否立刻推
- */
-function notifyHints(immediate = false): void {
-  const store = getStore()
-  if (immediate) {
-    flushHints()
-    return
-  }
-  if (store.hintTimer) return
-  store.hintTimer = setTimeout(() => {
-    store.hintTimer = undefined
-    flushHints()
-  }, 100)
-}
-
-/**
- * 把当前 run 的 AG-UI 事件推给该任务的订阅者（含重放缓冲）。
- *
- * @param fileName - 任务文件名
- * @param event - Agent 流出的事件
- */
 function emitAguiEvent(fileName: string, event: BaseEvent): void {
   let buf = runEventBuf.get(fileName)
   if (!buf) {
@@ -204,37 +98,6 @@ function clearRunEvents(fileName: string): void {
   runEventBuf.delete(fileName)
 }
 
-/**
- * 局部更新 transcript 并通知订阅者。
- *
- * @param fileName - 任务文件名
- * @param partial - 要合并的字段
- */
-function patchTranscript(fileName: string, partial: Partial<ChatTranscript>): void {
-  const current = getOrCreate(fileName)
-  const prevRunning = current.running
-  const prevError = current.error
-  const prevStarted = current.started
-  transcripts.set(fileName, {
-    ...current,
-    ...partial,
-    messages: partial.messages ?? current.messages,
-    liveEvents: partial.liveEvents ?? current.liveEvents,
-    assistantEvents: partial.assistantEvents ?? current.assistantEvents
-  })
-  const next = transcripts.get(fileName)!
-  const statusChanged =
-    next.running !== prevRunning || next.error !== prevError || next.started !== prevStarted
-  notifyHints(statusChanged)
-}
-
-/**
- * 只保留仍存在的 assistant 时间线。
- *
- * @param prev - 旧时间线
- * @param messages - 当前消息
- * @returns 过滤后的时间线
- */
 function retainAssistantEvents(
   prev: Record<string, BaseEvent[]> | undefined,
   messages: Message[]
@@ -248,12 +111,6 @@ function retainAssistantEvents(
   return next
 }
 
-/**
- * 手动首条消息时附带的任务上下文前缀。
- *
- * @param task - 任务详情
- * @returns 上下文块
- */
 function buildTaskContextPrefix(task: TaskDetail): string {
   return [
     `当前任务文件：${task.id}`,
@@ -265,12 +122,6 @@ function buildTaskContextPrefix(task: TaskDetail): string {
   ].join('\n')
 }
 
-/**
- * 将 transcript 转为发给 Agent 的 AG-UI 消息（去掉空 user/assistant）。
- *
- * @param messages - 会话消息
- * @returns AG-UI 消息
- */
 function toAgentRunMessages(messages: Message[]): Message[] {
   return messages.filter((item) => {
     if (item.role === 'user' || item.role === 'assistant') {
@@ -280,13 +131,6 @@ function toAgentRunMessages(messages: Message[]): Message[] {
   })
 }
 
-/**
- * 发给 Agent 的消息：首条 user 注入任务上下文（仅进模型，UI 仍用原文）。
- *
- * @param task - 任务详情
- * @param messages - 客户端会话消息
- * @returns run 消息列表
- */
 function prepareAgentRunMessages(task: TaskDetail, messages: Message[]): Message[] {
   const runMessages = toAgentRunMessages(messages)
   if (runMessages.length === 0) return runMessages
@@ -307,13 +151,6 @@ function prepareAgentRunMessages(task: TaskDetail, messages: Message[]): Message
   return out
 }
 
-/**
- * 更新当前 assistant 流式正文。
- *
- * @param fileName - 任务文件名
- * @param text - 增量或全文
- * @param replace - 是否替换而非追加
- */
 function updateAssistantContent(fileName: string, text: string, replace = false): void {
   const amId = assistantMsgId.get(fileName)
   if (!amId) return
@@ -332,11 +169,6 @@ function updateAssistantContent(fileName: string, text: string, replace = false)
   patchTranscript(fileName, { messages, running: true, started: true })
 }
 
-/**
- * 将 liveEvents 挂到最新 assistant id 上（不写入 Message）。
- *
- * @param fileName - 任务文件名
- */
 function mergeLiveEventsIntoAssistant(fileName: string): void {
   const current = getOrCreate(fileName)
   if (current.liveEvents.length === 0) return
@@ -362,25 +194,12 @@ function mergeLiveEventsIntoAssistant(fileName: string): void {
   })
 }
 
-/**
- * 助手是否已产出正文或过程事件。
- *
- * @param fileName - 任务文件名
- * @param message - 消息
- * @returns 有回复数据则为 true
- */
 function hasAssistantOutput(fileName: string, message: Message | undefined): boolean {
   if (!message || message.role !== 'assistant') return false
   if (hasAssistantText(message)) return true
   return Boolean(getOrCreate(fileName).assistantEvents?.[message.id]?.length)
 }
 
-/**
- * 停止时若本轮尚无 Agent 回复，去掉空 assistant 与这一轮 user，避免落盘。
- *
- * @param fileName - 任务文件名
- * @returns 被撤下的用户原文；无需撤下则为 undefined
- */
 function dropUnansweredRound(fileName: string): string | undefined {
   const current = getOrCreate(fileName)
   if (current.liveEvents.length > 0) return undefined
@@ -397,48 +216,31 @@ function dropUnansweredRound(fileName: string): string | undefined {
   return messageText(user)
 }
 
-/**
- * Agent 成功结束后，若任务仍在 doing，自动移到 done。
- *
- * @param fileName - 任务文件名
- */
 function archiveDoingTaskIfWorked(fileName: string): void {
   try {
     const task = findTaskByFileName(fileName)
     if (!task || task.status !== 'doing') return
     moveTask(task.id, 'done')
   } catch (error) {
-    console.error(
-      `[task-agent] 归档到 done 失败 ${fileName}:`,
-      error instanceof Error ? error.message : error
+    logScope('task-agent').error(
+      { fileName, err: error instanceof Error ? error.message : error },
+      '归档到 done 失败'
     )
   }
 }
 
-/**
- * 一轮结束后把已完成的 user/assistant 回合写入 chat 文件。
- * 没有助手回复的 user 由落盘层丢掉，避免写出半截问答。
- *
- * @param fileName - 任务文件名
- */
 function persistCompletedRound(fileName: string): void {
   try {
-    const current = transcripts.get(fileName)
+    const current = getTranscript(fileName)
     writeTaskChatFile(fileName, current?.messages ?? [])
   } catch (error) {
-    console.error(
-      `[task-chat] 写入失败 ${fileName}:`,
-      error instanceof Error ? error.message : error
+    logScope('task-chat').error(
+      { fileName, err: error instanceof Error ? error.message : error },
+      '写入 chat 文件失败'
     )
   }
 }
 
-/**
- * 创建 ApAgentWithAGUI，统一鉴权错误。
- *
- * @param fileName - 任务文件名
- * @returns Agent 实例
- */
 function createTaskAgent(fileName: string): ApAgentWithAGUI {
   try {
     return createApWebAgent(getWorkspaceRoot(), `task:${fileName}`)
@@ -456,17 +258,11 @@ function createTaskAgent(fileName: string): ApAgentWithAGUI {
   }
 }
 
-/**
- * 将 AG-UI 流事件写入会话。
- *
- * @param fileName - 任务文件名
- * @param event - AG-UI BaseEvent
- */
 function applyAguiEvent(fileName: string, event: BaseEvent): void {
   if (event.type === EventType.RUN_STARTED) {
     const e = event as RunStartedEvent
     const startedAt = e.timestamp ?? Date.now()
-    const aid = nextMessageId()
+    const aid = nextChatMessageId()
     assistantMsgId.set(fileName, aid)
     streamBuf.set(fileName, '')
     const current = getOrCreate(fileName)
@@ -569,14 +365,6 @@ function applyAguiEvent(fileName: string, event: BaseEvent): void {
   }
 }
 
-/**
- * 启动 Agent run 并在后台消费事件流。
- *
- * @param fileName - 任务文件名
- * @param runMessages - 发给 Agent 的消息
- * @param options - 运行前 transcript 调整 / SSE 回调
- * @returns 带 onStreamEvent 时返回 Promise，否则 fire-and-forget
- */
 function runTaskAgentJob(
   fileName: string,
   runMessages: Message[],
@@ -607,7 +395,7 @@ function runTaskAgentJob(
     })
   }
 
-  const runPromise = (async () => {
+  const runPromise = runWithLogContextAsync({ sessionId: fileName }, async () => {
     try {
       await new Promise<void>((resolve, reject) => {
         const subscription = agent
@@ -633,7 +421,7 @@ function runTaskAgentJob(
         job.subscription = subscription
       })
       if (!job.cancelled) {
-        const current = transcripts.get(fileName)
+        const current = getTranscript(fileName)
         if (current?.running && !current.error) {
           patchTranscript(fileName, { running: false, error: undefined })
         }
@@ -656,23 +444,23 @@ function runTaskAgentJob(
       streamBuf.delete(fileName)
       assistantMsgId.set(fileName, null)
       mergeLiveEventsIntoAssistant(fileName)
-      const current = transcripts.get(fileName)
+      const current = getTranscript(fileName)
       if (current?.running) {
         patchTranscript(fileName, { running: false, liveEvents: [] })
       } else {
-        notifyHints(true)
+        notifyTaskChatHints(true)
       }
       if (job.cancelled) dropUnansweredRound(fileName)
       persistCompletedRound(fileName)
       clearRunEvents(fileName)
       if (!job.cancelled) {
-        const finished = transcripts.get(fileName)
+        const finished = getTranscript(fileName)
         if (finished && !finished.error) {
           archiveDoingTaskIfWorked(fileName)
         }
       }
     }
-  })()
+  })
 
   if (options?.onStreamEvent) {
     return runPromise
@@ -680,12 +468,6 @@ function runTaskAgentJob(
   void runPromise
 }
 
-/**
- * 记录启动失败，供卡片按钮显示短错误句。
- *
- * @param fileName - 任务文件名
- * @param message - 错误文案
- */
 export function recordTaskAgentError(fileName: string, message: string): void {
   patchTranscript(fileName, {
     running: false,
@@ -694,38 +476,8 @@ export function recordTaskAgentError(fileName: string, message: string): void {
   })
 }
 
-/**
- * 确保 transcript 已从磁盘 hydrate。
- *
- * @param fileName - 任务文件名
- * @returns 会话快照
- */
-export function hydrateTaskChatTranscript(fileName: string): ChatTranscript {
-  return getOrCreate(fileName)
-}
+export { hydrateTaskChatTranscript }
 
-/**
- * 订阅卡片 hint（看板 SSE）。
- *
- * @param listener - 全量 hints
- * @returns 取消订阅
- */
-export function subscribeTaskChatHints(
-  listener: (payload: Record<string, TaskChatHint>) => void
-): () => void {
-  hintListeners.add(listener)
-  return () => {
-    hintListeners.delete(listener)
-  }
-}
-
-/**
- * 订阅某任务当前 run 的 AG-UI 事件（先重放缓冲，再收增量）。
- *
- * @param fileName - 任务文件名
- * @param listener - 事件回调
- * @returns 取消订阅
- */
 export function subscribeTaskChatEvents(
   fileName: string,
   listener: (event: BaseEvent) => void
@@ -747,11 +499,6 @@ export function subscribeTaskChatEvents(
   }
 }
 
-/**
- * 执行单个卡片任务
- *
- * @param task - 移动后的任务详情
- */
 export async function startTaskAgent(task: TaskDetail): Promise<void> {
   const fileName = task.fileName
   if (jobs.has(fileName)) return
@@ -762,21 +509,10 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
   })
 }
 
-/**
- * 该任务 Agent 是否正在 run。
- *
- * @param fileName - 任务文件名
- */
 export function isTaskAgentRunning(fileName: string): boolean {
   return jobs.has(fileName)
 }
 
-/**
- * 手动发送用户消息并启动 Agent run。
- *
- * @param task - 任务详情
- * @param text - 用户输入
- */
 export async function sendTaskAgentMessage(
   task: TaskDetail,
   text: string,
@@ -791,7 +527,7 @@ export async function sendTaskAgentMessage(
 
   const current = getOrCreate(fileName)
   const userMessage: Message = {
-    id: options?.id?.trim() || nextMessageId(),
+    id: options?.id?.trim() || nextChatMessageId(),
     role: 'user',
     content: trimmed
   }
@@ -801,13 +537,6 @@ export async function sendTaskAgentMessage(
   runTaskAgentJob(fileName, prepareAgentRunMessages(task, messages))
 }
 
-/**
- * 编辑用户消息并从此处重发。
- *
- * @param task - 任务详情
- * @param messageId - 用户消息 id
- * @param text - 编辑后的文本
- */
 export async function editResendTaskAgentMessage(
   task: TaskDetail,
   messageId: string,
@@ -841,26 +570,13 @@ export async function editResendTaskAgentMessage(
   runTaskAgentJob(fileName, prepareAgentRunMessages(task, messages))
 }
 
-/**
- * 从内存去掉该任务会话，供删除任务后不再出现在 SSE 快照里。
- *
- * @param fileName - 任务文件名
- */
 export function forgetTaskChat(fileName: string): void {
-  transcripts.delete(fileName)
-  hydratedFiles.delete(fileName)
+  forgetTaskChatTranscript(fileName)
   streamBuf.delete(fileName)
   assistantMsgId.delete(fileName)
   clearRunEvents(fileName)
-  notifyHints(true)
 }
 
-/**
- * 停止该任务 Agent。没有 in-flight job 时仍把 running 清掉，避免 UI 卡死。
- *
- * @param fileName - 任务文件名
- * @returns 若本轮无回复被撤下，返回该用户原文
- */
 export async function stopTaskAgent(fileName: string): Promise<string | undefined> {
   const job = jobs.get(fileName)
   if (job) {

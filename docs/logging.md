@@ -4,14 +4,15 @@
 
 ## 架构概览
 
-| 组件                                 | 实现                           | 落盘                                                 |
-| ------------------------------------ | ------------------------------ | ---------------------------------------------------- |
-| **Native**（独立 `pnpm native:dev`） | pino + ALS                     | 见下方统一路径                                       |
-| **Native**（被 Desktop spawn）       | stdout JSON → Desktop 解析     | 同上（pipe 模式下 Native 不写文件，由 Desktop 写入） |
-| **Desktop main / renderer**          | pino + IPC                     | 同上                                                 |
-| **packages**（skills/tools 等）      | `setLogger` 注入；默认 console | 随宿主                                               |
+| 组件                                        | 实现                           | 落盘                                                 |
+| ------------------------------------------- | ------------------------------ | ---------------------------------------------------- |
+| **Native**（独立 `pnpm native:dev`）        | pino + ALS                     | 见下方统一路径                                       |
+| **Native**（被 Desktop spawn）              | stdout JSON → Desktop 解析     | 同上（pipe 模式下 Native 不写文件，由 Desktop 写入） |
+| **Desktop main / renderer**                 | pino + IPC                     | 同上                                                 |
+| **ap-web**（`pnpm ap-web:dev` / `ap view`） | pino + ALS                     | 见下方 ap-web 路径                                   |
+| **packages**（skills/tools 等）             | `setLogger` 注入；默认 console | 随宿主                                               |
 
-仅 **native / desktop** 在 `package.json` 中依赖 `@openworker/log`（private，不 release）。
+**native / desktop / ap-web** 在各自 `package.json` 中依赖 `@openworker/log`（private，不 release）。
 
 ## 统一落盘路径
 
@@ -30,6 +31,28 @@
 | prod | `~/.openworker/logs/openworker.log`                  |
 
 启动时终端会打印该路径（Desktop 主进程、Native 独立运行均会输出）。
+
+## ap-web 落盘路径
+
+ap-web 日志落在**用户项目本地**（与 `.agents/ap-config/work-data/tasks` 同根），由 `getApWebLogPath()` 定义：
+
+```
+{launchDir}/.agents/ap-config/logs/ap-web.log
+```
+
+`launchDir` 为 `AP_WEB_LAUNCH_DIR` 或 `INIT_CWD`（`ap view` / `pnpm ap-web:dev` 注入）。多项目并行时各目录独立日志文件。
+
+| module 前缀                                    | 示例                            |
+| ---------------------------------------------- | ------------------------------- |
+| `ap-web`                                       | 启动、access 日志               |
+| `ap-web:task-agent` / `ap-web:task-chat`       | 任务 Agent / chat 落盘          |
+| `@openworker/base-agent` / `@openworker/tools` | agent 链（经 `setLogger` 注入） |
+
+环境变量 `OPENWORKER_LOG_LEVEL`、`OPENWORKER_LOG_MODULES` 与 Desktop/Native 共用；可在 `.env` 或 shell 中设置：
+
+```bash
+OPENWORKER_LOG_LEVEL=debug pnpm ap-web:dev
+```
 
 ## 环境变量（`load-env.ts`）
 
@@ -74,4 +97,4 @@ pino `redact` 对结构化字段（`apiKey`、`tavilyApiKey` 等）输出 `[Reda
 
 ## 宿主注入 packages logger
 
-Native 在 `bootstrap-log.ts` 中 `setLogger(createLogger(...))`；npm 单独安装 packages 时仍用默认 console。
+Native 在 `bootstrap-log.ts` 中 `setLogger(createLogger(...))`；ap-web 在 `src/lib/bootstrap-log.ts` 中注入 base-agent / tools；npm 单独安装 packages 时仍用默认 console。

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 /** @type {import('next').NextConfig} */
 
 const appDir = path.dirname(fileURLToPath(import.meta.url))
+const turboDev = process.env.AP_WEB_TURBO === '1'
 
 /**
  * 本地任务看板需要 Node runtime 读写 markdown，不能做成 static export。
@@ -14,6 +15,8 @@ const nextConfig = {
   // standalone 里指向真实 node_modules 的 junction，第二次 build 会把依赖删掉。
   cleanDistDir: false,
   experimental: {
+    ...(turboDev ? {} : { instrumentationHook: true }),
+    serverComponentsExternalPackages: ['pino', 'pino-pretty'],
     outputFileTracingRoot: path.join(appDir, '../..'),
     outputFileTracingExcludes: {
       '*': ['**/node_modules/sass/**', '**/node_modules/typescript/**', '**/node_modules/@types/**']
@@ -23,6 +26,7 @@ const nextConfig = {
   transpilePackages: [
     '@openworker/ap-agent',
     '@openworker/agent',
+    '@openworker/log',
     '@openworker/shared',
     '@openworker/ui'
   ],
