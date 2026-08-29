@@ -35,8 +35,6 @@ import { generateTaskTitle, titleFromIdeaFallback } from '@/ai/task-title'
 
 export { TaskFsError } from './task-fs-error'
 
-const PRIORITY_RANK: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 }
-
 /**
  * 把绝对路径转成 tasks 根下的 POSIX 相对路径，作为任务 id。
  *
@@ -117,15 +115,15 @@ function collectMarkdownFiles(dir: string): string[] {
 }
 
 /**
- * 同列内按优先级再按文件名排序，编号小的在前。
+ * 同列内按更新时间从近到远排序；时间相同则按文件名。
  *
  * @param tasks - 待排序列表
  * @returns 新数组
  */
 function sortTasks(tasks: TaskSummary[]): TaskSummary[] {
   return [...tasks].sort((a, b) => {
-    const rank = (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2)
-    if (rank !== 0) return rank
+    const byTime = b.updatedAt.localeCompare(a.updatedAt)
+    if (byTime !== 0) return byTime
     return a.fileName.localeCompare(b.fileName)
   })
 }
