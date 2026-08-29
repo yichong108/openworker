@@ -1,21 +1,26 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import type { ChatMessage } from '@/components/chat/chat-types'
+import type { Message } from '@ag-ui/client'
 
 import { getApWebAgentsRoot } from '@/ai/agents-root'
-
-/** 落盘的一条用户/助手消息（不含过程行） */
-export type TaskChatPersistedMessage = {
-  role: 'user' | 'assistant'
-  content: string
-}
+import { takeCompletedRounds } from '@/lib/agui-message'
 
 /** 一轮对话的 JSON 落盘结构 */
 export type TaskChatPersisted = {
   fileName: string
-  messages: TaskChatPersistedMessage[]
+  messages: Message[]
 }
+
+const MESSAGE_ROLES = new Set([
+  'developer',
+  'system',
+  'assistant',
+  'user',
+  'tool',
+  'activity',
+  'reasoning'
+])
 
 let messageSeq = 0
 
@@ -27,6 +32,20 @@ let messageSeq = 0
 function nextMessageId(): string {
   messageSeq += 1
   return `m${messageSeq}`
+}
+
+/**
+ * 把落盘 JSON 条目收成 AG-UI Message（兼容旧的无 id 记录）。
+ *
+ * @param raw - JSON 条目
+ * @returns Message；非法则 null
+ */
+function asPersistedMessage(raw: unknown): Message | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as { id?: unknown; role?: unknown }
+  if (typeof row.role !== 'string' || !MESSAGE_ROLES.has(row.role)) return null
+  const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim() : nextMessageId()
+  return { ...(row as Message), id }
 }
 
 /**
@@ -57,81 +76,41 @@ export function getTaskChatFilePath(fileName: string): string | null {
 }
 
 /**
- * 只保留「用户 + 非空助手」成对回合。没有助手回复的 user 不落盘。
- *
- * @param messages - 已去掉 system / 空正文的消息
- * @returns 可落盘的成对消息
- */
-function takeCompletedRounds(messages: TaskChatPersistedMessage[]): TaskChatPersistedMessage[] {
-  const complete: TaskChatPersistedMessage[] = []
-  let i = 0
-  while (i < messages.length) {
-    const item = messages[i]!
-    const next = messages[i + 1]
-    if (item.role === 'user' && next?.role === 'assistant') {
-      complete.push(item, next)
-      i += 2
-      continue
-    }
-    if (item.role === 'user') {
-      i += 1
-      continue
-    }
-    complete.push(item)
-    i += 1
-  }
-  return complete
-}
-
-/**
- * 从落盘 JSON 恢复 user/assistant 消息（无 aguiEvents，丢掉未完成回合）。
+ * 从落盘 JSON 恢复 AG-UI Message[]（丢掉未完成回合）。
  *
  * @param fileName - 任务文件名
  * @returns 消息列表；无文件或解析失败时 []
  */
-export function readTaskChatFile(fileName: string): ChatMessage[] {
+export function readTaskChatFile(fileName: string): Message[] {
   const path = getTaskChatFilePath(fileName)
   if (!path || !existsSync(path)) return []
   try {
     const raw = readFileSync(path, 'utf8')
     const parsed = JSON.parse(raw) as TaskChatPersisted
     if (!parsed.messages || !Array.isArray(parsed.messages)) return []
-    const persisted: TaskChatPersistedMessage[] = []
+    const persisted: Message[] = []
     for (const item of parsed.messages) {
-      if (item.role !== 'user' && item.role !== 'assistant') continue
-      const text = typeof item.content === 'string' ? item.content.trim() : ''
-      if (!text) continue
-      persisted.push({ role: item.role, content: text })
+      const message = asPersistedMessage(item)
+      if (message) persisted.push(message)
     }
-    return takeCompletedRounds(persisted).map((item) => ({
-      id: nextMessageId(),
-      role: item.role,
-      content: item.content
-    }))
+    return takeCompletedRounds(persisted)
   } catch {
     return []
   }
 }
 
 /**
- * 拼出不含过程输出的对话 JSON（跳过 system / 空正文 / 未完成回合）。
+ * 拼出对话 JSON（丢掉未完成回合）。
  *
  * @param fileName - 任务文件名
- * @param messages - 弹窗 transcript
+ * @param messages - 会话 AG-UI 消息
  * @returns 落盘对象；无完整问答时返回 null
  */
 export function buildTaskChatPayload(
   fileName: string,
-  messages: ChatMessage[]
+  messages: Message[]
 ): TaskChatPersisted | null {
-  const persisted: TaskChatPersistedMessage[] = []
-  for (const item of messages) {
-    if (item.role !== 'user' && item.role !== 'assistant') continue
-    const text = item.content.trim()
-    if (!text) continue
-    persisted.push({ role: item.role, content: text })
-  }
-  const complete = takeCompletedRounds(persisted)
+  const complete = takeCompletedRounds(messages)
   if (complete.length === 0) return null
   return { fileName: fileName.trim(), messages: complete }
 }
@@ -140,9 +119,9 @@ export function buildTaskChatPayload(
  * 一轮对话结束后覆盖写入 chat JSON。无完整问答则删除已有落盘。
  *
  * @param fileName - 任务文件名
- * @param messages - 弹窗 transcript（含过程行，写入时过滤）
+ * @param messages - 会话 AG-UI 消息
  */
-export function writeTaskChatFile(fileName: string, messages: ChatMessage[]): void {
+export function writeTaskChatFile(fileName: string, messages: Message[]): void {
   const path = getTaskChatFilePath(fileName)
   if (!path) return
   const payload = buildTaskChatPayload(fileName, messages)

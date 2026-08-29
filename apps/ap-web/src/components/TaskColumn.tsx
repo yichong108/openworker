@@ -4,6 +4,7 @@ import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/ta
 import { COLUMN_LABELS } from '@/lib/task-types'
 
 import type { ChatTranscript } from './chat/chat-types'
+import { messageText } from '@/lib/agui-message'
 import { columnAccent } from '@/lib/task-column-style'
 import { CreateTaskAction } from './CreateTaskAction'
 import { QuickCreateTodo } from './QuickCreateTodo'
@@ -33,8 +34,9 @@ function chatHint(transcript: ChatTranscript | undefined): {
   let preview = ''
   for (let i = transcript.messages.length - 1; i >= 0; i -= 1) {
     const item = transcript.messages[i]
-    if (item.role === 'assistant' && item.content.trim()) {
-      preview = item.content
+    const text = messageText(item).trim()
+    if (item.role === 'assistant' && text) {
+      preview = text
       break
     }
   }

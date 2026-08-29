@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 
 import { taskErrorResponse } from '@/lib/task-api'
 import {
+  editResendTaskAgentMessage,
   hydrateTaskChatTranscript,
   isTaskAgentRunning,
-  runTaskAgentFromClientMessages
+  sendTaskAgentMessage
 } from '@/lib/task-agent-runner'
 import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
 import { readTask } from '@/lib/task-fs'
@@ -13,52 +14,55 @@ import { TaskFsError } from '@/lib/task-fs-error'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-type ClientRunMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
-
 /**
- * 解析客户端 run 消息列表。
+ * 解析本轮用户原文。
  *
- * @param raw - 请求体 messages
- * @returns 校验后的消息
+ * @param raw - 请求体 text
+ * @returns 去空白后的正文
  */
-function parseClientMessages(raw: unknown): ClientRunMessage[] {
-  if (!Array.isArray(raw)) {
-    throw new TaskFsError('messages 必须是数组', 400)
+function parseText(raw: unknown): string {
+  if (typeof raw !== 'string') {
+    throw new TaskFsError('缺少 text', 400)
   }
-  const out: ClientRunMessage[] = []
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue
-    const row = item as { id?: unknown; role?: unknown; content?: unknown }
-    if (typeof row.id !== 'string' || !row.id.trim()) continue
-    if (row.role !== 'user' && row.role !== 'assistant') continue
-    if (typeof row.content !== 'string') continue
-    out.push({ id: row.id.trim(), role: row.role, content: row.content })
+  const text = raw.trim()
+  if (!text) {
+    throw new TaskFsError('text 不能为空', 400)
   }
-  if (out.length === 0) {
-    throw new TaskFsError('messages 不能为空', 400)
-  }
-  return out
+  return text
 }
 
 /**
- * 以客户端完整 messages 启动 run；会话由 transcript 快照推送，不在此推 AG-UI SSE。
+ * 解析可选的编辑重发消息 id。
+ *
+ * @param raw - 请求体 messageId
+ * @returns 有则返回 trim 后的 id
+ */
+function parseMessageId(raw: unknown): string | undefined {
+  if (raw == null || raw === '') return undefined
+  if (typeof raw !== 'string' || !raw.trim()) {
+    throw new TaskFsError('messageId 非法', 400)
+  }
+  return raw.trim()
+}
+
+/**
+ * 追加一句用户消息（或从某条 user 编辑重发）并启动 run。
+ * 历史以服务端 transcript 为准；会话快照由 chat/stream 推送。
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body = (await request.json()) as {
       taskId?: unknown
-      messages?: unknown
+      text?: unknown
+      messageId?: unknown
     }
 
     if (typeof body.taskId !== 'string' || !body.taskId.trim()) {
       return NextResponse.json({ error: '缺少 taskId' }, { status: 400 })
     }
 
-    const clientMessages = parseClientMessages(body.messages)
+    const text = parseText(body.text)
+    const messageId = parseMessageId(body.messageId)
     const task = readTask(body.taskId.trim())
     if (isTaskAgentRunning(task.fileName)) {
       return NextResponse.json(
@@ -67,7 +71,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       )
     }
 
-    runTaskAgentFromClientMessages(task, clientMessages)
+    if (messageId) {
+      await editResendTaskAgentMessage(task, messageId, text)
+    } else {
+      await sendTaskAgentMessage(task, text)
+    }
     return NextResponse.json({ ok: true })
   } catch (error) {
     return taskErrorResponse(error)

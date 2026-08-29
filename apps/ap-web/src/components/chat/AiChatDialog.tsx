@@ -4,6 +4,7 @@ import { ChatSessionWithHttp } from '@openworker/ui'
 import type { ChatTranscript } from '@/components/chat/chat-types'
 import { ApModal } from '@/components/antd/ApModal'
 import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
+import { messageText, toChatSessionMessages } from '@/lib/agui-message'
 import { request } from '@/lib/request'
 import { App, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
@@ -29,8 +30,8 @@ function sameTranscriptTick(a: ChatTranscript | null, b: ChatTranscript): boolea
     a.messages.length === b.messages.length &&
     a.liveEvents.length === b.liveEvents.length &&
     lastA?.id === lastB?.id &&
-    lastA?.content === lastB?.content &&
-    lastA?.streaming === lastB?.streaming &&
+    lastA?.role === lastB?.role &&
+    (lastA && lastB ? messageText(lastA) === messageText(lastB) : lastA === lastB) &&
     a.runStats?.durationMs === b.runStats?.durationMs
   )
 }
@@ -113,14 +114,27 @@ export function AiChatDialog({
 
   const onRunRequest = useCallback(
     async ({
+      text,
+      editMessageId,
       messages
     }: {
+      text?: string
+      editMessageId?: string
       messages: Array<{ id: string; role: 'user' | 'assistant'; content: string }>
     }) => {
+      const lastUser = [...messages].reverse().find((item) => item.role === 'user')
+      const payloadText = (text ?? lastUser?.content ?? '').trim()
+      if (!payloadText) {
+        throw new Error('缺少 text')
+      }
       const response = await request('/api/tasks/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskId, messages })
+        body: JSON.stringify({
+          taskId,
+          text: payloadText,
+          ...(editMessageId ? { messageId: editMessageId } : {})
+        })
       })
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string
@@ -176,7 +190,10 @@ export function AiChatDialog({
                 key={sessionKey}
                 sessionKey={sessionKey}
                 snapshot={{
-                  messages: transcript.messages,
+                  messages: toChatSessionMessages(transcript.messages, {
+                    running: transcript.running,
+                    assistantEvents: transcript.assistantEvents
+                  }),
                   liveEvents: transcript.liveEvents,
                   isRun: transcript.running,
                   runStats: transcript.runStats

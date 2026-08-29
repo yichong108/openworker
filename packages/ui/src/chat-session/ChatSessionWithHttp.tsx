@@ -118,7 +118,7 @@ export function ChatSessionWithHttp({
   }, [flush])
 
   const runSession = useCallback(
-    async (history: ChatSessionMessage[]) => {
+    async (history: ChatSessionMessage[], text: string, editMessageId?: string) => {
       abortRef.current?.abort()
       const abort = new AbortController()
       abortRef.current = abort
@@ -126,6 +126,8 @@ export function ChatSessionWithHttp({
 
       try {
         await onRunRequest({
+          text,
+          editMessageId,
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
@@ -155,7 +157,7 @@ export function ChatSessionWithHttp({
     if (!text || isRun) return
     const user: ChatSessionMessage = { id: nextMessageId('u'), role: 'user', content: text }
     setInput('')
-    void runSession([...sessionRef.current.messages, user])
+    void runSession([...sessionRef.current.messages, user], text)
   }, [input, isRun, runSession])
 
   const stopRun = useCallback(() => {
@@ -192,7 +194,7 @@ export function ChatSessionWithHttp({
           ...sessionRef.current.messages.slice(0, idx),
           { ...sessionRef.current.messages[idx]!, content: trimmed, aguiEvents: undefined }
         ]
-        void runSession(history)
+        void runSession(history, trimmed, messageId)
       }}
       onOpenExternal={async (href) => {
         window.open(href, '_blank', 'noopener,noreferrer')

@@ -3,6 +3,7 @@ import {
   randomUUID,
   type BaseEvent,
   type CustomEvent,
+  type Message,
   type RunErrorEvent,
   type RunFinishedEvent,
   type RunStartedEvent,
@@ -16,19 +17,14 @@ import {
 } from '../../../../packages/ui/src/chat-session/agui-timeline.js'
 import type { Subscription } from 'rxjs'
 
-import type { ChatMessage, ChatTranscript } from '@/components/chat/chat-types'
+import type { ChatTranscript } from '@/components/chat/chat-types'
 import { createApWebAgent } from '@/ai/agent-runtime'
 import { isAiAuthFailure } from '@/ai/config'
+import { hasAssistantText, messageText } from './agui-message'
 import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
 import { TaskFsError } from './task-fs-error'
 import type { TaskDetail } from './task-types'
 import { getWorkspaceRoot } from './workspace-root'
-
-type AgentRunMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
 
 type TaskAgentJob = {
   fileName: string
@@ -151,9 +147,30 @@ function patchTranscript(fileName: string, partial: Partial<ChatTranscript>): vo
     ...current,
     ...partial,
     messages: partial.messages ?? current.messages,
-    liveEvents: partial.liveEvents ?? current.liveEvents
+    liveEvents: partial.liveEvents ?? current.liveEvents,
+    assistantEvents: partial.assistantEvents ?? current.assistantEvents
   })
   notify()
+}
+
+/**
+ * 只保留仍存在的 assistant 时间线。
+ *
+ * @param prev - 旧时间线
+ * @param messages - 当前消息
+ * @returns 过滤后的时间线
+ */
+function retainAssistantEvents(
+  prev: Record<string, BaseEvent[]> | undefined,
+  messages: Message[]
+): Record<string, BaseEvent[]> {
+  if (!prev) return {}
+  const ids = new Set(messages.map((item) => item.id))
+  const next: Record<string, BaseEvent[]> = {}
+  for (const [id, events] of Object.entries(prev)) {
+    if (ids.has(id) && events.length > 0) next[id] = events
+  }
+  return next
 }
 
 /**
@@ -192,20 +209,18 @@ function buildTaskContextPrefix(task: TaskDetail): string {
 }
 
 /**
- * 将 transcript 转为 Agent run 消息列表。
+ * 将 transcript 转为发给 Agent 的 AG-UI 消息（去掉空 user/assistant）。
  *
  * @param messages - 会话消息
  * @returns AG-UI 消息
  */
-function toAgentRunMessages(messages: ChatMessage[]): AgentRunMessage[] {
-  return messages
-    .filter((item) => item.role === 'user' || item.role === 'assistant')
-    .filter((item) => item.content.trim())
-    .map((item) => ({
-      id: item.id,
-      role: item.role as 'user' | 'assistant',
-      content: item.content
-    }))
+function toAgentRunMessages(messages: Message[]): Message[] {
+  return messages.filter((item) => {
+    if (item.role === 'user' || item.role === 'assistant') {
+      return Boolean(messageText(item).trim())
+    }
+    return true
+  })
 }
 
 /**
@@ -215,7 +230,7 @@ function toAgentRunMessages(messages: ChatMessage[]): AgentRunMessage[] {
  * @param messages - 客户端会话消息
  * @returns run 消息列表
  */
-function prepareAgentRunMessages(task: TaskDetail, messages: ChatMessage[]): AgentRunMessage[] {
+function prepareAgentRunMessages(task: TaskDetail, messages: Message[]): Message[] {
   const runMessages = toAgentRunMessages(messages)
   if (runMessages.length === 0) return runMessages
 
@@ -223,13 +238,15 @@ function prepareAgentRunMessages(task: TaskDetail, messages: ChatMessage[]): Age
   if (firstUserIdx < 0) return runMessages
 
   const first = runMessages[firstUserIdx]!
-  if (first.content.includes('当前任务文件：') && first.content.includes('## Requirements')) {
+  if (first.role !== 'user') return runMessages
+  const firstText = messageText(first)
+  if (firstText.includes('当前任务文件：') && firstText.includes('## Requirements')) {
     return runMessages
   }
 
   const prefix = buildTaskContextPrefix(task)
   const out = [...runMessages]
-  out[firstUserIdx] = { ...first, content: `${prefix}\n\n${first.content}` }
+  out[firstUserIdx] = { ...first, role: 'user', content: `${prefix}\n\n${firstText}` }
   return out
 }
 
@@ -248,60 +265,57 @@ function updateAssistantContent(fileName: string, text: string, replace = false)
   const idx = messages.findIndex((item) => item.id === amId)
   if (idx < 0) return
   const prev = messages[idx]!
+  if (prev.role !== 'assistant') return
+  const prevText = replace ? '' : messageText(prev)
   messages[idx] = {
     ...prev,
-    content: replace ? text : prev.content + text,
-    streaming: true
+    role: 'assistant',
+    content: replace ? text : prevText + text
   }
   patchTranscript(fileName, { messages, running: true, started: true })
 }
 
 /**
- * 结束 assistant 流式标记。
- *
- * @param fileName - 任务文件名
- */
-function finishAssistant(fileName: string): void {
-  const current = getOrCreate(fileName)
-  const messages = current.messages.map((item) =>
-    item.streaming ? { ...item, streaming: false } : item
-  )
-  patchTranscript(fileName, { messages })
-}
-
-/**
- * 将 liveEvents 合并进最新 assistant 并清空缓冲。
+ * 将 liveEvents 挂到最新 assistant id 上（不写入 Message）。
  *
  * @param fileName - 任务文件名
  */
 function mergeLiveEventsIntoAssistant(fileName: string): void {
   const current = getOrCreate(fileName)
   if (current.liveEvents.length === 0) return
-  const messages = [...current.messages]
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const item = messages[i]
+  let assistantId: string | null = null
+  for (let i = current.messages.length - 1; i >= 0; i -= 1) {
+    const item = current.messages[i]
     if (item?.role === 'assistant') {
-      const prev = item.aguiEvents ?? []
-      messages[i] = {
-        ...item,
-        aguiEvents: [...prev, ...current.liveEvents],
-        streaming: false
-      }
+      assistantId = item.id
       break
     }
   }
-  patchTranscript(fileName, { messages, liveEvents: [] })
+  if (!assistantId) {
+    patchTranscript(fileName, { liveEvents: [] })
+    return
+  }
+  const prev = current.assistantEvents?.[assistantId] ?? []
+  patchTranscript(fileName, {
+    liveEvents: [],
+    assistantEvents: {
+      ...current.assistantEvents,
+      [assistantId]: [...prev, ...current.liveEvents]
+    }
+  })
 }
 
 /**
  * 助手是否已产出正文或过程事件。
  *
+ * @param fileName - 任务文件名
  * @param message - 消息
  * @returns 有回复数据则为 true
  */
-function hasAssistantOutput(message: ChatMessage | undefined): boolean {
+function hasAssistantOutput(fileName: string, message: Message | undefined): boolean {
   if (!message || message.role !== 'assistant') return false
-  return Boolean(message.content.trim() || message.aguiEvents?.length)
+  if (hasAssistantText(message)) return true
+  return Boolean(getOrCreate(fileName).assistantEvents?.[message.id]?.length)
 }
 
 /**
@@ -316,14 +330,14 @@ function dropUnansweredRound(fileName: string): string | undefined {
   const messages = [...current.messages]
   const last = messages.at(-1)
   if (last?.role === 'assistant') {
-    if (hasAssistantOutput(last)) return undefined
+    if (hasAssistantOutput(fileName, last)) return undefined
     messages.pop()
   }
   const user = messages.at(-1)
   if (user?.role !== 'user') return undefined
   messages.pop()
   patchTranscript(fileName, { messages })
-  return user.content
+  return messageText(user)
 }
 
 /**
@@ -392,7 +406,7 @@ function applyAguiEvent(fileName: string, event: BaseEvent): void {
         startedAt,
         durationMs: 0
       },
-      messages: [...current.messages, { id: aid, role: 'assistant', content: '', streaming: true }]
+      messages: [...current.messages, { id: aid, role: 'assistant', content: '' }]
     })
     return
   }
@@ -463,7 +477,6 @@ function applyAguiEvent(fileName: string, event: BaseEvent): void {
   if (event.type === EventType.RUN_FINISHED) {
     const e = event as RunFinishedEvent
     mergeLiveEventsIntoAssistant(fileName)
-    finishAssistant(fileName)
     const current = getOrCreate(fileName)
     const stats = current.runStats
     patchTranscript(fileName, {
@@ -491,7 +504,7 @@ function applyAguiEvent(fileName: string, event: BaseEvent): void {
  */
 function runTaskAgentJob(
   fileName: string,
-  runMessages: AgentRunMessage[],
+  runMessages: Message[],
   options?: { resetMessages?: boolean; onStreamEvent?: (event: BaseEvent) => void }
 ): Promise<void> | void {
   if (jobs.has(fileName)) {
@@ -514,6 +527,7 @@ function runTaskAgentJob(
       error: undefined,
       messages: [],
       liveEvents: [],
+      assistantEvents: {},
       runStats: undefined
     })
   }
@@ -526,11 +540,7 @@ function runTaskAgentJob(
             threadId: fileName,
             runId: randomUUID(),
             state: {},
-            messages: runMessages.map((item) => ({
-              id: item.id,
-              role: item.role,
-              content: item.content
-            })),
+            messages: runMessages,
             tools: [],
             context: [],
             forwardedProps: {}
@@ -546,7 +556,6 @@ function runTaskAgentJob(
           })
         job.subscription = subscription
       })
-      finishAssistant(fileName)
       if (!job.cancelled) {
         const current = transcripts.get(fileName)
         if (current?.running && !current.error) {
@@ -554,7 +563,6 @@ function runTaskAgentJob(
         }
       }
     } catch (error) {
-      finishAssistant(fileName)
       mergeLiveEventsIntoAssistant(fileName)
       if (!job.cancelled) {
         patchTranscript(fileName, {
@@ -571,7 +579,6 @@ function runTaskAgentJob(
       jobs.delete(fileName)
       streamBuf.delete(fileName)
       assistantMsgId.set(fileName, null)
-      finishAssistant(fileName)
       mergeLiveEventsIntoAssistant(fileName)
       const current = transcripts.get(fileName)
       if (current?.running) {
@@ -652,38 +659,6 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
 }
 
 /**
- * 以客户端交出的完整 messages 覆盖 transcript 并启动 run。
- *
- * @param task - 任务详情
- * @param clientMessages - 客户端当前会话
- */
-export function runTaskAgentFromClientMessages(
-  task: TaskDetail,
-  clientMessages: AgentRunMessage[]
-): void {
-  const fileName = task.fileName
-  if (jobs.has(fileName)) {
-    throw new TaskFsError('当前任务 Agent 正在运行', 409, 'agent_busy')
-  }
-
-  const chatMessages: ChatMessage[] = clientMessages.map((item) => ({
-    id: item.id,
-    role: item.role,
-    content: item.content
-  }))
-  patchTranscript(fileName, {
-    messages: chatMessages,
-    error: undefined,
-    liveEvents: [],
-    started: true,
-    running: true
-  })
-
-  const runMessages = prepareAgentRunMessages(task, chatMessages)
-  runTaskAgentJob(fileName, runMessages)
-}
-
-/**
  * 该任务 Agent 是否正在 run。
  *
  * @param fileName - 任务文件名
@@ -707,17 +682,15 @@ export async function sendTaskAgentMessage(task: TaskDetail, text: string): Prom
   }
 
   const current = getOrCreate(fileName)
-  const hasPriorUser = current.messages.some((item) => item.role === 'user')
-  const userContent = hasPriorUser ? trimmed : `${buildTaskContextPrefix(task)}\n\n${trimmed}`
-  const userMessage: ChatMessage = {
+  const userMessage: Message = {
     id: nextMessageId(),
     role: 'user',
-    content: userContent
+    content: trimmed
   }
   const messages = [...current.messages, userMessage]
-  patchTranscript(fileName, { messages, error: undefined })
+  patchTranscript(fileName, { messages, error: undefined, started: true, running: true })
 
-  runTaskAgentJob(fileName, toAgentRunMessages(messages))
+  runTaskAgentJob(fileName, prepareAgentRunMessages(task, messages))
 }
 
 /**
@@ -741,16 +714,23 @@ export async function editResendTaskAgentMessage(
 
   const current = getOrCreate(fileName)
   const idx = current.messages.findIndex((item) => item.id === messageId)
-  if (idx < 0 || current.messages[idx]?.role !== 'user') {
+  const user = idx >= 0 ? current.messages[idx] : undefined
+  if (!user || user.role !== 'user') {
     throw new TaskFsError('找不到要编辑的用户消息', 400, 'invalid_message')
   }
-
-  const messages = [
+  const messages: Message[] = [
     ...current.messages.slice(0, idx),
-    { ...current.messages[idx]!, content: trimmed, aguiEvents: undefined }
+    { ...user, role: 'user', content: trimmed }
   ]
-  patchTranscript(fileName, { messages, error: undefined, liveEvents: [] })
-  runTaskAgentJob(fileName, toAgentRunMessages(messages))
+  patchTranscript(fileName, {
+    messages,
+    error: undefined,
+    liveEvents: [],
+    started: true,
+    running: true,
+    assistantEvents: retainAssistantEvents(current.assistantEvents, messages)
+  })
+  runTaskAgentJob(fileName, prepareAgentRunMessages(task, messages))
 }
 
 /**
@@ -782,7 +762,6 @@ export async function stopTaskAgent(fileName: string): Promise<string | undefine
   }
   streamBuf.delete(fileName)
   assistantMsgId.set(fileName, null)
-  finishAssistant(fileName)
   mergeLiveEventsIntoAssistant(fileName)
   const restoredInput = dropUnansweredRound(fileName)
   patchTranscript(fileName, { running: false, liveEvents: [] })

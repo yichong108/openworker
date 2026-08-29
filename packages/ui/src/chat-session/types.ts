@@ -131,11 +131,16 @@ export type ChatSessionRunMessage = {
 }
 
 /**
- * 宿主 run 回调入参：组件只交出消息与取消信号，传输协议由宿主实现。
+ * 宿主 run 回调入参：组件交出本轮用户原文；传输协议由宿主实现。
  *
- * 服务端为真时可不调用 onEvent，改由 snapshot 驱动界面。
+ * `messages` 留给客户端持有会话的宿主（playground）。
+ * 服务端为真时只应用 `text` / `editMessageId`，不要用 messages 覆盖历史。
  */
 export type ChatSessionRunRequest = {
+  /** 本轮用户原文 */
+  text: string
+  /** 从该条 user 消息编辑重发；省略则为追加新消息 */
+  editMessageId?: string
   messages: ChatSessionRunMessage[]
   signal: AbortSignal
   onEvent: (event: BaseEvent) => void

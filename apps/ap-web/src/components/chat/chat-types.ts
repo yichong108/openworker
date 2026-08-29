@@ -1,16 +1,4 @@
-import type { BaseEvent } from '@ag-ui/client'
-
-/** 对话角色 */
-export type ChatRole = 'user' | 'assistant' | 'system'
-
-/** 一条聊天气泡（对齐 ChatSessionMessage） */
-export type ChatMessage = {
-  id: string
-  role: ChatRole
-  content: string
-  aguiEvents?: BaseEvent[]
-  streaming?: boolean
-}
+import type { BaseEvent, Message } from '@ag-ui/client'
 
 /** 会话运行时序（Worked 耗时心跳） */
 export type ChatRunStats = {
@@ -25,7 +13,10 @@ export type ChatTranscript = {
   running: boolean
   started: boolean
   error?: string
-  messages: ChatMessage[]
+  /** AG-UI 协议消息；气泡由 UI 边界折叠 */
+  messages: Message[]
   liveEvents: BaseEvent[]
+  /** 已结束回合挂在 assistant id 上的时间线源事件（不落盘） */
+  assistantEvents?: Record<string, BaseEvent[]>
   runStats?: ChatRunStats
 }
