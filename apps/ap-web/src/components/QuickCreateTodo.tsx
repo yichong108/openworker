@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 
 import { ApTextArea } from '@/components/antd/ApTextArea'
+import { request } from '@/lib/request'
 
 type QuickCreateTodoProps = {
   onCreated?: () => void | Promise<void>
@@ -43,7 +44,7 @@ export function QuickCreateTodo({ onCreated }: QuickCreateTodoProps) {
     setError(null)
     setValidationError(null)
     try {
-      const response = await fetch('/api/tasks', {
+      const response = await request('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ humanNotes: trimmed, status: 'todo' })

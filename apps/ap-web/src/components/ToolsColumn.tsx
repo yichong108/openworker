@@ -6,6 +6,7 @@ import { ApInputNumber } from '@/components/antd/ApInputNumber'
 import { ApSwitch } from '@/components/antd/ApSwitch'
 import { ApTextArea } from '@/components/antd/ApTextArea'
 import { ApTimePicker } from '@/components/antd/ApTimePicker'
+import { request } from '@/lib/request'
 
 const PAGE_SIZE = 20
 const USER_TEXT_DEBOUNCE_MS = 400
@@ -158,7 +159,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     window.clearTimeout(debounceRef.current)
     const seq = (saveSeqRef.current += 1)
     try {
-      const response = await fetch('/api/toolbox', {
+      const response = await request('/api/toolbox', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: next })
@@ -243,7 +244,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   armRef.current = arm
 
   const refreshCatalog = useCallback(async () => {
-    const response = await fetch('/api/skills', { cache: 'no-store' })
+    const response = await request('/api/skills')
     const payload = (await response.json()) as {
       skills?: CatalogSkill[]
       error?: string
@@ -255,7 +256,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   }, [])
 
   const refreshRuns = useCallback(async () => {
-    const response = await fetch('/api/skills/runs', { cache: 'no-store' })
+    const response = await request('/api/skills/runs')
     const payload = (await response.json()) as {
       running?: string[]
       error?: string
@@ -281,7 +282,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
-        const response = await fetch('/api/toolbox', { cache: 'no-store' })
+        const response = await request('/api/toolbox')
         const payload = (await response.json()) as {
           items?: ToolboxRecord[]
           error?: string
@@ -360,7 +361,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     setError(null)
     try {
       const input = itemsRef.current.find((item) => item.name === name)?.userText.trim()
-      const response = await fetch(path, {
+      const response = await request(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -396,7 +397,7 @@ export function ToolsColumn({ onAiAuthError, className }: ToolsColumnProps) {
     if (!started) return false
     for (let i = 0; i < 3600; i += 1) {
       await sleep(1000)
-      const response = await fetch('/api/skills/runs', { cache: 'no-store' })
+      const response = await request('/api/skills/runs')
       if (!response.ok) continue
       const snap = (await response.json()) as RunSnapshot
       setRunning(snap.running ?? [])

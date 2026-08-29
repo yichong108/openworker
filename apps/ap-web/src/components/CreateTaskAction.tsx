@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 
+import { request } from '@/lib/request'
 import type { TaskColumn, TaskPriority } from '@/lib/task-types'
 
 import { CreateTaskDialog } from './CreateTaskDialog'
@@ -45,7 +46,7 @@ export function CreateTaskAction({ column, onCreated }: CreateTaskActionProps) {
       setBusy(true)
       setError(null)
       try {
-        const response = await fetch('/api/tasks', {
+        const response = await request('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input)

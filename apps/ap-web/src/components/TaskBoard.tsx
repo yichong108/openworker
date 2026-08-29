@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { request } from '@/lib/request'
 import { taskApiPath } from '@/lib/task-paths'
 import type { TaskBoardPayload, TaskColumn, TaskDetail, TaskPriority } from '@/lib/task-types'
 import { TASK_COLUMNS } from '@/lib/task-types'
@@ -72,7 +73,7 @@ export function TaskBoard() {
       return next
     })
     try {
-      const response = await fetch(taskApiPath(id), { cache: 'no-store' })
+      const response = await request(taskApiPath(id))
       const payload = (await response.json()) as TaskDetail & { error?: string }
       if (!response.ok) {
         throw new Error(payload.error || '无法读取详情')
@@ -113,7 +114,7 @@ export function TaskBoard() {
   )
 
   const refresh = useCallback(async () => {
-    const response = await fetch('/api/tasks', { cache: 'no-store' })
+    const response = await request('/api/tasks')
     const payload = (await response.json()) as TaskBoardPayload & {
       error?: string
     }
@@ -194,7 +195,7 @@ export function TaskBoard() {
 
   const moveTask = useCallback(
     async (id: string, status: TaskColumn) => {
-      const response = await fetch(taskApiPath(id), {
+      const response = await request(taskApiPath(id), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -230,7 +231,7 @@ export function TaskBoard() {
     ): Promise<boolean> => {
       setSavingId(id)
       try {
-        const response = await fetch(taskApiPath(id), {
+        const response = await request(taskApiPath(id), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input)
@@ -259,7 +260,7 @@ export function TaskBoard() {
   const deleteTask = useCallback(
     async (id: string) => {
       try {
-        const response = await fetch(taskApiPath(id), { method: 'DELETE' })
+        const response = await request(taskApiPath(id), { method: 'DELETE' })
         const payload = (await response.json()) as { error?: string }
         if (!response.ok) {
           setLoadError(readErrorMessage(payload, '无法删除任务'))

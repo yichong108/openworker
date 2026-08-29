@@ -1,3 +1,4 @@
+import { request } from '@/lib/request'
 import { readAiConfig } from './config'
 
 const TITLE_MAX = 32
@@ -60,7 +61,7 @@ async function generateTitleWithAi(idea: string): Promise<string> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 8000)
   try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const response = await request('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${key}`,

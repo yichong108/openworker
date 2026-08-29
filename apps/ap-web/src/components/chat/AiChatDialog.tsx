@@ -6,6 +6,7 @@ import type { ChatTranscript } from '@/components/chat/chat-types'
 import { ApModal } from '@/components/antd/ApModal'
 import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
 import { consumeSse } from '@/ai/consume-sse'
+import { request } from '@/lib/request'
 import { App, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -65,9 +66,7 @@ export function AiChatDialog({
     let cancelled = false
     setHydrating(true)
 
-    void fetch(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`, {
-      cache: 'no-store'
-    })
+    void request(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`)
       .then(async (response) => {
         const payload = (await response.json()) as {
           transcript?: ChatTranscript
@@ -117,7 +116,7 @@ export function AiChatDialog({
     }) => {
       setWorking(true)
       try {
-        const response = await fetch('/api/tasks/chat/send', {
+        const response = await request('/api/tasks/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal,
@@ -144,7 +143,7 @@ export function AiChatDialog({
   const onStopRequest = useCallback(async () => {
     if (!fileName) return
     try {
-      await fetch('/api/tasks/chat/stop', {
+      await request('/api/tasks/chat/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName })

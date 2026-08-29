@@ -1,3 +1,4 @@
+import { request } from '@/lib/request'
 import { defaultDeepseekModel, readAiConfig } from './config'
 
 /**
@@ -59,10 +60,10 @@ export async function listDeepseekModels(
     }
   }
   try {
-    const response = await fetch('https://api.deepseek.com/models', {
+    const response = await request('https://api.deepseek.com/models', {
       headers: { Authorization: `Bearer ${key}` }
     })
-    const payload: unknown = await response.json().catch(() => null)
+    const payload: unknown = await response.json()
     if (!response.ok) {
       const detail =
         payload && typeof payload === 'object' && 'error' in payload

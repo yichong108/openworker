@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { ApInput } from '@/components/antd/ApInput'
 import { ApDrawer } from '@/components/antd/ApDrawer'
 import { ApSelect } from '@/components/antd/ApSelect'
+import { request } from '@/lib/request'
 
 type PublicConfig = {
   deepseek: { hasKey: boolean; keyHint: string; model: string }
@@ -141,7 +142,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
     setModelsLoading(true)
     setModelError(null)
     try {
-      const response = await fetch('/api/config/ai/models', {
+      const response = await request('/api/config/ai/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(apiKey ? { apiKey } : {}) })
@@ -167,7 +168,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   }, [])
 
   const loadConfig = useCallback(async () => {
-    const response = await fetch('/api/config/ai', { cache: 'no-store' })
+    const response = await request('/api/config/ai')
     const payload = (await response.json()) as PublicConfig & { error?: string }
     if (!response.ok) {
       setSaveError(payload.error || '无法读取配置')
@@ -297,7 +298,7 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
               onClick={() => {
                 setBusy(true)
                 setSaveError(null)
-                void fetch('/api/config/ai', {
+                void request('/api/config/ai', {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
