@@ -26,11 +26,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     const body = (await request.json()) as {
       title?: unknown
       priority?: unknown
-      humanNotes?: unknown
+      description?: unknown
       status?: unknown
     }
-    if (typeof body.humanNotes !== 'string' || !body.humanNotes.trim()) {
-      return NextResponse.json({ error: '备注不能为空' }, { status: 400 })
+    if (typeof body.description !== 'string' || !body.description.trim()) {
+      return NextResponse.json({ error: 'description 不能为空' }, { status: 400 })
     }
     if (body.title !== undefined && typeof body.title !== 'string') {
       return NextResponse.json({ error: '名称必须是字符串' }, { status: 400 })
@@ -54,7 +54,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         typeof body.priority === 'string' && isTaskPriority(body.priority)
           ? body.priority
           : undefined,
-      humanNotes: typeof body.humanNotes === 'string' ? body.humanNotes : undefined,
+      description: typeof body.description === 'string' ? body.description : undefined,
       status: typeof body.status === 'string' && isTaskColumn(body.status) ? body.status : undefined
     })
     return NextResponse.json(task, { status: 201 })

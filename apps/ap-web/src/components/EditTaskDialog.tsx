@@ -21,7 +21,7 @@ type EditTaskDialogProps = {
   onSubmit: (input: {
     title: string
     priority: TaskPriority
-    humanNotes: string
+    description: string
     status: TaskColumn
   }) => void
 }
@@ -43,16 +43,16 @@ export function EditTaskDialog({
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('P2')
   const [status, setStatus] = useState<TaskColumn>('todo')
-  const [humanNotes, setHumanNotes] = useState('')
-  const [humanNotesError, setHumanNotesError] = useState<string | null>(null)
+  const [description, setDescription] = useState('')
+  const [descriptionError, setDescriptionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !detail) return
     setTitle(detail.title)
     setPriority(detail.priority)
     setStatus(detail.status)
-    setHumanNotes(detail.humanNotes)
-    setHumanNotesError(null)
+    setDescription(detail.description)
+    setDescriptionError(null)
   }, [open, detail])
 
   return (
@@ -70,33 +70,33 @@ export function EditTaskDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            const notes = humanNotes.trim()
+            const notes = description.trim()
             if (!notes) {
-              setHumanNotesError('请填写备注')
+              setDescriptionError('请填写描述')
               return
             }
-            setHumanNotesError(null)
+            setDescriptionError(null)
             onSubmit({
               title: title.trim(),
               priority,
-              humanNotes: notes,
+              description: notes,
               status
             })
           }}
         >
           <label className="block text-sm font-medium">
             <span className="flex items-center gap-1.5">
-              备注
+              描述
               <span className="font-display text-base leading-none text-[var(--rust)]" aria-hidden>
                 *
               </span>
               <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
             </span>
             <ApTextArea
-              value={humanNotes}
+              value={description}
               onChange={(value) => {
-                setHumanNotes(value)
-                setHumanNotesError(null)
+                setDescription(value)
+                setDescriptionError(null)
               }}
               autoFocus
               rows={5}
@@ -104,8 +104,8 @@ export function EditTaskDialog({
               placeholder="要做什么"
             />
           </label>
-          {humanNotesError ? (
-            <p className="mt-1 text-sm text-[var(--rust)]">{humanNotesError}</p>
+          {descriptionError ? (
+            <p className="mt-1 text-sm text-[var(--rust)]">{descriptionError}</p>
           ) : null}
 
           <label className="mt-4 block text-sm font-medium">

@@ -13,7 +13,7 @@ description: >
   plan/ 仅供人工使用；本技能不读取、不执行、不写入 plan/ 中的任务。
 license: MIT
 metadata:
-  version: '0.9.0'
+  version: '0.10.0'
   author: Wang Zhang
 ---
 
@@ -46,9 +46,9 @@ metadata:
 转换规则：
 
 1. **创建：** 初始 Status 为 `TODO`，文件在 `todo/`。
-2. **开始执行：** 把文件从 `todo/` 移到 `doing/`，Status 改为 `DOING`。
-3. **无法继续：** Agent 处理不了、文档填写不符合要求等，把文件移到 `blocked/`，Status 改为 `BLOCKED`。
-4. **完成：** 把文件从 `doing/` 移到 `done/`（直接放根下，禁止 `done/<年份>/`），Status 改为 `DONE`。
+2. **开始执行：** 把文件从 `todo/` 移到 `doing/`（状态以目录为准，不改写文件内容）。
+3. **无法继续：** Agent 处理不了、文档填写不符合要求等，把文件移到 `blocked/`。
+4. **完成：** 把文件从 `doing/` 移到 `done/`（直接放根下，禁止 `done/<年份>/`）。
 5. **PLAN：** 只给人用。本技能不得把任务改成 `PLAN`，不得移入 `plan/`，也不得执行其中的任务。
 
 ---
@@ -60,14 +60,14 @@ metadata:
 3. 扫描 `todo/`，只选取 **Status 为 TODO** 的任务，按优先级（P0→P3）取一件。Status 不是 TODO 的文件跳过，不要执行。
 4. 判断该 TODO 任务是否可直接执行：
    - 如果「未填写 / 文档不符合要求 / Agent 无法处理」，则：
-     1. 移到 `blocked/`，Status 改为 `BLOCKED`，写明原因。不要猜着补全或执行。
+     1. 移到 `blocked/`，在正文写明原因。不要猜着补全或执行。
      2. 若该任务为 P0，停止全部后续任务。
      3. 否则继续从 `todo/` 按优先级选取下一件 TODO，循环本流程。
    - 如果「可执行」，则：
-     1. 将文件从 `todo/` 移到 `doing/`，把 Status 改为 `DOING`。
+     1. 将文件从 `todo/` 移到 `doing/`。
      2. 仅执行这一件任务，不并行处理其他任务。
-     3. 若执行过程中阻塞，从 `doing/` 移到 `blocked/`，Status 改为 `BLOCKED`：P0 则停止全部后续任务；非 P0 则继续下一件 TODO。
-     4. 完成后，从 `doing/` 移到 `done/`（直接放根下，禁止年份子目录），Status 改为 `DONE`。
+     3. 若执行过程中阻塞，从 `doing/` 移到 `blocked/`：P0 则停止全部后续任务；非 P0 则继续下一件 TODO。
+     4. 完成后，在正文填写完成说明，从 `doing/` 移到 `done/`（直接放根下，禁止年份子目录）。
      5. 执行 git commit，但不自动 push。
      6. 继续从 `todo/` 按优先级选取下一件 TODO，循环本流程。
 
@@ -87,13 +87,13 @@ Skill 激活后：
 6. 检查任务依赖关系与优先级。
 7. 按「选取顺序」选择当前可以执行的**一件** TODO 任务。
 8. 阅读完整的 TASK 文件。
-9. 若未填写、文档不符合要求、或 Agent 无法处理：移到 `blocked/` 并改为 `BLOCKED`；P0 则停止，否则按优先级继续下一件 TODO。
-10. 将本件从 `todo/` 移到 `doing/`，Status 改为 `DOING`。
+9. 若未填写、文档不符合要求、或 Agent 无法处理：移到 `blocked/`；P0 则停止，否则按优先级继续下一件 TODO。
+10. 将本件从 `todo/` 移到 `doing/`。
 11. 检查与任务相关的架构决策。
 12. 按照任务要求实现（同一时刻只实现这一件）。
-13. 执行过程中若阻塞：从 `doing/` 移到 `blocked/` 并改为 `BLOCKED`；P0 则停止，否则继续下一件 TODO。
+13. 执行过程中若阻塞：从 `doing/` 移到 `blocked/`；P0 则停止，否则继续下一件 TODO。
 14. 执行测试和其他必要验证。
-15. 更新 TASK 文件：Status 设为 `DONE`，填写完成说明。
+15. 在 TASK 正文填写完成说明。
 16. 将本件从 `doing/` 移到 `done/`（直接放根下，禁止年份子目录）。
 17. 完成后立即 git commit（含实现改动与任务文件移动），**不要 push**。
 18. 重新扫描 `todo/`，按优先级串行执行下一件 TODO。
@@ -150,11 +150,33 @@ Skill 激活后：
 处理规则：
 
 - **只执行 `todo/` 中 Status 为 TODO 的任务。**
-- **开始执行 → `doing/` + `DOING`。**
-- **未填写 / 文档不符合要求 / Agent 无法处理 → `blocked/` + `BLOCKED`。** 见下方判定。不要猜着补全。非 P0 继续其他 TODO；P0 停止。
+- **开始执行 → 移到 `doing/`。**
+- **未填写 / 文档不符合要求 / Agent 无法处理 → 移到 `blocked/`。** 见下方判定。不要猜着补全。非 P0 继续其他 TODO；P0 停止。
 - **不要读写 `plan/`。** 其中任务由人处理；本技能不得改名为 `*-plan.md`，不得把 Status 改为 `PLAN`。
 - **依赖未完成 → 跳过本轮该条。** 不要因此把任务移到 `blocked/`。
-- **完成 → `done/` + `DONE`。** 文件直接放在 `done/` 根下，禁止 `done/<年份>/`。随后 commit，不 push。
+- **完成 → 移到 `done/`。** 文件直接放在 `done/` 根下，禁止 `done/<年份>/`。随后 commit，不 push。
+
+---
+
+## 任务文件格式
+
+任务使用 YAML frontmatter + 正文（见 `task-template.md`）：
+
+```yaml
+---
+name: 任务标题
+description: >
+  需求描述（由人填写）
+priority: P1
+---
+<!-- 由 Agent 填写执行记录、阻塞原因、完成说明 -->
+```
+
+- `name`：任务标题
+- `description`：需求描述
+- `priority`：P0–P3
+- frontmatter 下方正文：Agent 填写区
+- **状态以所在目录为准**，不要在文件内写 Status 字段
 
 ---
 
@@ -162,11 +184,9 @@ Skill 激活后：
 
 出现以下任一情况，视为文档不符合要求，**不要猜着补全标题或需求**：
 
-- 标题仍为 `<任务名称>`、空白，或明显未改模板占位。
-- `Requirements(Required)` 无实质条目（空、仅 `-` / `- None`，或仍是模板占位，看不出要做什么）。
-- 必填项整体仍是刚从模板拷出的默认内容，无法确定目标。
-
-仅 `Context` 为 `- None`、但标题与 Requirements 已写明，不算未填写。
+- `name` 仍为 `标题`、`<任务名称>`、空白，或明显未改模板占位。
+- `description` 无实质内容（空、仅占位 `描述`，或仍是模板默认，看不出要做什么）。
+- frontmatter 整体仍是刚从模板拷出的默认内容，无法确定目标。
 
 用户在对话里当场给出该任务的需求时，先写入 TASK 再执行，不要把它当未填写。
 
@@ -174,7 +194,7 @@ Skill 激活后：
 
 ## 移入 blocked/
 
-出现以下任一情况时，移入 `blocked/`，Status 改为 `BLOCKED`，**不要猜着做**：
+出现以下任一情况时，移入 `blocked/`，**不要猜着做**：
 
 - 任务未填写，或文档填写不符合要求（见「未填写判定」）；
 - Agent 无法处理：例如需要人拍板、缺 ADR、需求冲突、范围不清、与其他任务根本性冲突、架构方向未定；
@@ -182,12 +202,11 @@ Skill 激活后：
 
 操作：
 
-1. 在 TASK 中把 `Task Status` 改为 `BLOCKED`。
-2. 在 `# Agent Notes` 写明阻塞原因（具体、可核对）。
-3. 将文件从 `todo/` 或 `doing/` 移到 `blocked/`，**保留原文件名**。
-4. 向用户说明移入了哪条、为何阻塞。
-5. **若该任务为 P0：停止，不要再选取其他任务。**
-6. 若非 P0：按优先级继续下一件 TODO。
+1. 在 TASK 正文写明阻塞原因（具体、可核对）。
+2. 将文件从 `todo/` 或 `doing/` 移到 `blocked/`，**保留原文件名**。
+3. 向用户说明移入了哪条、为何阻塞。
+4. **若该任务为 P0：停止，不要再选取其他任务。**
+5. 若非 P0：按优先级继续下一件 TODO。
 
 不要在移入 `blocked/` 时继续实现代码。若执行中途阻塞且已有改动：能回退则回退。不要因移入 `blocked/` 而自动 commit。
 
@@ -199,13 +218,12 @@ Skill 激活后：
 
 对 `todo/` 中 Status 为 TODO、可执行且依赖已满足的任务，**一次只做一件**：
 
-1. 移到 `doing/`，把 Status 改为 `DOING`。
-2. 按 TASK 的 Context / Requirements / Constraints 实现。
+1. 移到 `doing/`。
+2. 按 TASK 的 `description` 实现。
 3. 跑必要验证（测试、`pnpm lint:fix`、必要时 `pnpm typecheck`）。
-4. 把 Status 设为 `DONE`，在 Agent Notes 填写完成说明。
-5. 移到 `.agents/ap-config/work-data/tasks/done/`（不要创建年份子目录），文件名保持原样。
-6. 按下方「完成后提交」创建 commit。
-7. 再扫描 `todo/`，按优先级串行执行下一件 TODO。
+4. 在正文填写完成说明，移到 `.agents/ap-config/work-data/tasks/done/`（不要创建年份子目录），文件名保持原样。
+5. 按下方「完成后提交」创建 commit。
+6. 再扫描 `todo/`，按优先级串行执行下一件 TODO。
 
 ---
 
@@ -229,11 +247,11 @@ Skill 激活后：
 
 - 不要自行创造任务中没有提出的需求。
 - **只执行 Status 为 TODO 的任务。** 不要执行 `DOING` / `PLAN` / `BLOCKED` / `DONE`。
-- 开始执行必须先移入 `doing/` 并把 Status 改为 `DOING`。
-- 未填写、文档不合格、或 Agent 无法处理时必须移入 `blocked/` 并改为 `BLOCKED`，不得猜着补全或执行。
+- 开始执行必须先移入 `doing/`。
+- 未填写、文档不合格、或 Agent 无法处理时必须移入 `blocked/`，不得猜着补全或执行。
 - P0 一旦阻塞（`blocked/` 中已有或本轮刚移入），必须停止，不得继续其他任务。
 - `doing/` 非空时不得领取新的 TODO。
-- 不要修改、创建、删除 `.agents/ap-config/work-data/decisions/` 中的 ADR；需要新决策时写入 Agent Notes 并移入 `blocked/`。
+- 不要修改、创建、删除 `.agents/ap-config/work-data/decisions/` 中的 ADR；需要新决策时在正文说明并移入 `blocked/`。
 - **不要读取、执行、改写 `plan/`。** 不要把任务改为 `PLAN`。
 - 同一时刻最多实现一件任务；禁止并发；允许串行；选取必须按优先级。
 - 移入 `done/` 后必须 commit；禁止 push。完成文件直接放在 `done/` 根下，禁止按年份分子目录。

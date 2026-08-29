@@ -4,7 +4,7 @@
 .agents/ap-config/work-data/
 ├── README.md
 ├── tasks/
-│   ├── task-template.md   ← 模板，安装时覆盖；初始 Status 为 TODO
+│   ├── task-template.md   ← 模板，安装时覆盖；YAML frontmatter + Agent 正文
 │   ├── todo/              ← TODO：待执行；创建任务写到这里
 │   ├── doing/             ← DOING：开始执行后放这里
 │   ├── plan/              ← PLAN：仅人工使用
@@ -24,14 +24,14 @@
 
 # tasks
 
-- 用 `ap task-create [--name <文件名>]` 从模板创建到 `todo/`，初始 Status 为 TODO
+- 用 `ap task-create [--name <文件名>]` 从模板创建到 `todo/`
 - 未指定 `--name` 时文件名为 `task-YYYYMMDDHHmmSS.md`
 - 任务名称优先使用中文，如：实现用户登录
-- 只执行 Status 为 TODO 的任务；开始执行时移到 `doing/` 并改为 DOING
+- 只执行位于 `todo/` 的任务；开始执行时移到 `doing/`
 - 执行时按 Priority：P0 > P1 > P2 > P3；同级编号小的先做
-- 未填写、文档不合格、或 Agent 无法处理时移到 `blocked/` 并改为 BLOCKED，不要猜着做
+- 未填写、文档不合格、或 Agent 无法处理时移到 `blocked/`，不要猜着做
 - `plan/` 仅供人工使用；AI 不读取、不执行、不写入
 - P0 任务一旦阻塞，停止执行其他任务
-- 完成后移到 `done/` 并改为 DONE；文件直接放在 `done/` 根下，不要创建年份子目录
+- 完成后移到 `done/`；文件直接放在 `done/` 根下，不要创建年份子目录
 - 只有当前任务需要历史上下文时，才读取 `done/`
 - 执行流程见 `apps/ap-cli/src/ap-config/skills/ap-task-execute/SKILL.md`

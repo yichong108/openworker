@@ -259,8 +259,8 @@ function buildTaskContextPrefix(task: TaskDetail): string {
     '',
     `# ${task.title}`,
     '',
-    '# Human Notes',
-    task.humanNotes.trim() || '（空）'
+    '## description',
+    task.description.trim() || '（空）'
   ].join('\n')
 }
 

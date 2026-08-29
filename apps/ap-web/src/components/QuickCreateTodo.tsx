@@ -49,7 +49,7 @@ function readErrorMessage(payload: unknown, fallback: string): string {
  * 待办列顶部快捷创建：textarea + 创建 / 开始执行。
  */
 export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
-  const [humanNotes, setHumanNotes] = useState('')
+  const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -58,7 +58,7 @@ export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
     const response = await request('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ humanNotes: trimmed, status: 'todo' })
+      body: JSON.stringify({ description: trimmed, status: 'todo' })
     })
     const payload = (await response.json()) as TaskDetail & { error?: string }
     if (!response.ok) {
@@ -69,9 +69,9 @@ export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
   }, [])
 
   const submit = useCallback(async () => {
-    const trimmed = humanNotes.trim()
+    const trimmed = description.trim()
     if (!trimmed) {
-      setValidationError('请填写备注')
+      setValidationError('请填写描述')
       return
     }
 
@@ -81,19 +81,19 @@ export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
     try {
       const task = await createTask(trimmed)
       if (!task) return
-      setHumanNotes('')
+      setDescription('')
       await onCreated?.()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '创建失败')
     } finally {
       setBusy(false)
     }
-  }, [createTask, humanNotes, onCreated])
+  }, [createTask, description, onCreated])
 
   const submitAndRun = useCallback(async () => {
-    const trimmed = humanNotes.trim()
+    const trimmed = description.trim()
     if (!trimmed) {
-      setValidationError('请填写备注')
+      setValidationError('请填写描述')
       return
     }
 
@@ -103,7 +103,7 @@ export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
     try {
       const task = await createTask(trimmed)
       if (!task) return
-      setHumanNotes('')
+      setDescription('')
       if (onMove) {
         await onMove(task.id, 'doing')
       } else {
@@ -114,16 +114,16 @@ export function QuickCreateTodo({ onCreated, onMove }: QuickCreateTodoProps) {
     } finally {
       setBusy(false)
     }
-  }, [createTask, humanNotes, onCreated, onMove])
+  }, [createTask, description, onCreated, onMove])
 
-  const canSubmit = humanNotes.trim().length > 0 && !busy
+  const canSubmit = description.trim().length > 0 && !busy
 
   return (
     <div className="mb-3 mr-2 rounded-xl bg-[var(--paper)] px-3 py-3 text-[var(--ink)] shadow-card">
       <ApTextArea
-        value={humanNotes}
+        value={description}
         onChange={(value) => {
-          setHumanNotes(value)
+          setDescription(value)
           setValidationError(null)
           setError(null)
         }}

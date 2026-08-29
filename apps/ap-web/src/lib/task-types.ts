@@ -19,7 +19,7 @@ export type TaskSummary = {
 
 /** 列内展开后展示的完整字段 */
 export type TaskDetail = TaskSummary & {
-  humanNotes: string
+  description: string
   agentNotes: string
   markdown: string
 }
@@ -34,10 +34,10 @@ export type TaskBoardPayload = {
 
 /** 创建任务时可由前端提交的字段 */
 export type CreateTaskInput = {
-  /** 任务名称；空则先用备注首行落盘，再异步用 AI 起名 */
+  /** 任务名称；空则先用 description 首行落盘，再异步用 AI 起名 */
   title?: string
   priority?: TaskPriority
-  humanNotes?: string
+  description?: string
   /** 初始列，默认 todo */
   status?: TaskColumn
 }
@@ -46,7 +46,7 @@ export type CreateTaskInput = {
 export type UpdateTaskInput = {
   title?: string
   priority?: TaskPriority
-  humanNotes?: string
+  description?: string
 }
 
 /** 看板会展示的四列（不含 plan / 工具集） */
@@ -60,7 +60,7 @@ export const COLUMN_LABELS: Record<TaskColumn, string> = {
   blocked: '阻塞'
 }
 
-/** 写入 markdown 的 Status 文案，与目录对应 */
+/** 列与状态文案的对应（概念映射；新模板不在文件内写入 Status） */
 export const COLUMN_STATUS_TEXT: Record<TaskColumn, string> = {
   todo: 'TODO',
   doing: 'DOING',

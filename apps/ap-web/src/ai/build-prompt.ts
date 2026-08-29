@@ -14,9 +14,10 @@ export function buildTaskPrompt(task: TaskDetail): string {
     '',
     `# ${task.title}`,
     '',
-    '# Human Notes',
-    task.humanNotes.trim() || '（空）',
-    '# Agent Notes',
+    '## description',
+    task.description.trim() || '（空）',
+    '',
+    '## 正文（Agent 填写区）',
     task.agentNotes.trim() || '（空）',
     '<在这里输出你的回答>'
   ].join('\n')

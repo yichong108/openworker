@@ -220,7 +220,7 @@ export function TaskBoard() {
     async (input: {
       title: string
       priority: TaskPriority
-      humanNotes: string
+      description: string
       status: TaskColumn
     }) => {
       if (!editingTask) return
@@ -231,7 +231,7 @@ export function TaskBoard() {
         const body: Record<string, string> = {
           title: input.title,
           priority: input.priority,
-          humanNotes: input.humanNotes
+          description: input.description
         }
         if (input.status !== editingTask.status) {
           body.status = input.status

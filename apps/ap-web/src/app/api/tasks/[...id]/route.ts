@@ -53,12 +53,12 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
       status?: unknown
       title?: unknown
       priority?: unknown
-      humanNotes?: unknown
+      description?: unknown
     }
 
     const hasStatus = body.status !== undefined
     const hasFields =
-      body.title !== undefined || body.priority !== undefined || body.humanNotes !== undefined
+      body.title !== undefined || body.priority !== undefined || body.description !== undefined
 
     if (!hasStatus && !hasFields) {
       return NextResponse.json({ error: '缺少更新字段' }, { status: 400 })
@@ -77,8 +77,8 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
     ) {
       return NextResponse.json({ error: '优先级必须是 P0–P3' }, { status: 400 })
     }
-    if (body.humanNotes !== undefined && typeof body.humanNotes !== 'string') {
-      return NextResponse.json({ error: '备注必须是字符串' }, { status: 400 })
+    if (body.description !== undefined && typeof body.description !== 'string') {
+      return NextResponse.json({ error: 'description 必须是字符串' }, { status: 400 })
     }
 
     let currentId = id
@@ -88,7 +88,7 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
       if (typeof body.priority === 'string' && isTaskPriority(body.priority)) {
         input.priority = body.priority
       }
-      if (typeof body.humanNotes === 'string') input.humanNotes = body.humanNotes
+      if (typeof body.description === 'string') input.description = body.description
       const updated = updateTask(currentId, input)
       currentId = updated.id
       if (!hasStatus) {

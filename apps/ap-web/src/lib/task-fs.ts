@@ -221,19 +221,19 @@ function destinationDir(column: TaskColumn): string {
 /**
  * 在指定列目录创建任务文件，文件名为 task-YYYYMMDDHHmmSS.md。
  *
- * 未填名称时先用备注首行落盘并立即返回，再后台用 AI 起名写回
- * （用户已改名或改过备注则不覆盖）。看板经文件监听刷新。
+ * 未填名称时先用 description 首行落盘并立即返回，再后台用 AI 起名写回
+ * （用户已改名或改过 description 则不覆盖）。看板经文件监听刷新。
  *
- * @param input - 名称、备注、初始列等字段
+ * @param input - 名称、description、初始列等字段
  * @returns 新任务详情
  */
 export function createTask(input: CreateTaskInput): TaskDetail {
-  const humanNotes = input.humanNotes?.trim() ?? ''
-  if (!humanNotes) {
-    throw new TaskFsError('备注不能为空', 400)
+  const description = input.description?.trim() ?? ''
+  if (!description) {
+    throw new TaskFsError('description 不能为空', 400)
   }
   const given = input.title?.trim() ?? ''
-  const title = given || titleFromIdeaFallback(humanNotes)
+  const title = given || titleFromIdeaFallback(description)
   const column: TaskColumn = input.status ?? 'todo'
 
   const tasksRoot = getTasksRoot()
@@ -253,13 +253,13 @@ export function createTask(input: CreateTaskInput): TaskDetail {
   const markdown = buildTaskMarkdown({
     ...input,
     title,
-    humanNotes,
+    description,
     status: column
   })
   writeFileSync(dest, markdown, 'utf8')
   const detail = readTask(toPosixId(tasksRoot, dest))
   if (!given) {
-    scheduleGeneratedTitle(detail.id, title, humanNotes)
+    scheduleGeneratedTitle(detail.id, title, description)
   }
   return detail
 }
@@ -288,11 +288,11 @@ function locateTaskId(id: string): string | null {
 }
 
 /**
- * 后台用 AI 起名并写回；失败或用户已改标题/备注则保留落盘时的首行标题。
+ * 后台用 AI 起名并写回；失败或用户已改标题/description 则保留落盘时的首行标题。
  *
  * @param id - 创建时的任务 id
  * @param placeholder - 落盘时写入的首行标题
- * @param idea - 创建时的备注正文
+ * @param idea - 创建时的 description 正文
  */
 function scheduleGeneratedTitle(id: string, placeholder: string, idea: string): void {
   setTimeout(() => {
@@ -304,7 +304,7 @@ function scheduleGeneratedTitle(id: string, placeholder: string, idea: string): 
         if (!currentId) return
         const current = readTask(currentId)
         if (current.title !== placeholder) return
-        if (current.humanNotes.trim() !== idea.trim()) return
+        if (current.description.trim() !== idea.trim()) return
         updateTask(currentId, { title: generated })
       } catch {
         /* 起名失败保留首行标题 */
@@ -314,9 +314,9 @@ function scheduleGeneratedTitle(id: string, placeholder: string, idea: string): 
 }
 
 /**
- * 就地更新任务正文：标题、优先级与 Human Notes。
+ * 就地更新任务正文：标题、优先级与 description。
  *
- * 不改目录、Status 与 Agent Notes。备注不能为空。
+ * 不改目录与 Agent 正文。description 不能为空。
  *
  * @param id - 当前 id
  * @param input - 要覆盖的字段
@@ -325,16 +325,16 @@ function scheduleGeneratedTitle(id: string, placeholder: string, idea: string): 
 export function updateTask(id: string, input: UpdateTaskInput): TaskDetail {
   const current = readTask(id)
   const title = input.title !== undefined ? input.title.trim() || current.title : current.title
-  const humanNotes = input.humanNotes !== undefined ? input.humanNotes.trim() : current.humanNotes
-  if (!humanNotes) {
-    throw new TaskFsError('备注不能为空', 400)
+  const description =
+    input.description !== undefined ? input.description.trim() : current.description
+  if (!description) {
+    throw new TaskFsError('description 不能为空', 400)
   }
 
   const markdown = serializeTaskMarkdown({
     title,
-    status: current.status,
     priority: input.priority ?? current.priority,
-    humanNotes,
+    description,
     agentNotes: current.agentNotes
   })
   writeFileSync(resolveSafeTaskFile(id), markdown, 'utf8')
@@ -342,7 +342,7 @@ export function updateTask(id: string, input: UpdateTaskInput): TaskDetail {
 }
 
 /**
- * 改状态：更新 markdown 中的 Status，并移动到对应目录（保留文件名）。
+ * 改状态：移动到对应目录（保留文件名）；状态以目录为准，不改写文件内容。
  *
  * 禁止写入 plan/。
  *

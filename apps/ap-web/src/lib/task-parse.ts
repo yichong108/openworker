@@ -5,162 +5,170 @@ import type {
   TaskPriority,
   TaskSummary
 } from './task-types'
-import { COLUMN_STATUS_TEXT } from './task-types'
+import { isTaskPriority } from './task-types'
 
 /** 序列化任务 markdown 所需的全部字段 */
 type TaskMarkdownFields = {
   title: string
-  status: TaskColumn
   priority: TaskPriority
-  humanNotes: string
+  description: string
   agentNotes: string
 }
 
-const META_TITLES = new Set(['task notes', 'human notes', 'agent notes'])
+const TITLE_PLACEHOLDERS = new Set(['标题', '<任务名称>'])
 
-/** markdown 解析出的分区 */
-type ParsedSections = {
-  title: string
-  statusText: string
-  priorityText: string
-  humanNotes: string
-  agentNotes: string
+/** frontmatter 解析结果 */
+type TaskFrontmatter = {
+  name: string
+  description: string
+  priority: string
 }
 
 /**
- * 规范化标题，去掉 (Required) 并小写，便于兼容新旧模板。
+ * 判断 frontmatter 行是否为块标量指示符（`>` / `|` 及其 chomping 变体）。
  *
- * @param heading - 原始标题
- * @returns 规范化后的键
+ * @param value - 冒号后的原始片段
+ * @returns 块类型；非块标量时为 null
  */
-function normalizeHeading(heading: string): string {
-  return heading
-    .replace(/\(Required\)/gi, '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
+function parseBlockScalarIndicator(value: string): 'folded' | 'literal' | null {
+  const trimmed = value.trim()
+  if (trimmed === '>' || trimmed.startsWith('>-')) return 'folded'
+  if (trimmed === '|' || trimmed.startsWith('|-')) return 'literal'
+  return null
 }
 
 /**
- * 去掉分区首尾空行后拼回文本。
+ * 读取 YAML frontmatter 块标量（`>` / `|`）的缩进正文。
  *
- * @param lines - 分区内原始行
- * @returns 去掉首尾空白后的正文
+ * @param lines - frontmatter 按行拆分
+ * @param startIndex - 块标量指示符下一行的下标
+ * @param mode - folded 折叠为空格；literal 保留换行
+ * @returns 解析值与消费后的行下标
  */
-function trimSection(lines: string[]): string {
-  let start = 0
-  let end = lines.length
-  while (start < end && lines[start].trim() === '') start += 1
-  while (end > start && lines[end - 1].trim() === '') end -= 1
-  return lines.slice(start, end).join('\n').trim()
-}
-
-/**
- * 从 Human Notes 分区或旧版 Context/Requirements/Constraints 拼出正文。
- *
- * @param sections - 原始分区行
- * @param pick - 按键取正文
- * @returns Human Notes 正文
- */
-function resolveHumanNotes(
-  sections: Record<string, string[]>,
-  pick: (key: string) => string
-): string {
-  const direct = trimSection(sections['human notes'] ?? [])
-  if (direct) return direct
-
-  const parts: string[] = []
-  const dependencies = pick('task dependencies')
-  if (dependencies && dependencies !== '- None') {
-    parts.push(`## Task Dependencies\n\n${dependencies}`)
-  }
-  for (const [key, label] of [
-    ['context', 'Context'],
-    ['requirements', 'Requirements'],
-    ['constraints', 'Constraints']
-  ] as const) {
-    const value = pick(key)
-    if (value && value !== '- None') {
-      parts.push(`## ${label}\n\n${value}`)
+function readFrontmatterBlockScalar(
+  lines: string[],
+  startIndex: number,
+  mode: 'folded' | 'literal'
+): { value: string; nextIndex: number } {
+  const blockLines: string[] = []
+  let i = startIndex
+  while (i < lines.length) {
+    const line = lines[i]!
+    if (line.trim() === '') {
+      blockLines.push('')
+      i++
+      continue
     }
+    const indentMatch = line.match(/^(\s+)/)
+    if (!indentMatch) break
+    blockLines.push(line.slice(indentMatch[1]!.length))
+    i++
   }
-  return parts.join('\n\n')
+
+  if (mode === 'literal') {
+    return { value: blockLines.join('\n').trim(), nextIndex: i }
+  }
+
+  const folded = blockLines
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return { value: folded, nextIndex: i }
 }
 
 /**
- * 解析任务 markdown 的标题与各分区。
+ * 解析任务 YAML frontmatter（name / description / priority）。
  *
- * 兼容模板 `# Task Notes` + `## Task Status`，以及已完成任务
- * 以标题为 H1、分区带 `(Required)` 的写法。
+ * @param markdown - 完整 markdown 文本
+ * @returns meta 与正文；无合法 frontmatter 时返回 null
+ */
+function parseTaskFrontmatter(markdown: string): { meta: TaskFrontmatter; body: string } | null {
+  const normalized = markdown.replace(/\r\n/g, '\n')
+  if (!normalized.startsWith('---\n')) return null
+  const end = normalized.indexOf('\n---\n', 4)
+  if (end < 0) return null
+
+  const header = normalized.slice(4, end)
+  const body = normalized.slice(end + 5).trim()
+  const meta: TaskFrontmatter = { name: '', description: '', priority: '' }
+  const lines = header.split('\n')
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i]!
+    const idx = line.indexOf(':')
+    if (idx <= 0) {
+      i++
+      continue
+    }
+
+    const key = line.slice(0, idx).trim().toLowerCase()
+    const rawValue = line.slice(idx + 1)
+    const blockMode = parseBlockScalarIndicator(rawValue)
+    let value: string
+    if (blockMode) {
+      const block = readFrontmatterBlockScalar(lines, i + 1, blockMode)
+      value = block.value
+      i = block.nextIndex
+    } else {
+      value = rawValue.trim().replace(/^['"]|['"]$/g, '')
+      i++
+    }
+
+    if (key === 'name') meta.name = value
+    if (key === 'description') meta.description = value
+    if (key === 'priority') meta.priority = value
+  }
+
+  return { meta, body }
+}
+
+/**
+ * 去掉 HTML 注释与纯占位注释行。
+ *
+ * @param text - 原始正文
+ * @returns 清理后的正文
+ */
+function stripAgentPlaceholder(text: string): string {
+  return text
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .trim()
+}
+
+/**
+ * 解析任务 markdown（YAML frontmatter + 正文）。
  *
  * @param markdown - 任务文件全文
- * @returns 解析后的分区
+ * @returns 统一字段；无 frontmatter 时各字段为空
  */
-function parseSections(markdown: string): ParsedSections {
-  const lines = markdown.replace(/\r\n/g, '\n').split('\n')
-  let title = ''
-  const sections: Record<string, string[]> = {}
-  let current: string | null = null
-  let inAgentNotes = false
-
-  for (const line of lines) {
-    const h1 = /^#\s+(.+)$/.exec(line)
-    const h2 = /^##\s+(.+)$/.exec(line)
-    const isH1 = Boolean(h1) && !line.startsWith('##')
-
-    if (isH1 && h1) {
-      const name = h1[1].trim()
-      const key = normalizeHeading(name)
-      if (key === 'agent notes') {
-        inAgentNotes = true
-        current = 'agent notes'
-        sections[current] = []
-        continue
-      }
-      if (key === 'human notes') {
-        inAgentNotes = false
-        current = 'human notes'
-        sections[current] = []
-        continue
-      }
-      if (!title && !META_TITLES.has(key)) {
-        title = name
-        current = null
-        continue
-      }
-      if (!title && key === 'task notes') {
-        title = 'Task Notes'
-      }
-      current = null
-      continue
-    }
-
-    if (h2 && !inAgentNotes) {
-      current = normalizeHeading(h2[1])
-      sections[current] = []
-      continue
-    }
-
-    if (current) {
-      sections[current].push(line)
-    }
+function parseTaskMarkdown(markdown: string): {
+  title: string
+  priorityText: string
+  description: string
+  agentNotes: string
+} {
+  const frontmatter = parseTaskFrontmatter(markdown)
+  if (!frontmatter) {
+    return { title: '', priorityText: '', description: '', agentNotes: '' }
   }
 
-  const pick = (key: string): string => trimSection(sections[key] ?? [])
-
   return {
-    title,
-    statusText: pick('task status'),
-    priorityText: pick('task priority'),
-    humanNotes: resolveHumanNotes(sections, pick),
-    agentNotes: pick('agent notes')
+    title: frontmatter.meta.name.trim(),
+    priorityText: frontmatter.meta.priority.trim(),
+    description: frontmatter.meta.description.trim(),
+    agentNotes: stripAgentPlaceholder(frontmatter.body)
   }
 }
 
 /**
- * 从优先级分区取出 P0–P3；无法识别时视为 P2。
+ * 从优先级字段取出 P0–P3；无法识别时视为 P2。
  *
- * @param text - 优先级分区正文
+ * @param text - 优先级正文
  * @returns 优先级
  */
 function parsePriority(text: string): TaskPriority {
@@ -171,9 +179,64 @@ function parsePriority(text: string): TaskPriority {
 }
 
 /**
+ * 判断标题是否仍为模板占位。
+ *
+ * @param title - 解析出的标题
+ * @returns 是否为占位
+ */
+function isTitlePlaceholder(title: string): boolean {
+  const normalized = title.trim().toLowerCase()
+  return !normalized || TITLE_PLACEHOLDERS.has(normalized)
+}
+
+/**
+ * 把单行 frontmatter 字段序列化为 YAML。
+ *
+ * @param key - 字段名
+ * @param value - 字段值
+ * @returns frontmatter 行或块
+ */
+function serializeScalarField(key: string, value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return `${key}: \n`
+
+  if (!trimmed.includes('\n') && !/[:#>|@`"'\\]/.test(trimmed) && !trimmed.startsWith('-')) {
+    return `${key}: ${trimmed}`
+  }
+
+  if (!trimmed.includes('\n')) {
+    return `${key}: "${trimmed.replace(/"/g, '\\"')}"`
+  }
+
+  const lines = trimmed.split('\n').map((line) => `  ${line}`)
+  return `${key}: |\n${lines.join('\n')}`
+}
+
+/**
+ * 把 description 序列化为 YAML frontmatter 字段。
+ *
+ * @param text - 描述正文
+ * @returns frontmatter 中的 description 段
+ */
+function serializeDescriptionField(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return 'description: \n'
+
+  if (!trimmed.includes('\n')) {
+    if (/[:#>|@`]/.test(trimmed) || trimmed.startsWith('-')) {
+      return `description: >\n  ${trimmed}`
+    }
+    return `description: ${trimmed}`
+  }
+
+  const lines = trimmed.split('\n').map((line) => `  ${line}`)
+  return `description: |\n${lines.join('\n')}`
+}
+
+/**
  * 把 markdown 转成列表卡片字段。
  *
- * 标题若仍是模板占位 `Task Notes`，回退为文件名（去掉 .md）。
+ * 标题若仍是模板占位，回退为文件名（去掉 .md）。
  *
  * @param id - 相对 tasks 根的路径
  * @param fileName - 文件名
@@ -189,12 +252,9 @@ export function toTaskSummary(
   markdown: string,
   updatedAt: string
 ): TaskSummary {
-  const parsed = parseSections(markdown)
+  const parsed = parseTaskMarkdown(markdown)
   const stem = fileName.replace(/\.md$/i, '')
-  const title =
-    !parsed.title || parsed.title === 'Task Notes' || META_TITLES.has(parsed.title.toLowerCase())
-      ? stem
-      : parsed.title
+  const title = isTitlePlaceholder(parsed.title) ? stem : parsed.title
 
   return {
     id,
@@ -223,83 +283,50 @@ export function toTaskDetail(
   markdown: string,
   updatedAt: string
 ): TaskDetail {
-  const parsed = parseSections(markdown)
+  const parsed = parseTaskMarkdown(markdown)
   return {
     ...toTaskSummary(id, fileName, column, markdown, updatedAt),
-    humanNotes: parsed.humanNotes,
+    description: parsed.description,
     agentNotes: parsed.agentNotes,
     markdown
   }
 }
 
 /**
- * 把 Task Status 分区的第一行非空内容换成目标列对应状态。
- *
- * 找不到该分区时，在首个 H1 后插入标准 Status 段，避免改状态写丢。
+ * 移动任务列时不再改写文件内容（状态以目录为准）。
  *
  * @param markdown - 原全文
- * @param column - 目标列
- * @returns 更新后的全文
+ * @param _column - 目标列（保留参数以兼容调用方）
+ * @returns 原全文
  */
-export function replaceTaskStatus(markdown: string, column: TaskColumn): string {
-  const statusText = COLUMN_STATUS_TEXT[column]
-  const normalized = markdown.replace(/\r\n/g, '\n')
-  const lines = normalized.split('\n')
-  const headingIdx = lines.findIndex((line) => /^## Task Status(?:\(Required\))?\s*$/.test(line))
-
-  if (headingIdx === -1) {
-    const insert = ['', '## Task Status', '', statusText, '']
-    const h1Idx = lines.findIndex((line) => /^#\s+/.test(line) && !line.startsWith('##'))
-    if (h1Idx === -1) {
-      return `${insert.join('\n').trim()}\n${normalized}`
-    }
-    lines.splice(h1Idx + 1, 0, ...insert)
-    return lines.join('\n')
-  }
-
-  for (let i = headingIdx + 1; i < lines.length; i += 1) {
-    if (/^#{1,6}\s+/.test(lines[i])) break
-    if (lines[i].trim() !== '') {
-      lines[i] = statusText
-      return lines.join('\n')
-    }
-  }
-
-  lines.splice(headingIdx + 1, 0, '', statusText)
-  return lines.join('\n')
+export function replaceTaskStatus(markdown: string, _column: TaskColumn): string {
+  return markdown
 }
 
 /**
- * 按约定拼出任务 markdown，保留状态与 Agent Notes。
+ * 按 frontmatter 模板拼出任务 markdown。
  *
  * @param fields - 完整字段
  * @returns 完整 markdown
  */
 export function serializeTaskMarkdown(fields: TaskMarkdownFields): string {
   const title = fields.title.trim()
-  const humanNotes = fields.humanNotes.trim()
-  const humanBlock = humanNotes ? `\n${humanNotes}\n` : '\n'
+  const description = fields.description.trim()
+  const priority = isTaskPriority(fields.priority) ? fields.priority : 'P2'
   const agentNotes = fields.agentNotes.trim()
-  const agentBlock = agentNotes ? `\n${agentNotes}\n` : '\n'
+  const body = agentNotes || '<!-- 由Agent填写 -->'
 
-  return `# ${title}
-
-## Task Status
-
-${COLUMN_STATUS_TEXT[fields.status]}
-
-## Task Priority
-
-${fields.priority}
-
-# Human Notes
-${humanBlock}
-# Agent Notes
-${agentBlock}`
+  return `---
+${serializeScalarField('name', title)}
+${serializeDescriptionField(description)}
+priority: ${priority}
+---
+${body}
+`
 }
 
 /**
- * 按约定拼出新建任务的 markdown（H1 为标题，Status 为 TODO）。
+ * 按约定拼出新建任务的 markdown。
  *
  * @param input - 创建表单
  * @returns 完整 markdown
@@ -307,9 +334,8 @@ ${agentBlock}`
 export function buildTaskMarkdown(input: CreateTaskInput): string {
   return serializeTaskMarkdown({
     title: input.title?.trim() ?? '',
-    status: input.status ?? 'todo',
     priority: input.priority ?? 'P1',
-    humanNotes: input.humanNotes?.trim() ?? '',
+    description: input.description?.trim() ?? '',
     agentNotes: ''
   })
 }
