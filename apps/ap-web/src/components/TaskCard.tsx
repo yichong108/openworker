@@ -138,6 +138,24 @@ function StopIcon() {
   )
 }
 
+function EditIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" />
+      <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
 /**
  * 单张任务卡片
  */
@@ -169,7 +187,11 @@ export function TaskCard({ task, chat, onEdit, onMove, onOpenChat, onDelete }: T
     <article
       draggable
       onDragStart={(event) => {
-        if ((event.target as HTMLElement).closest('[data-chat-trigger], [data-run-trigger]')) {
+        if (
+          (event.target as HTMLElement).closest(
+            '[data-chat-trigger], [data-run-trigger], [data-edit-trigger]'
+          )
+        ) {
           event.preventDefault()
           return
         }
@@ -188,11 +210,7 @@ export function TaskCard({ task, chat, onEdit, onMove, onOpenChat, onDelete }: T
       className="rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="flex items-start">
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 px-3 py-3 text-left"
-          onClick={onEdit}
-        >
+        <div className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3">
           <span
             className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${PRIORITY_CLASS[task.priority]}`}
           >
@@ -200,16 +218,33 @@ export function TaskCard({ task, chat, onEdit, onMove, onOpenChat, onDelete }: T
           </span>
           <span className="min-w-0 flex-1">
             <span className="block break-words font-medium leading-snug">{task.title}</span>
-            {updatedAtLabel ? (
-              <time
-                dateTime={task.updatedAt}
-                className="mt-0.5 block text-[11px] font-normal text-[var(--ink-soft)] opacity-45"
+            <div className="mt-0.5 flex items-center justify-between gap-2">
+              {updatedAtLabel ? (
+                <time
+                  dateTime={task.updatedAt}
+                  className="text-[11px] font-normal text-[var(--ink-soft)] opacity-45"
+                >
+                  {updatedAtLabel}
+                </time>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                data-edit-trigger
+                aria-label="编辑任务"
+                title="编辑任务"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit()
+                }}
+                className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-[var(--ink-soft)] opacity-45 transition hover:bg-black/5 hover:opacity-80"
               >
-                {updatedAtLabel}
-              </time>
-            ) : null}
+                <EditIcon className="h-3 w-3" />
+              </button>
+            </div>
           </span>
-        </button>
+        </div>
         {task.status === 'todo' ? (
           <button
             type="button"
