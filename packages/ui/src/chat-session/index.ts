@@ -37,6 +37,7 @@ export type {
   ChatSessionRole,
   ChatSessionRunRequest,
   ChatSessionRunStats,
+  ChatSessionSnapshot,
   ChatSessionViewProps,
   ChatSessionWithHttpProps
 } from './types.js'

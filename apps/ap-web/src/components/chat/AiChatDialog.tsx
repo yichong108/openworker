@@ -1,19 +1,15 @@
 'use client'
 
-import type { BaseEvent } from '@ag-ui/client'
-import { ChatSessionWithHttp, type ChatSessionMessage } from '@openworker/ui'
+import { ChatSessionWithHttp } from '@openworker/ui'
 import type { ChatTranscript } from '@/components/chat/chat-types'
 import { ApModal } from '@/components/antd/ApModal'
 import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
-import { consumeSse } from '@/ai/consume-sse'
 import { request } from '@/lib/request'
 import { App, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import '../../../../../packages/ui/src/chat-session/chat-session.scss'
-
-const transcriptCache = new Map<string, ChatTranscript>()
 
 const emptyTranscript = (): ChatTranscript => ({
   running: false,
@@ -27,41 +23,39 @@ type AiChatDialogProps = {
   title: string
   fileName: string
   taskId: string
+  /** 看板 SSE 推送的该任务会话；有则覆盖 hydrate */
+  liveTranscript?: ChatTranscript
   onClose: () => void
   onAiAuthError: (message: string) => void
 }
 
 /**
- * 任务 AI 对话弹窗：ApModal + ChatSessionWithHttp（自包含会话）。
+ * 任务 AI 对话弹窗：ChatSessionWithHttp + 服务端 transcript 快照。
  */
 export function AiChatDialog({
   open,
   title,
   fileName,
   taskId,
+  liveTranscript,
   onClose,
   onAiAuthError
 }: AiChatDialogProps) {
   const [hydrated, setHydrated] = useState<ChatTranscript | null>(null)
   const [hydrating, setHydrating] = useState(false)
-  const [working, setWorking] = useState(false)
   const readyFileNameRef = useRef<string | null>(null)
 
+  const transcript = liveTranscript ?? hydrated ?? emptyTranscript()
+  const showWorking = Boolean(transcript.running)
+
   useEffect(() => {
-    if (!open || !fileName) return
-
-    if (readyFileNameRef.current === fileName) {
+    if (!open) {
+      readyFileNameRef.current = null
+      setHydrated(null)
       return
     }
-
-    const cached = transcriptCache.get(fileName)
-    if (cached) {
-      setHydrated(cached)
-      setHydrating(false)
-      setWorking(Boolean(cached.running))
-      readyFileNameRef.current = fileName
-      return
-    }
+    if (!fileName) return
+    if (liveTranscript || readyFileNameRef.current === fileName) return
 
     let cancelled = false
     setHydrating(true)
@@ -74,22 +68,16 @@ export function AiChatDialog({
           code?: string
         }
         if (cancelled) return
-        const transcript = !response.ok
-          ? emptyTranscript()
-          : (payload.transcript ?? emptyTranscript())
+        const next = !response.ok ? emptyTranscript() : (payload.transcript ?? emptyTranscript())
         if (!response.ok && payload.code === 'ai_auth') {
           onAiAuthError(payload.error || '模型鉴权失败')
         }
-        transcriptCache.set(fileName, transcript)
-        setHydrated(transcript)
-        setWorking(Boolean(transcript.running))
+        setHydrated(next)
         readyFileNameRef.current = fileName
       })
       .catch(() => {
         if (!cancelled) {
-          const transcript = emptyTranscript()
-          transcriptCache.set(fileName, transcript)
-          setHydrated(transcript)
+          setHydrated(emptyTranscript())
           readyFileNameRef.current = fileName
         }
       })
@@ -100,41 +88,28 @@ export function AiChatDialog({
     return () => {
       cancelled = true
     }
-  }, [open, fileName, onAiAuthError])
-
-  const sessionKey = fileName || readyFileNameRef.current || ''
+  }, [open, fileName, liveTranscript, onAiAuthError])
 
   const onRunRequest = useCallback(
     async ({
-      messages,
-      signal,
-      onEvent
+      messages
     }: {
       messages: Array<{ id: string; role: 'user' | 'assistant'; content: string }>
-      signal: AbortSignal
-      onEvent: (event: BaseEvent) => void
     }) => {
-      setWorking(true)
-      try {
-        const response = await request('/api/tasks/chat/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal,
-          body: JSON.stringify({ taskId, messages })
-        })
-        if (!response.ok) {
-          const payload = (await response.json().catch(() => ({}))) as {
-            error?: string
-            code?: string
-          }
-          if (payload.code === 'ai_auth') {
-            onAiAuthError(payload.error || '模型鉴权失败')
-          }
-          throw new Error(payload.error || `请求失败（${response.status}）`)
+      const response = await request('/api/tasks/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, messages })
+      })
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string
+        code?: string
+      }
+      if (!response.ok) {
+        if (payload.code === 'ai_auth') {
+          onAiAuthError(payload.error || '模型鉴权失败')
         }
-        await consumeSse(response, onEvent, signal)
-      } finally {
-        setWorking(false)
+        throw new Error(payload.error || `请求失败（${response.status}）`)
       }
     },
     [onAiAuthError, taskId]
@@ -143,19 +118,20 @@ export function AiChatDialog({
   const onStopRequest = useCallback(async () => {
     if (!fileName) return
     try {
-      await request('/api/tasks/chat/stop', {
+      const response = await request('/api/tasks/chat/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName })
       })
+      const payload = (await response.json().catch(() => ({}))) as { restoredInput?: string }
+      return payload.restoredInput ? { restoredInput: payload.restoredInput } : undefined
     } catch {
-      /* stop 失败不阻断 UI */
+      return undefined
     }
-    setWorking(false)
   }, [fileName])
 
-  const initialMessages: ChatSessionMessage[] = hydrated?.messages ?? []
-  const showWorking = working || Boolean(hydrated?.running)
+  const sessionKey = fileName || readyFileNameRef.current || ''
+  const ready = Boolean(sessionKey && (hydrated || liveTranscript) && !hydrating)
 
   return (
     <ApModal
@@ -174,14 +150,16 @@ export function AiChatDialog({
       <ConfigProvider locale={zhCN} theme={apWebAntdTheme}>
         <App>
           <div className="ap-task-chat-session flex min-h-0 flex-1 flex-col">
-            {sessionKey && hydrated && !hydrating ? (
+            {ready ? (
               <ChatSessionWithHttp
                 key={sessionKey}
                 sessionKey={sessionKey}
-                initialMessages={initialMessages}
-                initialLiveEvents={hydrated.liveEvents}
-                initialIsRun={hydrated.running}
-                initialRunStats={hydrated.runStats}
+                snapshot={{
+                  messages: transcript.messages,
+                  liveEvents: transcript.liveEvents,
+                  isRun: transcript.running,
+                  runStats: transcript.runStats
+                }}
                 onRunRequest={onRunRequest}
                 onStopRequest={onStopRequest}
               />

@@ -17,8 +17,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (typeof body.fileName !== 'string' || !isSafeTaskChatFileName(body.fileName)) {
       throw new TaskFsError('缺少或非法 fileName', 400)
     }
-    await stopTaskAgent(body.fileName.trim())
-    return NextResponse.json({ ok: true })
+    const restoredInput = await stopTaskAgent(body.fileName.trim())
+    return NextResponse.json({ ok: true, ...(restoredInput ? { restoredInput } : {}) })
   } catch (error) {
     return taskErrorResponse(error)
   }

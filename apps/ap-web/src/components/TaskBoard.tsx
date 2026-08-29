@@ -381,6 +381,7 @@ export function TaskBoard() {
         title={chatTask?.title || '对话'}
         fileName={chatTask?.fileName ?? ''}
         taskId={chatTask?.id ?? ''}
+        liveTranscript={chatTask ? transcripts[chatTask.fileName] : undefined}
         onClose={() => setChatTask(null)}
         onAiAuthError={(message) => {
           setConfigAuthError(message)

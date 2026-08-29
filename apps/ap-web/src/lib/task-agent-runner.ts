@@ -279,19 +279,22 @@ function hasAssistantOutput(message: ChatMessage | undefined): boolean {
  * 停止时若本轮尚无 Agent 回复，去掉空 assistant 与这一轮 user，避免落盘。
  *
  * @param fileName - 任务文件名
+ * @returns 被撤下的用户原文；无需撤下则为 undefined
  */
-function dropUnansweredRound(fileName: string): void {
+function dropUnansweredRound(fileName: string): string | undefined {
   const current = getOrCreate(fileName)
-  if (current.liveEvents.length > 0) return
+  if (current.liveEvents.length > 0) return undefined
   const messages = [...current.messages]
   const last = messages.at(-1)
   if (last?.role === 'assistant') {
-    if (hasAssistantOutput(last)) return
+    if (hasAssistantOutput(last)) return undefined
     messages.pop()
   }
-  if (messages.at(-1)?.role !== 'user') return
+  const user = messages.at(-1)
+  if (user?.role !== 'user') return undefined
   messages.pop()
   patchTranscript(fileName, { messages })
+  return user.content
 }
 
 /**
@@ -619,17 +622,15 @@ export async function startTaskAgent(task: TaskDetail): Promise<void> {
 }
 
 /**
- * 以客户端交出的完整 messages 覆盖 transcript 并 run，SSE 逐条回调 AG-UI 事件。
+ * 以客户端交出的完整 messages 覆盖 transcript 并启动 run。
  *
  * @param task - 任务详情
  * @param clientMessages - 客户端当前会话
- * @param onStreamEvent - 每条 AG-UI 事件
  */
-export async function runTaskAgentFromClientMessages(
+export function runTaskAgentFromClientMessages(
   task: TaskDetail,
-  clientMessages: AgentRunMessage[],
-  onStreamEvent: (event: BaseEvent) => void
-): Promise<void> {
+  clientMessages: AgentRunMessage[]
+): void {
   const fileName = task.fileName
   if (jobs.has(fileName)) {
     throw new TaskFsError('当前任务 Agent 正在运行', 409, 'agent_busy')
@@ -644,11 +645,12 @@ export async function runTaskAgentFromClientMessages(
     messages: chatMessages,
     error: undefined,
     liveEvents: [],
-    started: true
+    started: true,
+    running: true
   })
 
   const runMessages = prepareAgentRunMessages(task, chatMessages)
-  await runTaskAgentJob(fileName, runMessages, { onStreamEvent })
+  runTaskAgentJob(fileName, runMessages)
 }
 
 /**
@@ -738,10 +740,11 @@ export function forgetTaskChat(fileName: string): void {
  * 停止该任务 Agent。未在跑则忽略。
  *
  * @param fileName - 任务文件名
+ * @returns 若本轮无回复被撤下，返回该用户原文
  */
-export async function stopTaskAgent(fileName: string): Promise<void> {
+export async function stopTaskAgent(fileName: string): Promise<string | undefined> {
   const job = jobs.get(fileName)
-  if (!job) return
+  if (!job) return undefined
   job.cancelled = true
   job.agent.abortRun()
   job.subscription?.unsubscribe()
@@ -750,7 +753,8 @@ export async function stopTaskAgent(fileName: string): Promise<void> {
   assistantMsgId.set(fileName, null)
   finishAssistant(fileName)
   mergeLiveEventsIntoAssistant(fileName)
-  dropUnansweredRound(fileName)
+  const restoredInput = dropUnansweredRound(fileName)
   patchTranscript(fileName, { running: false, liveEvents: [] })
   persistCompletedRound(fileName)
+  return restoredInput
 }

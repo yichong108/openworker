@@ -28,9 +28,18 @@ function toRunMessages(messages: ChatSessionMessage[]) {
 function buildInitialSession(
   props: Pick<
     ChatSessionWithHttpProps,
-    'initialMessages' | 'initialLiveEvents' | 'initialIsRun' | 'initialRunStats'
+    'initialMessages' | 'initialLiveEvents' | 'initialIsRun' | 'initialRunStats' | 'snapshot'
   >
 ): LiveAgentSession {
+  if (props.snapshot) {
+    return {
+      ...emptyLiveSession(),
+      messages: props.snapshot.messages,
+      liveEvents: props.snapshot.liveEvents ?? [],
+      isRun: props.snapshot.isRun ?? false,
+      runStats: props.snapshot.runStats
+    }
+  }
   return {
     ...emptyLiveSession(),
     messages: props.initialMessages ?? [],
@@ -43,6 +52,8 @@ function buildInitialSession(
 /**
  * 自包含聊天会话：内部管 AG-UI 事件与会话状态，run/stop 由宿主回调实现。
  *
+ * 传入 snapshot 时界面跟服务端快照走，不再在本地折叠 AG-UI。
+ *
  * @param props - onRunRequest / onStopRequest
  */
 export function ChatSessionWithHttp({
@@ -50,17 +61,20 @@ export function ChatSessionWithHttp({
   onStopRequest,
   sessionKey = 'http-session',
   className,
+  snapshot,
   initialMessages,
   initialLiveEvents,
   initialIsRun,
   initialRunStats
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
+  const serverTruth = Boolean(snapshot)
   const initialSession = buildInitialSession({
     initialMessages,
     initialLiveEvents,
     initialIsRun,
-    initialRunStats
+    initialRunStats,
+    snapshot
   })
   const [input, setInput] = useState('')
   const [composerMode, setComposerMode] = useState<AgentComposerMode>('build')
@@ -78,6 +92,17 @@ export function ChatSessionWithHttp({
     setIsRun(next.isRun)
     setRunStats(next.runStats)
   }, [])
+
+  useEffect(() => {
+    if (!snapshot) return
+    flush({
+      ...sessionRef.current,
+      messages: snapshot.messages,
+      liveEvents: snapshot.liveEvents ?? [],
+      isRun: snapshot.isRun ?? false,
+      runStats: snapshot.runStats
+    })
+  }, [flush, snapshot?.isRun, snapshot?.liveEvents, snapshot?.messages, snapshot?.runStats])
 
   useEffect(() => {
     return () => {
@@ -104,23 +129,25 @@ export function ChatSessionWithHttp({
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
+            if (serverTruth) return
             if (!event || typeof event !== 'object' || !('type' in event)) return
             flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
           }
         })
-        if (sessionRef.current.isRun) {
+        if (!serverTruth && sessionRef.current.isRun) {
           flush(finalizeLiveSession(sessionRef.current))
         }
       } catch (error) {
         if (abort.signal.aborted) {
-          applyStopToSession()
+          if (!serverTruth) applyStopToSession()
           return
         }
         msgApi.error(error instanceof Error ? error.message : String(error))
-        flush(finalizeLiveSession(sessionRef.current))
+        if (!serverTruth) flush(finalizeLiveSession(sessionRef.current))
+        else flush({ ...sessionRef.current, isRun: false })
       }
     },
-    [applyStopToSession, flush, msgApi, onRunRequest]
+    [applyStopToSession, flush, msgApi, onRunRequest, serverTruth]
   )
 
   const send = useCallback(() => {
@@ -133,9 +160,13 @@ export function ChatSessionWithHttp({
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort()
-    void onStopRequest()
-    applyStopToSession()
-  }, [applyStopToSession, onStopRequest])
+    void Promise.resolve(onStopRequest()).then((result) => {
+      if (result && 'restoredInput' in result && result.restoredInput) {
+        setInput(result.restoredInput)
+      }
+    })
+    if (!serverTruth) applyStopToSession()
+  }, [applyStopToSession, onStopRequest, serverTruth])
 
   return (
     <ChatSessionView

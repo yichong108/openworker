@@ -1,4 +1,3 @@
-import { EventType } from '@ag-ui/client'
 import { NextResponse } from 'next/server'
 
 import { taskErrorResponse } from '@/lib/task-api'
@@ -7,9 +6,9 @@ import {
   isTaskAgentRunning,
   runTaskAgentFromClientMessages
 } from '@/lib/task-agent-runner'
+import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
 import { readTask } from '@/lib/task-fs'
 import { TaskFsError } from '@/lib/task-fs-error'
-import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,8 +18,6 @@ type ClientRunMessage = {
   role: 'user' | 'assistant'
   content: string
 }
-
-const encoder = new TextEncoder()
 
 /**
  * 解析客户端 run 消息列表。
@@ -48,9 +45,9 @@ function parseClientMessages(raw: unknown): ClientRunMessage[] {
 }
 
 /**
- * 以客户端完整 messages 启动 run，响应 AG-UI SSE。
+ * 以客户端完整 messages 启动 run；会话由 transcript 快照推送，不在此推 AG-UI SSE。
  */
-export async function POST(request: Request): Promise<Response> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     const body = (await request.json()) as {
       taskId?: unknown
@@ -70,49 +67,8 @@ export async function POST(request: Request): Promise<Response> {
       )
     }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const safeEnqueue = (text: string): boolean => {
-          try {
-            controller.enqueue(encoder.encode(text))
-            return true
-          } catch {
-            return false
-          }
-        }
-
-        try {
-          await runTaskAgentFromClientMessages(task, clientMessages, (event) => {
-            safeEnqueue(`data: ${JSON.stringify(event)}\n\n`)
-          })
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          const code = error instanceof TaskFsError && error.code ? error.code : undefined
-          safeEnqueue(
-            `data: ${JSON.stringify({
-              type: EventType.RUN_ERROR,
-              message,
-              ...(code ? { code } : {})
-            })}\n\n`
-          )
-        } finally {
-          try {
-            controller.close()
-          } catch {
-            /* already closed */
-          }
-        }
-      }
-    })
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      }
-    })
+    runTaskAgentFromClientMessages(task, clientMessages)
+    return NextResponse.json({ ok: true })
   } catch (error) {
     return taskErrorResponse(error)
   }
