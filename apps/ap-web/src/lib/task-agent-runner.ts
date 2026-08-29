@@ -265,6 +265,36 @@ function mergeLiveEventsIntoAssistant(fileName: string): void {
 }
 
 /**
+ * 助手是否已产出正文或过程事件。
+ *
+ * @param message - 消息
+ * @returns 有回复数据则为 true
+ */
+function hasAssistantOutput(message: ChatMessage | undefined): boolean {
+  if (!message || message.role !== 'assistant') return false
+  return Boolean(message.content.trim() || message.aguiEvents?.length)
+}
+
+/**
+ * 停止时若本轮尚无 Agent 回复，去掉空 assistant 与这一轮 user，避免落盘。
+ *
+ * @param fileName - 任务文件名
+ */
+function dropUnansweredRound(fileName: string): void {
+  const current = getOrCreate(fileName)
+  if (current.liveEvents.length > 0) return
+  const messages = [...current.messages]
+  const last = messages.at(-1)
+  if (last?.role === 'assistant') {
+    if (hasAssistantOutput(last)) return
+    messages.pop()
+  }
+  if (messages.at(-1)?.role !== 'user') return
+  messages.pop()
+  patchTranscript(fileName, { messages })
+}
+
+/**
  * 一轮结束后把 user/assistant 正文写入 chat 文件。
  *
  * @param fileName - 任务文件名
@@ -516,6 +546,7 @@ function runTaskAgentJob(
       } else {
         notify()
       }
+      if (job.cancelled) dropUnansweredRound(fileName)
       persistCompletedRound(fileName)
     }
   })()
@@ -719,6 +750,7 @@ export async function stopTaskAgent(fileName: string): Promise<void> {
   assistantMsgId.set(fileName, null)
   finishAssistant(fileName)
   mergeLiveEventsIntoAssistant(fileName)
+  dropUnansweredRound(fileName)
   patchTranscript(fileName, { running: false, liveEvents: [] })
   persistCompletedRound(fileName)
 }
