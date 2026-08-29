@@ -138,6 +138,22 @@ function ChatButtonIcon({ chat }: { chat: TaskChatHint }) {
   return <ChatBubbleIcon className="h-3.5 w-3.5" />
 }
 
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden="true">
+      <path d="M8 5.2v13.6c0 .7.8 1.1 1.4.7l10.2-6.8c.6-.4.6-1.2 0-1.6L9.4 4.5C8.8 4.1 8 4.5 8 5.2z" />
+    </svg>
+  )
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor" aria-hidden="true">
+      <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />
+    </svg>
+  )
+}
+
 /**
  * 单张任务卡片：折叠显示标题；右键编辑或删除；展开后可查看或编辑详情。
  */
@@ -229,7 +245,7 @@ export function TaskCard({
     <article
       draggable={!expanded}
       onDragStart={(event) => {
-        if ((event.target as HTMLElement).closest('[data-chat-trigger]')) {
+        if ((event.target as HTMLElement).closest('[data-chat-trigger], [data-run-trigger]')) {
           event.preventDefault()
           return
         }
@@ -249,31 +265,63 @@ export function TaskCard({
         expanded ? 'shadow-lift' : 'hover:shadow-lift'
       }`}
     >
-      <button
-        type="button"
-        className="flex w-full items-start gap-3 px-3 py-3 text-left"
-        onClick={() => {
-          if (editing) return
-          onToggle()
-        }}
-      >
-        <span
-          className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${PRIORITY_CLASS[task.priority]}`}
+      <div className="flex items-start">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3 text-left"
+          onClick={() => {
+            if (editing) return
+            onToggle()
+          }}
         >
-          {task.priority}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block break-words font-medium leading-snug">{task.title}</span>
-          {updatedAtLabel ? (
-            <time
-              dateTime={task.updatedAt}
-              className="mt-0.5 block text-[11px] font-normal text-[var(--ink-soft)] opacity-45"
-            >
-              {updatedAtLabel}
-            </time>
-          ) : null}
-        </span>
-      </button>
+          <span
+            className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${PRIORITY_CLASS[task.priority]}`}
+          >
+            {task.priority}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block break-words font-medium leading-snug">{task.title}</span>
+            {updatedAtLabel ? (
+              <time
+                dateTime={task.updatedAt}
+                className="mt-0.5 block text-[11px] font-normal text-[var(--ink-soft)] opacity-45"
+              >
+                {updatedAtLabel}
+              </time>
+            ) : null}
+          </span>
+        </button>
+        {task.status === 'todo' ? (
+          <button
+            type="button"
+            data-run-trigger
+            aria-label="开始执行"
+            title="开始执行"
+            onClick={(event) => {
+              event.stopPropagation()
+              onMove('doing')
+            }}
+            className="mr-2.5 mt-2.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--teal)] text-white transition-opacity hover:opacity-90"
+          >
+            <PlayIcon />
+          </button>
+        ) : null}
+        {task.status === 'doing' ? (
+          <button
+            type="button"
+            data-run-trigger
+            aria-label="停止任务"
+            title="停止并改为阻塞"
+            onClick={(event) => {
+              event.stopPropagation()
+              onMove('blocked')
+            }}
+            className="mr-2.5 mt-2.5 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--rust)] text-white transition-opacity hover:opacity-90"
+          >
+            <StopIcon />
+          </button>
+        ) : null}
+      </div>
 
       {expanded ? (
         <div className="border-t border-black/10 px-3 pb-3 pt-2">
