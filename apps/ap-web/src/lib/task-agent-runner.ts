@@ -37,13 +37,41 @@ type TaskAgentJob = {
   cancelled?: boolean
 }
 
-const jobs = new Map<string, TaskAgentJob>()
-const transcripts = new Map<string, ChatTranscript>()
-const hydratedFiles = new Set<string>()
-const streamBuf = new Map<string, string>()
-const assistantMsgId = new Map<string, string | null>()
-const listeners = new Set<(payload: Record<string, ChatTranscript>) => void>()
-let messageSeq = 0
+type TaskChatStore = {
+  jobs: Map<string, TaskAgentJob>
+  transcripts: Map<string, ChatTranscript>
+  hydratedFiles: Set<string>
+  streamBuf: Map<string, string>
+  assistantMsgId: Map<string, string | null>
+  listeners: Set<(payload: Record<string, ChatTranscript>) => void>
+  messageSeq: number
+}
+
+const globalStore = globalThis as typeof globalThis & {
+  __apWebTaskChat?: TaskChatStore
+}
+
+function getStore(): TaskChatStore {
+  if (!globalStore.__apWebTaskChat) {
+    globalStore.__apWebTaskChat = {
+      jobs: new Map(),
+      transcripts: new Map(),
+      hydratedFiles: new Set(),
+      streamBuf: new Map(),
+      assistantMsgId: new Map(),
+      listeners: new Set(),
+      messageSeq: 0
+    }
+  }
+  return globalStore.__apWebTaskChat
+}
+
+const jobs = getStore().jobs
+const transcripts = getStore().transcripts
+const hydratedFiles = getStore().hydratedFiles
+const streamBuf = getStore().streamBuf
+const assistantMsgId = getStore().assistantMsgId
+const listeners = getStore().listeners
 
 /**
  * 生成会话消息 id。
@@ -51,8 +79,9 @@ let messageSeq = 0
  * @returns 唯一 id
  */
 function nextMessageId(): string {
-  messageSeq += 1
-  return `m${messageSeq}`
+  const store = getStore()
+  store.messageSeq += 1
+  return `m${store.messageSeq}`
 }
 
 /**
@@ -298,7 +327,8 @@ function dropUnansweredRound(fileName: string): string | undefined {
 }
 
 /**
- * 一轮结束后把 user/assistant 正文写入 chat 文件。
+ * 一轮结束后把已完成的 user/assistant 回合写入 chat 文件。
+ * 没有助手回复的 user 由落盘层丢掉，避免写出半截问答。
  *
  * @param fileName - 任务文件名
  */
@@ -737,18 +767,19 @@ export function forgetTaskChat(fileName: string): void {
 }
 
 /**
- * 停止该任务 Agent。未在跑则忽略。
+ * 停止该任务 Agent。没有 in-flight job 时仍把 running 清掉，避免 UI 卡死。
  *
  * @param fileName - 任务文件名
  * @returns 若本轮无回复被撤下，返回该用户原文
  */
 export async function stopTaskAgent(fileName: string): Promise<string | undefined> {
   const job = jobs.get(fileName)
-  if (!job) return undefined
-  job.cancelled = true
-  job.agent.abortRun()
-  job.subscription?.unsubscribe()
-  jobs.delete(fileName)
+  if (job) {
+    job.cancelled = true
+    job.agent.abortRun()
+    job.subscription?.unsubscribe()
+    jobs.delete(fileName)
+  }
   streamBuf.delete(fileName)
   assistantMsgId.set(fileName, null)
   finishAssistant(fileName)

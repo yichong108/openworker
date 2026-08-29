@@ -18,6 +18,23 @@ const emptyTranscript = (): ChatTranscript => ({
   liveEvents: []
 })
 
+function sameTranscriptTick(a: ChatTranscript | null, b: ChatTranscript): boolean {
+  if (!a) return false
+  const lastA = a.messages.at(-1)
+  const lastB = b.messages.at(-1)
+  return (
+    a.running === b.running &&
+    a.started === b.started &&
+    a.error === b.error &&
+    a.messages.length === b.messages.length &&
+    a.liveEvents.length === b.liveEvents.length &&
+    lastA?.id === lastB?.id &&
+    lastA?.content === lastB?.content &&
+    lastA?.streaming === lastB?.streaming &&
+    a.runStats?.durationMs === b.runStats?.durationMs
+  )
+}
+
 type AiChatDialogProps = {
   open: boolean
   title: string
@@ -55,38 +72,42 @@ export function AiChatDialog({
       return
     }
     if (!fileName) return
-    if (liveTranscript || readyFileNameRef.current === fileName) return
+    if (liveTranscript) return
 
     let cancelled = false
-    setHydrating(true)
-
-    void request(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`)
-      .then(async (response) => {
-        const payload = (await response.json()) as {
-          transcript?: ChatTranscript
-          error?: string
-          code?: string
-        }
-        if (cancelled) return
-        const next = !response.ok ? emptyTranscript() : (payload.transcript ?? emptyTranscript())
-        if (!response.ok && payload.code === 'ai_auth') {
-          onAiAuthError(payload.error || '模型鉴权失败')
-        }
-        setHydrated(next)
-        readyFileNameRef.current = fileName
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setHydrated(emptyTranscript())
+    const pull = (showSpinner: boolean) => {
+      if (showSpinner) setHydrating(true)
+      void request(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`)
+        .then(async (response) => {
+          const payload = (await response.json()) as {
+            transcript?: ChatTranscript
+            error?: string
+            code?: string
+          }
+          if (cancelled) return
+          const next = !response.ok ? emptyTranscript() : (payload.transcript ?? emptyTranscript())
+          if (!response.ok && payload.code === 'ai_auth') {
+            onAiAuthError(payload.error || '模型鉴权失败')
+          }
+          setHydrated((prev) => (sameTranscriptTick(prev, next) ? prev : next))
           readyFileNameRef.current = fileName
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setHydrating(false)
-      })
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setHydrated(emptyTranscript())
+            readyFileNameRef.current = fileName
+          }
+        })
+        .finally(() => {
+          if (!cancelled && showSpinner) setHydrating(false)
+        })
+    }
 
+    pull(readyFileNameRef.current !== fileName)
+    const timer = window.setInterval(() => pull(false), 400)
     return () => {
       cancelled = true
+      window.clearInterval(timer)
     }
   }, [open, fileName, liveTranscript, onAiAuthError])
 

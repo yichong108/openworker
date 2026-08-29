@@ -165,8 +165,12 @@ export function ChatSessionWithHttp({
         setInput(result.restoredInput)
       }
     })
-    if (!serverTruth) applyStopToSession()
-  }, [applyStopToSession, onStopRequest, serverTruth])
+    if (serverTruth) {
+      flush({ ...sessionRef.current, isRun: false, liveEvents: [] })
+    } else {
+      applyStopToSession()
+    }
+  }, [applyStopToSession, flush, onStopRequest, serverTruth])
 
   return (
     <ChatSessionView
