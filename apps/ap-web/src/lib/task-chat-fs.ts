@@ -57,7 +57,34 @@ export function getTaskChatFilePath(fileName: string): string | null {
 }
 
 /**
- * 从落盘 JSON 恢复 user/assistant 消息（无 aguiEvents）。
+ * 只保留「用户 + 非空助手」成对回合。没有助手回复的 user 不落盘。
+ *
+ * @param messages - 已去掉 system / 空正文的消息
+ * @returns 可落盘的成对消息
+ */
+function takeCompletedRounds(messages: TaskChatPersistedMessage[]): TaskChatPersistedMessage[] {
+  const complete: TaskChatPersistedMessage[] = []
+  let i = 0
+  while (i < messages.length) {
+    const item = messages[i]!
+    const next = messages[i + 1]
+    if (item.role === 'user' && next?.role === 'assistant') {
+      complete.push(item, next)
+      i += 2
+      continue
+    }
+    if (item.role === 'user') {
+      i += 1
+      continue
+    }
+    complete.push(item)
+    i += 1
+  }
+  return complete
+}
+
+/**
+ * 从落盘 JSON 恢复 user/assistant 消息（无 aguiEvents，丢掉未完成回合）。
  *
  * @param fileName - 任务文件名
  * @returns 消息列表；无文件或解析失败时 []
@@ -69,24 +96,29 @@ export function readTaskChatFile(fileName: string): ChatMessage[] {
     const raw = readFileSync(path, 'utf8')
     const parsed = JSON.parse(raw) as TaskChatPersisted
     if (!parsed.messages || !Array.isArray(parsed.messages)) return []
-    return parsed.messages
-      .filter((item) => item.role === 'user' || item.role === 'assistant')
-      .map((item) => ({
-        id: nextMessageId(),
-        role: item.role,
-        content: item.content
-      }))
+    const persisted: TaskChatPersistedMessage[] = []
+    for (const item of parsed.messages) {
+      if (item.role !== 'user' && item.role !== 'assistant') continue
+      const text = typeof item.content === 'string' ? item.content.trim() : ''
+      if (!text) continue
+      persisted.push({ role: item.role, content: text })
+    }
+    return takeCompletedRounds(persisted).map((item) => ({
+      id: nextMessageId(),
+      role: item.role,
+      content: item.content
+    }))
   } catch {
     return []
   }
 }
 
 /**
- * 拼出不含过程输出的对话 JSON（跳过 system / 空正文）。
+ * 拼出不含过程输出的对话 JSON（跳过 system / 空正文 / 未完成回合）。
  *
  * @param fileName - 任务文件名
  * @param messages - 弹窗 transcript
- * @returns 落盘对象；无用户/助手内容时返回 null
+ * @returns 落盘对象；无完整问答时返回 null
  */
 export function buildTaskChatPayload(
   fileName: string,
@@ -99,12 +131,13 @@ export function buildTaskChatPayload(
     if (!text) continue
     persisted.push({ role: item.role, content: text })
   }
-  if (persisted.length === 0) return null
-  return { fileName: fileName.trim(), messages: persisted }
+  const complete = takeCompletedRounds(persisted)
+  if (complete.length === 0) return null
+  return { fileName: fileName.trim(), messages: complete }
 }
 
 /**
- * 一轮对话结束后覆盖写入 chat JSON。无有效内容或路径非法则跳过。
+ * 一轮对话结束后覆盖写入 chat JSON。无完整问答则删除已有落盘。
  *
  * @param fileName - 任务文件名
  * @param messages - 弹窗 transcript（含过程行，写入时过滤）
@@ -113,7 +146,10 @@ export function writeTaskChatFile(fileName: string, messages: ChatMessage[]): vo
   const path = getTaskChatFilePath(fileName)
   if (!path) return
   const payload = buildTaskChatPayload(fileName, messages)
-  if (!payload) return
+  if (!payload) {
+    deleteTaskChatFile(fileName)
+    return
+  }
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
 }
