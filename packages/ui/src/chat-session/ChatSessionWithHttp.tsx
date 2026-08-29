@@ -8,6 +8,7 @@ import {
   emptyLiveSession,
   finalizeLiveSession,
   nextMessageId,
+  restoreUnansweredUserInput,
   type LiveAgentSession
 } from './apply-agui-event.js'
 import { ChatSessionView } from './ChatSessionView.js'
@@ -84,6 +85,13 @@ export function ChatSessionWithHttp({
     }
   }, [])
 
+  const applyStopToSession = useCallback(() => {
+    const finalized = finalizeLiveSession(sessionRef.current)
+    const { session, restoredInput } = restoreUnansweredUserInput(finalized)
+    if (restoredInput !== undefined) setInput(restoredInput)
+    flush(session)
+  }, [flush])
+
   const runSession = useCallback(
     async (history: ChatSessionMessage[]) => {
       abortRef.current?.abort()
@@ -105,14 +113,14 @@ export function ChatSessionWithHttp({
         }
       } catch (error) {
         if (abort.signal.aborted) {
-          flush(finalizeLiveSession(sessionRef.current))
+          applyStopToSession()
           return
         }
         msgApi.error(error instanceof Error ? error.message : String(error))
         flush(finalizeLiveSession(sessionRef.current))
       }
     },
-    [flush, msgApi, onRunRequest]
+    [applyStopToSession, flush, msgApi, onRunRequest]
   )
 
   const send = useCallback(() => {
@@ -126,8 +134,8 @@ export function ChatSessionWithHttp({
   const stopRun = useCallback(() => {
     abortRef.current?.abort()
     void onStopRequest()
-    flush(finalizeLiveSession(sessionRef.current))
-  }, [flush, onStopRequest])
+    applyStopToSession()
+  }, [applyStopToSession, onStopRequest])
 
   return (
     <ChatSessionView

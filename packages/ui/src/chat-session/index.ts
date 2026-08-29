@@ -2,6 +2,7 @@ export {
   applyAguiEvent,
   emptyLiveSession,
   finalizeLiveSession,
+  restoreUnansweredUserInput,
   nextMessageId
 } from './apply-agui-event.js'
 export type { LiveAgentSession } from './apply-agui-event.js'

@@ -93,6 +93,28 @@ export function finalizeLiveSession(session: LiveAgentSession): LiveAgentSession
   }
 }
 
+/**
+ * 停止且本轮无助手正文/过程事件时，去掉空 assistant 与这一轮 user。
+ *
+ * @param session - 已 finalize 的快照
+ * @returns 去掉未完成轮次后的快照，以及应填回输入框的原文
+ */
+export function restoreUnansweredUserInput(session: LiveAgentSession): {
+  session: LiveAgentSession
+  restoredInput?: string
+} {
+  const messages = [...session.messages]
+  const last = messages.at(-1)
+  if (last?.role === 'assistant') {
+    if (last.content.trim() || last.aguiEvents?.length) return { session }
+    messages.pop()
+  }
+  const user = messages.at(-1)
+  if (user?.role !== 'user') return { session }
+  messages.pop()
+  return { session: { ...session, messages }, restoredInput: user.content }
+}
+
 function patchAssistantContent(
   session: LiveAgentSession,
   content: string,
