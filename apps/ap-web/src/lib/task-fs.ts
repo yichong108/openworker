@@ -265,6 +265,23 @@ export function createTask(input: CreateTaskInput): TaskDetail {
 }
 
 /**
+ * 按文件名在四列中查找任务摘要。
+ *
+ * @param fileName - 如 task-xxx.md
+ * @returns 命中则返回摘要，否则 null
+ */
+export function findTaskByFileName(fileName: string): TaskSummary | null {
+  const trimmed = fileName.trim()
+  if (!trimmed) return null
+  const board = listBoard()
+  for (const column of TASK_COLUMNS) {
+    const hit = board[column].find((task) => task.fileName === trimmed)
+    if (hit) return hit
+  }
+  return null
+}
+
+/**
  * 按创建时的 id 定位当前任务：文件还在原路径则用之，否则按文件名在四列中查找
  * （创建后可能被移到其他列）。
  *
@@ -279,12 +296,7 @@ function locateTaskId(id: string): string | null {
   }
   const fileName = basename(id)
   if (!fileName) return null
-  const board = listBoard()
-  for (const column of TASK_COLUMNS) {
-    const hit = board[column].find((task) => task.fileName === fileName)
-    if (hit) return hit.id
-  }
-  return null
+  return findTaskByFileName(fileName)?.id ?? null
 }
 
 /**

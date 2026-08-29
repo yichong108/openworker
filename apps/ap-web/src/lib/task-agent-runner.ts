@@ -23,6 +23,7 @@ import { buildTaskPrompt } from '@/ai/build-prompt'
 import { isAiAuthFailure } from '@/ai/config'
 import { chatTranscriptHint, hasAssistantText, messageText } from './agui-message'
 import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
+import { findTaskByFileName, moveTask } from './task-fs'
 import { TaskFsError } from './task-fs-error'
 import type { TaskDetail } from './task-types'
 import { getWorkspaceRoot } from './workspace-root'
@@ -397,6 +398,24 @@ function dropUnansweredRound(fileName: string): string | undefined {
 }
 
 /**
+ * Agent 成功结束后，若任务仍在 doing，自动移到 done。
+ *
+ * @param fileName - 任务文件名
+ */
+function archiveDoingTaskIfWorked(fileName: string): void {
+  try {
+    const task = findTaskByFileName(fileName)
+    if (!task || task.status !== 'doing') return
+    moveTask(task.id, 'done')
+  } catch (error) {
+    console.error(
+      `[task-agent] 归档到 done 失败 ${fileName}:`,
+      error instanceof Error ? error.message : error
+    )
+  }
+}
+
+/**
  * 一轮结束后把已完成的 user/assistant 回合写入 chat 文件。
  * 没有助手回复的 user 由落盘层丢掉，避免写出半截问答。
  *
@@ -646,6 +665,12 @@ function runTaskAgentJob(
       if (job.cancelled) dropUnansweredRound(fileName)
       persistCompletedRound(fileName)
       clearRunEvents(fileName)
+      if (!job.cancelled) {
+        const finished = transcripts.get(fileName)
+        if (finished && !finished.error) {
+          archiveDoingTaskIfWorked(fileName)
+        }
+      }
     }
   })()
 
