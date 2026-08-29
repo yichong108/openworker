@@ -79,7 +79,9 @@ export function TaskColumnView({
         {onTaskCreated ? <CreateTaskAction column={column} onCreated={onTaskCreated} /> : null}
       </header>
 
-      {column === 'todo' && onTaskCreated ? <QuickCreateTodo onCreated={onTaskCreated} /> : null}
+      {column === 'todo' && onTaskCreated ? (
+        <QuickCreateTodo onCreated={onTaskCreated} onMove={onMove} />
+      ) : null}
 
       <div className="column-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {tasks.length === 0 ? (
