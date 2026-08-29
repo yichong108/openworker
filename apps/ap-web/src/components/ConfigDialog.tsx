@@ -9,6 +9,7 @@ import { request } from '@/lib/request'
 
 type PublicConfig = {
   deepseek: { hasKey: boolean; keyHint: string; model: string }
+  tavily: { hasKey: boolean; keyHint: string }
 }
 
 type ConfigDialogProps = {
@@ -133,6 +134,8 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
   const [deepseekModel, setDeepseekModel] = useState('deepseek-chat')
   const [deepseekModels, setDeepseekModels] = useState<string[]>(['deepseek-chat'])
   const [deepseekHint, setDeepseekHint] = useState('')
+  const [tavilyKey, setTavilyKey] = useState('')
+  const [tavilyHint, setTavilyHint] = useState('')
   const [modelError, setModelError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -177,6 +180,8 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
     setDeepseekModel(payload.deepseek.model)
     setDeepseekHint(payload.deepseek.keyHint)
     setDeepseekKey('')
+    setTavilyHint(payload.tavily?.keyHint ?? '')
+    setTavilyKey('')
     await loadModels()
   }, [loadModels])
 
@@ -273,6 +278,20 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
               onChange={setDeepseekModel}
               onRefresh={handleRefreshModels}
             />
+
+            <label className="mt-5 block text-sm font-medium">
+              <span className="font-normal">Tavily 密钥（联网搜索）</span>
+              <ApInput
+                type="password"
+                value={tavilyKey}
+                onChange={setTavilyKey}
+                placeholder={tavilyHint ? `已保存 ${tavilyHint}` : '留空则不启用联网搜索'}
+                className="mt-1.5"
+              />
+              <p className="mt-1.5 text-xs font-normal text-[var(--ink-soft)]">
+                填写后模型可调用 web_search，注册 https://tavily.com 获取 Tavily API Key。
+              </p>
+            </label>
           </div>
 
           <div className="min-h-[52px] px-6 py-3">
@@ -305,6 +324,9 @@ export function ConfigDialog({ open, authError, onClose }: ConfigDialogProps) {
                     deepseek: {
                       model: deepseekModel,
                       ...(deepseekKey.trim() ? { apiKey: deepseekKey } : {})
+                    },
+                    tavily: {
+                      ...(tavilyKey.trim() ? { apiKey: tavilyKey } : {})
                     }
                   })
                 })

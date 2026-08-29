@@ -9,6 +9,9 @@ export type AiConfig = {
     apiKey: string
     model: string
   }
+  tavily: {
+    apiKey: string
+  }
 }
 
 /** 返回给前端的配置（密钥只给掩码） */
@@ -17,6 +20,10 @@ export type AiConfigPublic = {
     hasKey: boolean
     keyHint: string
     model: string
+  }
+  tavily: {
+    hasKey: boolean
+    keyHint: string
   }
 }
 
@@ -53,7 +60,8 @@ export function maskApiKey(key: string): string {
 
 function emptyConfig(): AiConfig {
   return {
-    deepseek: { apiKey: '', model: DEFAULT_DEEPSEEK_MODEL }
+    deepseek: { apiKey: '', model: DEFAULT_DEEPSEEK_MODEL },
+    tavily: { apiKey: '' }
   }
 }
 
@@ -70,6 +78,7 @@ export function readAiConfig(): AiConfig {
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<{
       deepseek?: { apiKey?: string; model?: string }
+      tavily?: { apiKey?: string }
     }>
     return {
       deepseek: {
@@ -81,6 +90,10 @@ export function readAiConfig(): AiConfig {
           typeof parsed.deepseek?.model === 'string' && parsed.deepseek.model.trim()
             ? parsed.deepseek.model.trim()
             : fallback.deepseek.model
+      },
+      tavily: {
+        apiKey:
+          typeof parsed.tavily?.apiKey === 'string' ? parsed.tavily.apiKey : fallback.tavily.apiKey
       }
     }
   } catch {
@@ -100,6 +113,10 @@ export function toPublicAiConfig(config: AiConfig): AiConfigPublic {
       hasKey: Boolean(config.deepseek.apiKey.trim()),
       keyHint: maskApiKey(config.deepseek.apiKey),
       model: config.deepseek.model
+    },
+    tavily: {
+      hasKey: Boolean(config.tavily.apiKey.trim()),
+      keyHint: maskApiKey(config.tavily.apiKey)
     }
   }
 }
@@ -107,6 +124,7 @@ export function toPublicAiConfig(config: AiConfig): AiConfigPublic {
 /** 保存 AI 配置时前端提交的字段 */
 export type AiConfigPatch = {
   deepseek?: { apiKey?: string; model?: string; clearKey?: boolean }
+  tavily?: { apiKey?: string; clearKey?: boolean }
 }
 
 /**
@@ -121,6 +139,9 @@ export function writeAiConfig(patch: AiConfigPatch): AiConfig {
     deepseek: {
       apiKey: current.deepseek.apiKey,
       model: current.deepseek.model
+    },
+    tavily: {
+      apiKey: current.tavily.apiKey
     }
   }
 
@@ -131,6 +152,13 @@ export function writeAiConfig(patch: AiConfigPatch): AiConfig {
     }
     if (typeof patch.deepseek.model === 'string' && patch.deepseek.model.trim()) {
       next.deepseek.model = patch.deepseek.model.trim()
+    }
+  }
+
+  if (patch.tavily) {
+    if (patch.tavily.clearKey) next.tavily.apiKey = ''
+    else if (typeof patch.tavily.apiKey === 'string' && patch.tavily.apiKey.trim()) {
+      next.tavily.apiKey = patch.tavily.apiKey.trim()
     }
   }
 

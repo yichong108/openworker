@@ -18,7 +18,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * 保存 DeepSeek 模型与密钥。
+ * 保存 DeepSeek 模型、密钥与 Tavily 联网搜索密钥。
  */
 export async function PUT(request: Request): Promise<NextResponse> {
   try {

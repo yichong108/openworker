@@ -30,6 +30,17 @@ function resolveDeepseekProvider() {
 }
 
 /**
+ * 从 AI 配置与环境变量解析 Tavily API Key。
+ *
+ * @returns 已配置的 Key；未配置则为空串
+ */
+function resolveTavilyApiKey(): string {
+  loadApEnv()
+  const config = readAiConfig()
+  return config.tavily.apiKey.trim() || process.env.TAVILY_API_KEY?.trim() || ''
+}
+
+/**
  * 创建 ap-web 使用的 AP AG-UI Agent（DeepSeek + 工作区 cwd）。
  *
  * @param cwd - 工作区根目录
@@ -37,10 +48,12 @@ function resolveDeepseekProvider() {
  * @returns ApAgentWithAGUI 实例
  */
 export function createApWebAgent(cwd: string, agentId: string): ApAgentWithAGUI {
+  const tavilyApiKey = resolveTavilyApiKey()
   return new ApAgentWithAGUI({
     agentId,
     description: 'AP Web agent',
     cwd,
-    provider: resolveDeepseekProvider()
+    provider: resolveDeepseekProvider(),
+    ...(tavilyApiKey ? { runDefaults: { tavily: { apiKey: tavilyApiKey } } } : {})
   })
 }

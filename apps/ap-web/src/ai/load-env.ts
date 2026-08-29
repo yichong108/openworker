@@ -8,7 +8,7 @@ import { getWorkspaceRoot } from '@/lib/workspace-root'
 let loaded = false
 
 /**
- * 加载仓库根、ap-cli、ap-web 的 .env（如 DEEPSEEK_API_KEY）。
+ * 加载仓库根、ap-cli、ap-web 的 .env（如 DEEPSEEK_API_KEY、TAVILY_API_KEY）。
  *
  * 不覆盖已有 process.env。
  */
