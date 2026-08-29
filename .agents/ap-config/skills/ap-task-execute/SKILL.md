@@ -48,7 +48,7 @@ metadata:
 1. **创建：** 初始 Status 为 `TODO`，文件在 `todo/`。
 2. **开始执行：** 把文件从 `todo/` 移到 `doing/`，Status 改为 `DOING`。
 3. **无法继续：** Agent 处理不了、文档填写不符合要求等，把文件移到 `blocked/`，Status 改为 `BLOCKED`。
-4. **完成：** 把文件从 `doing/` 移到 `done/`，Status 改为 `DONE`。
+4. **完成：** 把文件从 `doing/` 移到 `done/`（直接放根下，禁止 `done/<年份>/`），Status 改为 `DONE`。
 5. **PLAN：** 只给人用。本技能不得把任务改成 `PLAN`，不得移入 `plan/`，也不得执行其中的任务。
 
 ---
@@ -67,7 +67,7 @@ metadata:
      1. 将文件从 `todo/` 移到 `doing/`，把 Status 改为 `DOING`。
      2. 仅执行这一件任务，不并行处理其他任务。
      3. 若执行过程中阻塞，从 `doing/` 移到 `blocked/`，Status 改为 `BLOCKED`：P0 则停止全部后续任务；非 P0 则继续下一件 TODO。
-     4. 完成后，从 `doing/` 移到 `done/`，Status 改为 `DONE`。
+     4. 完成后，从 `doing/` 移到 `done/`（直接放根下，禁止年份子目录），Status 改为 `DONE`。
      5. 执行 git commit，但不自动 push。
      6. 继续从 `todo/` 按优先级选取下一件 TODO，循环本流程。
 
@@ -94,7 +94,7 @@ Skill 激活后：
 13. 执行过程中若阻塞：从 `doing/` 移到 `blocked/` 并改为 `BLOCKED`；P0 则停止，否则继续下一件 TODO。
 14. 执行测试和其他必要验证。
 15. 更新 TASK 文件：Status 设为 `DONE`，填写完成说明。
-16. 将本件从 `doing/` 移到 `done/`。
+16. 将本件从 `doing/` 移到 `done/`（直接放根下，禁止年份子目录）。
 17. 完成后立即 git commit（含实现改动与任务文件移动），**不要 push**。
 18. 重新扫描 `todo/`，按优先级串行执行下一件 TODO。
 
@@ -144,7 +144,7 @@ Skill 激活后：
 ├── doing/      ← DOING：开始执行后放这里
 ├── plan/       ← PLAN：仅人工使用；本技能不读、不写、不执行
 ├── blocked/    ← BLOCKED：未填写、文档不合格、或 Agent 无法处理
-└── done/       ← DONE：执行完成
+└── done/       ← DONE：文件直接放这里，禁止年份子目录
 ```
 
 处理规则：
@@ -154,7 +154,7 @@ Skill 激活后：
 - **未填写 / 文档不符合要求 / Agent 无法处理 → `blocked/` + `BLOCKED`。** 见下方判定。不要猜着补全。非 P0 继续其他 TODO；P0 停止。
 - **不要读写 `plan/`。** 其中任务由人处理；本技能不得改名为 `*-plan.md`，不得把 Status 改为 `PLAN`。
 - **依赖未完成 → 跳过本轮该条。** 不要因此把任务移到 `blocked/`。
-- **完成 → `done/` + `DONE`。** 随后 commit，不 push。
+- **完成 → `done/` + `DONE`。** 文件直接放在 `done/` 根下，禁止 `done/<年份>/`。随后 commit，不 push。
 
 ---
 
@@ -203,7 +203,7 @@ Skill 激活后：
 2. 按 TASK 的 Context / Requirements / Constraints 实现。
 3. 跑必要验证（测试、`pnpm lint:fix`、必要时 `pnpm typecheck`）。
 4. 把 Status 设为 `DONE`，在 Agent Notes 填写完成说明。
-5. 移到 `.agents/ap-config/work-data/tasks/done/`，文件名保持原样。
+5. 移到 `.agents/ap-config/work-data/tasks/done/`（不要创建年份子目录），文件名保持原样。
 6. 按下方「完成后提交」创建 commit。
 7. 再扫描 `todo/`，按优先级串行执行下一件 TODO。
 
@@ -236,7 +236,7 @@ Skill 激活后：
 - 不要修改、创建、删除 `.agents/ap-config/work-data/decisions/` 中的 ADR；需要新决策时写入 Agent Notes 并移入 `blocked/`。
 - **不要读取、执行、改写 `plan/`。** 不要把任务改为 `PLAN`。
 - 同一时刻最多实现一件任务；禁止并发；允许串行；选取必须按优先级。
-- 移入 `done/` 后必须 commit；禁止 push。
+- 移入 `done/` 后必须 commit；禁止 push。完成文件直接放在 `done/` 根下，禁止按年份分子目录。
 
 ---
 

@@ -87,7 +87,7 @@ apps/ap-web/
 
 - `todo/`、`doing/`、`done/`、`blocked/` 四列对应子目录
 - 任务的 `status` 以**所在目录**为准，而非 markdown 内 `Status` 字段
-- `done/` 下按年份分子目录（如 `done/2026/`）
+- 已完成任务直接放在 `done/` 下，不再按年份分子目录
 - **`plan/` 目录被显式禁止访问**（API 与 FS 层均有校验）
 
 主要数据路径：

@@ -9,7 +9,7 @@
 │   ├── doing/             ← DOING：开始执行后放这里
 │   ├── plan/              ← PLAN：仅人工使用
 │   ├── blocked/           ← BLOCKED：未填写、文档不合格、或 Agent 无法处理
-│   ├── done/              ← DONE：执行完成并归档
+│   ├── done/              ← DONE：执行完成；文件直接放根下，禁止年份子目录
 │
 └── decisions/             ← 已确认的架构决策
     └── decision-template.md   ← 模板，安装时覆盖
@@ -32,6 +32,6 @@
 - 未填写、文档不合格、或 Agent 无法处理时移到 `blocked/` 并改为 BLOCKED，不要猜着做
 - `plan/` 仅供人工使用；AI 不读取、不执行、不写入
 - P0 任务一旦阻塞，停止执行其他任务
-- 完成后移到 `done/` 并改为 DONE
+- 完成后移到 `done/` 并改为 DONE；文件直接放在 `done/` 根下，不要创建年份子目录
 - 只有当前任务需要历史上下文时，才读取 `done/`
 - 执行流程见 `apps/ap-cli/src/ap-config/skills/ap-task-execute/SKILL.md`

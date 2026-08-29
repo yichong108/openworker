@@ -59,7 +59,7 @@ Skill 激活后：
 6. 确认护栏：现有测试能否失败于行为回归；不足则先补表征测试。
 7. 按小步实施重构。
 8. 每一步后运行相关测试与必要验证（`pnpm typecheck`、`pnpm lint` / `pnpm lint:fix`）。
-9. 更新 TASK 文件（若有）并移到 `done/`；向用户报告做了什么、没做什么、行为为何不变。
+9. 更新 TASK 文件（若有）并移到 `done/`（直接放根下，禁止年份子目录）；向用户报告做了什么、没做什么、行为为何不变。
 
 只有在以下情况下才停止：
 
@@ -116,7 +116,7 @@ Skill 激活后：
 
 - 跑 `pnpm lint:fix`，必要时 `pnpm typecheck`。
 - 对照验收标准：结构目标达到，不变量仍成立，范围外无改动。
-- 若有 TASK：开始执行时移到 `doing/` 并改为 `DOING`；完成后把 Status 设为 `DONE`，填写完成说明，再移到 `.agents/ap-config/work-data/tasks/done/`。
+- 若有 TASK：开始执行时移到 `doing/` 并改为 `DOING`；完成后把 Status 设为 `DONE`，填写完成说明，再移到 `.agents/ap-config/work-data/tasks/done/`（不要年份子目录）。
 - 报告中区分「结构变化」与「行为未变的证据」。
 
 ---
@@ -142,7 +142,7 @@ Skill 激活后：
 ├── doing/      ← DOING
 ├── plan/       ← PLAN，仅人工；本技能不读写
 ├── blocked/    ← BLOCKED
-└── done/       ← DONE
+└── done/       ← DONE；文件直接放根下，禁止年份子目录
 ```
 
 处理 `.agents/ap-config/work-data/tasks/todo/` 时：

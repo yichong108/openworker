@@ -126,7 +126,7 @@ Skill 名规则：`ap-` 前缀可省略短名（如 `task-execute` ≡ `ap-task-
 ├── tasks/
 │   ├── todo/       ← 待执行
 │   ├── doing/      ← 进行中
-│   ├── done/       ← 已完成（按年份分子目录）
+│   ├── done/       ← 已完成（文件直接放根下，禁止年份子目录）
 │   ├── blocked/    ← 阻塞
 │   └── plan/       ← 仅人工，AI 不读写
 └── decisions/      ← 架构决策（AI 可读不可改）

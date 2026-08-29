@@ -98,26 +98,20 @@ function resolveSafeTaskFile(id: string): string {
 /**
  * 收集目录下的 markdown 任务文件。
  *
- * 忽略模板与非 md；done 列递归年份子目录。
+ * 忽略模板、隐藏文件、子目录与非 md。
  *
  * @param dir - 列目录
- * @param recursive - 是否递归
  * @returns 绝对路径列表
  */
-function collectMarkdownFiles(dir: string, recursive: boolean): string[] {
+function collectMarkdownFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name.startsWith('.')) continue
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) {
-      if (recursive) out.push(...collectMarkdownFiles(full, true))
-      continue
-    }
     if (!entry.isFile()) continue
     if (entry.name === 'task-template.md') continue
     if (!entry.name.toLowerCase().endsWith('.md')) continue
-    out.push(full)
+    out.push(join(dir, entry.name))
   }
   return out
 }
@@ -173,7 +167,7 @@ function flushAndAssertReadable(abs: string): void {
 function listColumn(column: TaskColumn): TaskSummary[] {
   const tasksRoot = getTasksRoot()
   const dir = join(tasksRoot, column)
-  const files = collectMarkdownFiles(dir, column === 'done')
+  const files = collectMarkdownFiles(dir)
   const tasks = files.map((abs) => {
     const markdown = readFileSync(abs, 'utf8')
     return toTaskSummary(
@@ -217,17 +211,13 @@ export function readTask(id: string): TaskDetail {
 }
 
 /**
- * 目标列的写入目录；done 归档到当年年份子目录。
+ * 目标列的写入目录。
  *
  * @param column - 目标列
  * @returns 绝对目录
  */
 function destinationDir(column: TaskColumn): string {
-  const tasksRoot = getTasksRoot()
-  if (column === 'done') {
-    return join(tasksRoot, 'done', String(new Date().getFullYear()))
-  }
-  return join(tasksRoot, column)
+  return join(getTasksRoot(), column)
 }
 
 /**
@@ -356,7 +346,7 @@ export function updateTask(id: string, input: UpdateTaskInput): TaskDetail {
 /**
  * 改状态：更新 markdown 中的 Status，并移动到对应目录（保留文件名）。
  *
- * 移入 done 时写入 `done/{year}/`。禁止写入 plan/。
+ * 禁止写入 plan/。
  *
  * @param id - 当前 id
  * @param column - 目标列

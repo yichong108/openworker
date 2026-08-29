@@ -95,8 +95,5 @@ export function isTaskPriority(value: string): value is TaskPriority {
  * @returns 提示文案
  */
 export function columnCreateHint(column: TaskColumn): string {
-  if (column === 'done') {
-    return `写入 done/${new Date().getFullYear()}/，文件名按时间戳生成。`
-  }
   return `写入 ${column}/，文件名按时间戳生成。`
 }
