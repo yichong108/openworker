@@ -10,14 +10,8 @@ import { ApPriorityRadio } from '@/components/antd/ApPriorityRadio'
 import { ApTextArea } from '@/components/antd/ApTextArea'
 import { PRIORITY_BADGE_CLASS } from '@/lib/task-priority-style'
 
+import type { TaskChatHint } from './chat/chat-types'
 import { columnAccent } from '@/lib/task-column-style'
-
-type TaskChatHint = {
-  running: boolean
-  started: boolean
-  error?: string
-  preview: string
-}
 
 type TaskCardProps = {
   task: TaskSummary

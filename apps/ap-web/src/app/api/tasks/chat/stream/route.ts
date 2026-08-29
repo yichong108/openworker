@@ -1,5 +1,13 @@
-import type { ChatTranscript } from '@/components/chat/chat-types'
-import { subscribeTaskChat, listTaskChatTranscripts } from '@/lib/task-agent-runner'
+import { EventType, type BaseEvent } from '@ag-ui/client'
+
+import type { TaskChatHint } from '@/components/chat/chat-types'
+import { isSafeTaskChatFileName } from '@/lib/task-chat-fs'
+import {
+  isTaskAgentRunning,
+  listTaskChatHints,
+  subscribeTaskChatEvents,
+  subscribeTaskChatHints
+} from '@/lib/task-agent-runner'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,10 +19,36 @@ function encodeSse(chunk: string): Uint8Array {
   return encoder.encode(chunk)
 }
 
+function sseHeaders(): HeadersInit {
+  return {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  }
+}
+
 /**
- * 任务 Agent 会话 SSE：连接时推全量，之后按任务增量推 chat 事件。
+ * 任务对话 SSE。
+ *
+ * - 无 fileName：看板卡片 hint（瘦快照）
+ * - 有 fileName：该任务 AG-UI BaseEvent（弹窗 onListenRequest）
  */
 export async function GET(request: Request): Promise<Response> {
+  const fileName = new URL(request.url).searchParams.get('fileName')?.trim()
+  if (fileName) {
+    if (!isSafeTaskChatFileName(fileName)) {
+      return new Response(JSON.stringify({ error: '非法 fileName' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    return eventStream(request, fileName)
+  }
+  return hintStream(request)
+}
+
+function hintStream(request: Request): Response {
   let unsubscribe: (() => void) | undefined
   let heartbeat: ReturnType<typeof setInterval> | undefined
 
@@ -29,14 +63,12 @@ export async function GET(request: Request): Promise<Response> {
         }
       }
 
-      const sendSnapshot = (transcripts: Record<string, ChatTranscript>): void => {
-        safeEnqueue(`event: chat-snapshot\ndata: ${JSON.stringify({ transcripts })}\n\n`)
+      const sendHints = (hints: Record<string, TaskChatHint>): void => {
+        safeEnqueue(`event: chat-hints\ndata: ${JSON.stringify({ hints })}\n\n`)
       }
 
-      sendSnapshot(listTaskChatTranscripts())
-      unsubscribe = subscribeTaskChat((transcripts) => {
-        sendSnapshot(transcripts)
-      })
+      sendHints(listTaskChatHints())
+      unsubscribe = subscribeTaskChatHints(sendHints)
 
       heartbeat = setInterval(() => {
         if (!safeEnqueue(`: heartbeat\n\n`)) {
@@ -66,12 +98,60 @@ export async function GET(request: Request): Promise<Response> {
     }
   })
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no'
+  return new Response(stream, { headers: sseHeaders() })
+}
+
+function eventStream(request: Request, fileName: string): Response {
+  let unsubscribe: (() => void) | undefined
+  let heartbeat: ReturnType<typeof setInterval> | undefined
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const safeEnqueue = (text: string): boolean => {
+        try {
+          controller.enqueue(encodeSse(text))
+          return true
+        } catch {
+          return false
+        }
+      }
+
+      const sendEvent = (event: BaseEvent): void => {
+        safeEnqueue(`data: ${JSON.stringify(event)}\n\n`)
+      }
+
+      unsubscribe = subscribeTaskChatEvents(fileName, sendEvent)
+      if (!isTaskAgentRunning(fileName)) {
+        sendEvent({ type: EventType.RUN_FINISHED } as BaseEvent)
+      }
+
+      heartbeat = setInterval(() => {
+        if (!safeEnqueue(`: heartbeat\n\n`)) {
+          if (heartbeat) clearInterval(heartbeat)
+        }
+      }, HEARTBEAT_MS)
+
+      const shutdown = (): void => {
+        unsubscribe?.()
+        unsubscribe = undefined
+        if (heartbeat) {
+          clearInterval(heartbeat)
+          heartbeat = undefined
+        }
+        try {
+          controller.close()
+        } catch {
+          /* already closed */
+        }
+      }
+
+      request.signal.addEventListener('abort', shutdown)
+    },
+    cancel() {
+      unsubscribe?.()
+      if (heartbeat) clearInterval(heartbeat)
     }
   })
+
+  return new Response(stream, { headers: sseHeaders() })
 }

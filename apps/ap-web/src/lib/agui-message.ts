@@ -1,6 +1,8 @@
 import type { BaseEvent, Message } from '@ag-ui/client'
 import type { ChatSessionMessage } from '@openworker/ui'
 
+import type { ChatTranscript, TaskChatHint } from '@/components/chat/chat-types'
+
 /**
  * 将 AG-UI Message.content 收成纯文本。
  *
@@ -83,6 +85,51 @@ export function takeCompletedRounds(messages: Message[]): Message[] {
     }
     i = j
   }
+  return complete
+}
+
+const EMPTY_HINT: TaskChatHint = { running: false, started: false, preview: '' }
+
+/**
+ * 把会话快照收成卡片按钮所需字段。
+ *
+ * @param transcript - 该文件名的会话
+ * @returns 按钮状态
+ */
+export function chatTranscriptHint(transcript: ChatTranscript | undefined): TaskChatHint {
+  if (!transcript) return EMPTY_HINT
+  let preview = ''
+  for (let i = transcript.messages.length - 1; i >= 0; i -= 1) {
+    const item = transcript.messages[i]
+    const text = messageText(item).trim()
+    if (item.role === 'assistant' && text) {
+      preview = text
+      break
+    }
+  }
+  return {
+    running: transcript.running,
+    started: transcript.started,
+    error: transcript.error,
+    preview
+  }
+}
+
+/**
+ * 弹窗初始历史：已完成回合；若正在 run，只带上本轮 user，助手交给事件流重放。
+ *
+ * @param messages - 内存 transcript 消息
+ * @param running - 是否正在 run
+ * @returns 可作 initialMessages 的 AG-UI 消息
+ */
+export function historyBeforeCurrentRun(messages: Message[], running: boolean): Message[] {
+  if (!running) return takeCompletedRounds(messages)
+  const copy = [...messages]
+  while (copy.at(-1)?.role === 'assistant') copy.pop()
+  const user = copy.at(-1)
+  const prior = user?.role === 'user' ? copy.slice(0, -1) : copy
+  const complete = takeCompletedRounds(prior)
+  if (user?.role === 'user') return [...complete, user]
   return complete
 }
 

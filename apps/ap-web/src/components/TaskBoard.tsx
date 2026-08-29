@@ -7,7 +7,7 @@ import { taskApiPath } from '@/lib/task-paths'
 import type { TaskBoardPayload, TaskColumn, TaskDetail, TaskPriority } from '@/lib/task-types'
 import { TASK_COLUMNS } from '@/lib/task-types'
 
-import type { ChatTranscript } from './chat/chat-types'
+import type { TaskChatHint } from './chat/chat-types'
 import { AiChatDialog } from './chat/AiChatDialog'
 import { ConfigDialog } from './ConfigDialog'
 import { TaskColumnView } from './TaskColumn'
@@ -54,7 +54,7 @@ export function TaskBoard() {
   const [configOpen, setConfigOpen] = useState(false)
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [transcripts, setTranscripts] = useState<Record<string, ChatTranscript>>({})
+  const [chatHints, setChatHints] = useState<Record<string, TaskChatHint>>({})
   const [chatTask, setChatTask] = useState<{
     id: string
     fileName: string
@@ -158,19 +158,19 @@ export function TaskBoard() {
 
   useEffect(() => {
     const source = new EventSource('/api/tasks/chat/stream')
-    const onSnapshot = (event: MessageEvent<string>) => {
+    const onHints = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as {
-          transcripts?: Record<string, ChatTranscript>
+          hints?: Record<string, TaskChatHint>
         }
-        setTranscripts(payload.transcripts ?? {})
+        setChatHints(payload.hints ?? {})
       } catch {
         /* 忽略单帧解析失败 */
       }
     }
-    source.addEventListener('chat-snapshot', onSnapshot)
+    source.addEventListener('chat-hints', onHints)
     return () => {
-      source.removeEventListener('chat-snapshot', onSnapshot)
+      source.removeEventListener('chat-hints', onHints)
       source.close()
     }
   }, [])
@@ -191,6 +191,11 @@ export function TaskBoard() {
 
   const collapseColumn = useCallback((column: TaskColumn) => {
     setExpanded((current) => ({ ...current, [column]: null }))
+  }, [])
+
+  const onAiAuthError = useCallback((message: string) => {
+    setConfigAuthError(message)
+    setConfigOpen(true)
   }, [])
 
   const moveTask = useCallback(
@@ -333,7 +338,7 @@ export function TaskBoard() {
                 loadingId={loadingId}
                 detailError={detailError}
                 savingId={savingId}
-                transcripts={transcripts}
+                chatHints={chatHints}
                 onToggle={toggleCard}
                 onCollapse={collapseColumn}
                 onMove={moveTask}
@@ -360,12 +365,7 @@ export function TaskBoard() {
                 加载中…
               </section>
             ))}
-        <ToolsColumn
-          onAiAuthError={(message) => {
-            setConfigAuthError(message)
-            setConfigOpen(true)
-          }}
-        />
+        <ToolsColumn onAiAuthError={onAiAuthError} />
       </div>
 
       <ConfigDialog
@@ -381,12 +381,9 @@ export function TaskBoard() {
         title={chatTask?.title || '对话'}
         fileName={chatTask?.fileName ?? ''}
         taskId={chatTask?.id ?? ''}
-        liveTranscript={chatTask ? transcripts[chatTask.fileName] : undefined}
+        liveRunning={chatTask ? chatHints[chatTask.fileName]?.running : undefined}
         onClose={() => setChatTask(null)}
-        onAiAuthError={(message) => {
-          setConfigAuthError(message)
-          setConfigOpen(true)
-        }}
+        onAiAuthError={onAiAuthError}
       />
     </main>
   )

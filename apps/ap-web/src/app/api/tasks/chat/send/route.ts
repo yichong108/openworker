@@ -47,7 +47,7 @@ function parseMessageId(raw: unknown): string | undefined {
 
 /**
  * 追加一句用户消息（或从某条 user 编辑重发）并启动 run。
- * 历史以服务端 transcript 为准；会话快照由 chat/stream 推送。
+ * 历史由 GET 拉取；本轮 AG-UI 事件由 chat/stream?fileName= 推送。
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -55,6 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       taskId?: unknown
       text?: unknown
       messageId?: unknown
+      userMessageId?: unknown
     }
 
     if (typeof body.taskId !== 'string' || !body.taskId.trim()) {
@@ -74,7 +75,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (messageId) {
       await editResendTaskAgentMessage(task, messageId, text)
     } else {
-      await sendTaskAgentMessage(task, text)
+      await sendTaskAgentMessage(task, text, { id: parseMessageId(body.userMessageId) })
     }
     return NextResponse.json({ ok: true })
   } catch (error) {

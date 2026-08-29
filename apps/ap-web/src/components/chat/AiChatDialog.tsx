@@ -1,10 +1,12 @@
 'use client'
 
+import type { BaseEvent } from '@ag-ui/client'
 import { ChatSessionWithHttp } from '@openworker/ui'
 import type { ChatTranscript } from '@/components/chat/chat-types'
 import { ApModal } from '@/components/antd/ApModal'
 import { apWebAntdTheme } from '@/components/antd/ap-web-antd-theme'
-import { messageText, toChatSessionMessages } from '@/lib/agui-message'
+import { historyBeforeCurrentRun, toChatSessionMessages } from '@/lib/agui-message'
+import { consumeSse } from '@/lib/consume-sse'
 import { request } from '@/lib/request'
 import { App, ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
@@ -19,52 +21,36 @@ const emptyTranscript = (): ChatTranscript => ({
   liveEvents: []
 })
 
-function sameTranscriptTick(a: ChatTranscript | null, b: ChatTranscript): boolean {
-  if (!a) return false
-  const lastA = a.messages.at(-1)
-  const lastB = b.messages.at(-1)
-  return (
-    a.running === b.running &&
-    a.started === b.started &&
-    a.error === b.error &&
-    a.messages.length === b.messages.length &&
-    a.liveEvents.length === b.liveEvents.length &&
-    lastA?.id === lastB?.id &&
-    lastA?.role === lastB?.role &&
-    (lastA && lastB ? messageText(lastA) === messageText(lastB) : lastA === lastB) &&
-    a.runStats?.durationMs === b.runStats?.durationMs
-  )
-}
-
 type AiChatDialogProps = {
   open: boolean
   title: string
   fileName: string
   taskId: string
-  /** 看板 SSE 推送的该任务会话；有则覆盖 hydrate */
-  liveTranscript?: ChatTranscript
+  /** 看板 hint：仅用于标题 Working */
+  liveRunning?: boolean
   onClose: () => void
   onAiAuthError: (message: string) => void
 }
 
 /**
- * 任务 AI 对话弹窗：ChatSessionWithHttp + 服务端 transcript 快照。
+ * 任务 AI 对话弹窗：先拉历史作 initialMessages，再订该任务 AG-UI 事件流。
  */
 export function AiChatDialog({
   open,
   title,
   fileName,
   taskId,
-  liveTranscript,
+  liveRunning,
   onClose,
   onAiAuthError
 }: AiChatDialogProps) {
   const [hydrated, setHydrated] = useState<ChatTranscript | null>(null)
   const [hydrating, setHydrating] = useState(false)
   const readyFileNameRef = useRef<string | null>(null)
+  const onAiAuthErrorRef = useRef(onAiAuthError)
+  onAiAuthErrorRef.current = onAiAuthError
 
-  const transcript = liveTranscript ?? hydrated ?? emptyTranscript()
-  const showWorking = Boolean(transcript.running)
+  const showWorking = Boolean(liveRunning ?? hydrated?.running)
 
   useEffect(() => {
     if (!open) {
@@ -73,44 +59,54 @@ export function AiChatDialog({
       return
     }
     if (!fileName) return
-    if (liveTranscript) return
 
     let cancelled = false
-    const pull = (showSpinner: boolean) => {
-      if (showSpinner) setHydrating(true)
-      void request(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`)
-        .then(async (response) => {
-          const payload = (await response.json()) as {
-            transcript?: ChatTranscript
-            error?: string
-            code?: string
-          }
-          if (cancelled) return
-          const next = !response.ok ? emptyTranscript() : (payload.transcript ?? emptyTranscript())
-          if (!response.ok && payload.code === 'ai_auth') {
-            onAiAuthError(payload.error || '模型鉴权失败')
-          }
-          setHydrated((prev) => (sameTranscriptTick(prev, next) ? prev : next))
+    const firstLoad = readyFileNameRef.current !== fileName
+    if (firstLoad) setHydrating(true)
+    void request(`/api/tasks/chat/send?fileName=${encodeURIComponent(fileName)}`)
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          transcript?: ChatTranscript
+          error?: string
+          code?: string
+        }
+        if (cancelled) return
+        const next = !response.ok ? emptyTranscript() : (payload.transcript ?? emptyTranscript())
+        if (!response.ok && payload.code === 'ai_auth') {
+          onAiAuthErrorRef.current(payload.error || '模型鉴权失败')
+        }
+        setHydrated(next)
+        readyFileNameRef.current = fileName
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHydrated(emptyTranscript())
           readyFileNameRef.current = fileName
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setHydrated(emptyTranscript())
-            readyFileNameRef.current = fileName
-          }
-        })
-        .finally(() => {
-          if (!cancelled && showSpinner) setHydrating(false)
-        })
-    }
+        }
+      })
+      .finally(() => {
+        if (!cancelled && firstLoad) setHydrating(false)
+      })
 
-    pull(readyFileNameRef.current !== fileName)
-    const timer = window.setInterval(() => pull(false), 400)
     return () => {
       cancelled = true
-      window.clearInterval(timer)
     }
-  }, [open, fileName, liveTranscript, onAiAuthError])
+  }, [open, fileName])
+
+  const onListenRequest = useCallback(
+    async ({ signal, onEvent }: { signal: AbortSignal; onEvent: (event: BaseEvent) => void }) => {
+      if (!fileName) return
+      const response = await request(
+        `/api/tasks/chat/stream?fileName=${encodeURIComponent(fileName)}`,
+        { signal }
+      )
+      if (!response.ok) {
+        throw new Error(`无法订阅对话事件（${response.status}）`)
+      }
+      await consumeSse(response, onEvent, signal)
+    },
+    [fileName]
+  )
 
   const onRunRequest = useCallback(
     async ({
@@ -133,7 +129,11 @@ export function AiChatDialog({
         body: JSON.stringify({
           taskId,
           text: payloadText,
-          ...(editMessageId ? { messageId: editMessageId } : {})
+          ...(editMessageId
+            ? { messageId: editMessageId }
+            : lastUser?.id
+              ? { userMessageId: lastUser.id }
+              : {})
         })
       })
       const payload = (await response.json().catch(() => ({}))) as {
@@ -166,7 +166,12 @@ export function AiChatDialog({
   }, [fileName])
 
   const sessionKey = fileName || readyFileNameRef.current || ''
-  const ready = Boolean(sessionKey && (hydrated || liveTranscript) && !hydrating)
+  const ready = Boolean(sessionKey && hydrated && !hydrating)
+  const history = hydrated
+    ? toChatSessionMessages(historyBeforeCurrentRun(hydrated.messages, hydrated.running), {
+        assistantEvents: hydrated.assistantEvents
+      })
+    : []
 
   return (
     <ApModal
@@ -189,15 +194,10 @@ export function AiChatDialog({
               <ChatSessionWithHttp
                 key={sessionKey}
                 sessionKey={sessionKey}
-                snapshot={{
-                  messages: toChatSessionMessages(transcript.messages, {
-                    running: transcript.running,
-                    assistantEvents: transcript.assistantEvents
-                  }),
-                  liveEvents: transcript.liveEvents,
-                  isRun: transcript.running,
-                  runStats: transcript.runStats
-                }}
+                initialMessages={history}
+                initialIsRun={hydrated?.running}
+                initialRunStats={hydrated?.running ? hydrated.runStats : undefined}
+                onListenRequest={onListenRequest}
                 onRunRequest={onRunRequest}
                 onStopRequest={onStopRequest}
               />

@@ -17,10 +17,10 @@ import {
 } from '../../../../packages/ui/src/chat-session/agui-timeline.js'
 import type { Subscription } from 'rxjs'
 
-import type { ChatTranscript } from '@/components/chat/chat-types'
+import type { ChatTranscript, TaskChatHint } from '@/components/chat/chat-types'
 import { createApWebAgent } from '@/ai/agent-runtime'
 import { isAiAuthFailure } from '@/ai/config'
-import { hasAssistantText, messageText } from './agui-message'
+import { chatTranscriptHint, hasAssistantText, messageText } from './agui-message'
 import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
 import { TaskFsError } from './task-fs-error'
 import type { TaskDetail } from './task-types'
@@ -39,7 +39,10 @@ type TaskChatStore = {
   hydratedFiles: Set<string>
   streamBuf: Map<string, string>
   assistantMsgId: Map<string, string | null>
-  listeners: Set<(payload: Record<string, ChatTranscript>) => void>
+  hintListeners: Set<(payload: Record<string, TaskChatHint>) => void>
+  eventListeners: Map<string, Set<(event: BaseEvent) => void>>
+  runEventBuf: Map<string, BaseEvent[]>
+  hintTimer: ReturnType<typeof setTimeout> | undefined
   messageSeq: number
 }
 
@@ -55,11 +58,18 @@ function getStore(): TaskChatStore {
       hydratedFiles: new Set(),
       streamBuf: new Map(),
       assistantMsgId: new Map(),
-      listeners: new Set(),
+      hintListeners: new Set(),
+      eventListeners: new Map(),
+      runEventBuf: new Map(),
+      hintTimer: undefined,
       messageSeq: 0
     }
   }
-  return globalStore.__apWebTaskChat
+  const store = globalStore.__apWebTaskChat
+  if (!store.hintListeners) store.hintListeners = new Set()
+  if (!store.eventListeners) store.eventListeners = new Map()
+  if (!store.runEventBuf) store.runEventBuf = new Map()
+  return store
 }
 
 const jobs = getStore().jobs
@@ -67,7 +77,9 @@ const transcripts = getStore().transcripts
 const hydratedFiles = getStore().hydratedFiles
 const streamBuf = getStore().streamBuf
 const assistantMsgId = getStore().assistantMsgId
-const listeners = getStore().listeners
+const hintListeners = getStore().hintListeners
+const eventListeners = getStore().eventListeners
+const runEventBuf = getStore().runEventBuf
 
 /**
  * 生成会话消息 id。
@@ -126,13 +138,68 @@ function getOrCreate(fileName: string): ChatTranscript {
 }
 
 /**
- * 广播全量 transcript 给 SSE 订阅者。
+ * 当前全部任务的卡片 hint。
  */
-function notify(): void {
-  const payload = Object.fromEntries(transcripts)
-  for (const listener of listeners) {
+export function listTaskChatHints(): Record<string, TaskChatHint> {
+  const out: Record<string, TaskChatHint> = {}
+  for (const [fileName, transcript] of transcripts) {
+    out[fileName] = chatTranscriptHint(transcript)
+  }
+  return out
+}
+
+function flushHints(): void {
+  const store = getStore()
+  if (store.hintTimer) {
+    clearTimeout(store.hintTimer)
+    store.hintTimer = undefined
+  }
+  const payload = listTaskChatHints()
+  for (const listener of hintListeners) {
     listener(payload)
   }
+}
+
+/**
+ * 广播卡片 hint。running/error 变化立刻推；正文预览节流。
+ *
+ * @param immediate - 是否立刻推
+ */
+function notifyHints(immediate = false): void {
+  const store = getStore()
+  if (immediate) {
+    flushHints()
+    return
+  }
+  if (store.hintTimer) return
+  store.hintTimer = setTimeout(() => {
+    store.hintTimer = undefined
+    flushHints()
+  }, 100)
+}
+
+/**
+ * 把当前 run 的 AG-UI 事件推给该任务的订阅者（含重放缓冲）。
+ *
+ * @param fileName - 任务文件名
+ * @param event - Agent 流出的事件
+ */
+function emitAguiEvent(fileName: string, event: BaseEvent): void {
+  let buf = runEventBuf.get(fileName)
+  if (!buf) {
+    buf = []
+    runEventBuf.set(fileName, buf)
+  }
+  buf.push(event)
+  const set = eventListeners.get(fileName)
+  if (!set) return
+  for (const listener of set) {
+    listener(event)
+  }
+}
+
+function clearRunEvents(fileName: string): void {
+  runEventBuf.delete(fileName)
 }
 
 /**
@@ -143,6 +210,9 @@ function notify(): void {
  */
 function patchTranscript(fileName: string, partial: Partial<ChatTranscript>): void {
   const current = getOrCreate(fileName)
+  const prevRunning = current.running
+  const prevError = current.error
+  const prevStarted = current.started
   transcripts.set(fileName, {
     ...current,
     ...partial,
@@ -150,7 +220,10 @@ function patchTranscript(fileName: string, partial: Partial<ChatTranscript>): vo
     liveEvents: partial.liveEvents ?? current.liveEvents,
     assistantEvents: partial.assistantEvents ?? current.assistantEvents
   })
-  notify()
+  const next = transcripts.get(fileName)!
+  const statusChanged =
+    next.running !== prevRunning || next.error !== prevError || next.started !== prevStarted
+  notifyHints(statusChanged)
 }
 
 /**
@@ -549,6 +622,7 @@ function runTaskAgentJob(
             next: (streamEvent) => {
               if (job.cancelled) return
               applyAguiEvent(fileName, streamEvent)
+              emitAguiEvent(fileName, streamEvent)
               options?.onStreamEvent?.(streamEvent)
             },
             error: reject,
@@ -584,10 +658,11 @@ function runTaskAgentJob(
       if (current?.running) {
         patchTranscript(fileName, { running: false, liveEvents: [] })
       } else {
-        notify()
+        notifyHints(true)
       }
       if (job.cancelled) dropUnansweredRound(fileName)
       persistCompletedRound(fileName)
+      clearRunEvents(fileName)
     }
   })()
 
@@ -622,24 +697,45 @@ export function hydrateTaskChatTranscript(fileName: string): ChatTranscript {
 }
 
 /**
- * 当前全部任务会话快照。
+ * 订阅卡片 hint（看板 SSE）。
+ *
+ * @param listener - 全量 hints
+ * @returns 取消订阅
  */
-export function listTaskChatTranscripts(): Record<string, ChatTranscript> {
-  return Object.fromEntries(transcripts)
+export function subscribeTaskChatHints(
+  listener: (payload: Record<string, TaskChatHint>) => void
+): () => void {
+  hintListeners.add(listener)
+  return () => {
+    hintListeners.delete(listener)
+  }
 }
 
 /**
- * 订阅会话变更（SSE 使用）。
+ * 订阅某任务当前 run 的 AG-UI 事件（先重放缓冲，再收增量）。
  *
- * @param listener - 收到全量 transcripts
+ * @param fileName - 任务文件名
+ * @param listener - 事件回调
  * @returns 取消订阅
  */
-export function subscribeTaskChat(
-  listener: (payload: Record<string, ChatTranscript>) => void
+export function subscribeTaskChatEvents(
+  fileName: string,
+  listener: (event: BaseEvent) => void
 ): () => void {
-  listeners.add(listener)
+  const buf = runEventBuf.get(fileName) ?? []
+  for (const event of buf) {
+    listener(event)
+  }
+  let set = eventListeners.get(fileName)
+  if (!set) {
+    set = new Set()
+    eventListeners.set(fileName, set)
+  }
+  set.add(listener)
   return () => {
-    listeners.delete(listener)
+    const current = eventListeners.get(fileName)
+    current?.delete(listener)
+    if (current && current.size === 0) eventListeners.delete(fileName)
   }
 }
 
@@ -673,7 +769,11 @@ export function isTaskAgentRunning(fileName: string): boolean {
  * @param task - 任务详情
  * @param text - 用户输入
  */
-export async function sendTaskAgentMessage(task: TaskDetail, text: string): Promise<void> {
+export async function sendTaskAgentMessage(
+  task: TaskDetail,
+  text: string,
+  options?: { id?: string }
+): Promise<void> {
   const trimmed = text.trim()
   if (!trimmed) return
   const fileName = task.fileName
@@ -683,7 +783,7 @@ export async function sendTaskAgentMessage(task: TaskDetail, text: string): Prom
 
   const current = getOrCreate(fileName)
   const userMessage: Message = {
-    id: nextMessageId(),
+    id: options?.id?.trim() || nextMessageId(),
     role: 'user',
     content: trimmed
   }
@@ -743,7 +843,8 @@ export function forgetTaskChat(fileName: string): void {
   hydratedFiles.delete(fileName)
   streamBuf.delete(fileName)
   assistantMsgId.delete(fileName)
-  notify()
+  clearRunEvents(fileName)
+  notifyHints(true)
 }
 
 /**

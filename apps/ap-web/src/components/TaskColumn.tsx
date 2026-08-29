@@ -3,8 +3,7 @@
 import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
 import { COLUMN_LABELS } from '@/lib/task-types'
 
-import type { ChatTranscript } from './chat/chat-types'
-import { messageText } from '@/lib/agui-message'
+import type { TaskChatHint } from './chat/chat-types'
 import { columnAccent } from '@/lib/task-column-style'
 import { CreateTaskAction } from './CreateTaskAction'
 import { QuickCreateTodo } from './QuickCreateTodo'
@@ -16,38 +15,6 @@ type TaskUpdateInput = {
   humanNotes: string
 }
 
-/**
- * 把会话快照收成卡片按钮所需字段。
- *
- * @param transcript - 该文件名的会话
- * @returns 按钮状态
- */
-function chatHint(transcript: ChatTranscript | undefined): {
-  running: boolean
-  started: boolean
-  error?: string
-  preview: string
-} {
-  if (!transcript) {
-    return { running: false, started: false, preview: '' }
-  }
-  let preview = ''
-  for (let i = transcript.messages.length - 1; i >= 0; i -= 1) {
-    const item = transcript.messages[i]
-    const text = messageText(item).trim()
-    if (item.role === 'assistant' && text) {
-      preview = text
-      break
-    }
-  }
-  return {
-    running: transcript.running,
-    started: transcript.started,
-    error: transcript.error,
-    preview
-  }
-}
-
 type TaskColumnProps = {
   column: TaskColumn
   tasks: TaskSummary[]
@@ -56,7 +23,7 @@ type TaskColumnProps = {
   loadingId: string | null
   detailError: Record<string, string>
   savingId: string | null
-  transcripts: Record<string, ChatTranscript>
+  chatHints: Record<string, TaskChatHint>
   onToggle: (column: TaskColumn, id: string) => void
   onCollapse: (column: TaskColumn) => void
   onMove: (id: string, status: TaskColumn) => void
@@ -78,7 +45,7 @@ export function TaskColumnView({
   loadingId,
   detailError,
   savingId,
-  transcripts,
+  chatHints,
   onToggle,
   onCollapse,
   onMove,
@@ -127,7 +94,7 @@ export function TaskColumnView({
               loading={loadingId === task.id}
               error={detailError[task.id] ?? null}
               saving={savingId === task.id}
-              chat={chatHint(transcripts[task.fileName])}
+              chat={chatHints[task.fileName] ?? { running: false, started: false, preview: '' }}
               onToggle={() => onToggle(column, task.id)}
               onCollapse={() => onCollapse(column)}
               onMove={(status) => onMove(task.id, status)}

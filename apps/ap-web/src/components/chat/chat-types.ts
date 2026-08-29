@@ -20,3 +20,11 @@ export type ChatTranscript = {
   assistantEvents?: Record<string, BaseEvent[]>
   runStats?: ChatRunStats
 }
+
+/** 看板卡片上的对话按钮状态（瘦，不含整段 messages） */
+export type TaskChatHint = {
+  running: boolean
+  started: boolean
+  error?: string
+  preview: string
+}

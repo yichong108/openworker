@@ -53,12 +53,14 @@ function buildInitialSession(
  * 自包含聊天会话：内部管 AG-UI 事件与会话状态，run/stop 由宿主回调实现。
  *
  * 传入 snapshot 时界面跟服务端快照走，不再在本地折叠 AG-UI。
+ * 传入 onListenRequest 时挂载即订事件流，走 applyAguiEvent（与 playground onEvent 同一套）。
  *
- * @param props - onRunRequest / onStopRequest
+ * @param props - onRunRequest / onStopRequest / onListenRequest
  */
 export function ChatSessionWithHttp({
   onRunRequest,
   onStopRequest,
+  onListenRequest,
   sessionKey = 'http-session',
   className,
   snapshot,
@@ -69,6 +71,8 @@ export function ChatSessionWithHttp({
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
   const serverTruth = Boolean(snapshot)
+  const listenRef = useRef(onListenRequest)
+  listenRef.current = onListenRequest
   const initialSession = buildInitialSession({
     initialMessages,
     initialLiveEvents,
@@ -105,6 +109,27 @@ export function ChatSessionWithHttp({
   }, [flush, snapshot?.isRun, snapshot?.liveEvents, snapshot?.messages, snapshot?.runStats])
 
   useEffect(() => {
+    if (serverTruth) return
+    const listen = listenRef.current
+    if (!listen) return
+    const abort = new AbortController()
+    void Promise.resolve(
+      listen({
+        signal: abort.signal,
+        onEvent: (event) => {
+          if (!event || typeof event !== 'object' || !('type' in event)) return
+          flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
+        }
+      })
+    ).catch(() => {
+      /* 取消或断开时忽略 */
+    })
+    return () => {
+      abort.abort()
+    }
+  }, [flush, serverTruth, sessionKey])
+
+  useEffect(() => {
     return () => {
       abortRef.current?.abort()
     }
@@ -123,6 +148,7 @@ export function ChatSessionWithHttp({
       const abort = new AbortController()
       abortRef.current = abort
       flush({ ...sessionRef.current, messages: history, isRun: true, liveEvents: [] })
+      const listening = Boolean(listenRef.current)
 
       try {
         await onRunRequest({
@@ -131,22 +157,24 @@ export function ChatSessionWithHttp({
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
-            if (serverTruth) return
+            if (serverTruth || listening) return
             if (!event || typeof event !== 'object' || !('type' in event)) return
             flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
           }
         })
-        if (!serverTruth && sessionRef.current.isRun) {
+        if (!serverTruth && !listening && sessionRef.current.isRun) {
           flush(finalizeLiveSession(sessionRef.current))
         }
       } catch (error) {
         if (abort.signal.aborted) {
-          if (!serverTruth) applyStopToSession()
+          if (!serverTruth && !listening) applyStopToSession()
           return
         }
         msgApi.error(error instanceof Error ? error.message : String(error))
-        if (!serverTruth) flush(finalizeLiveSession(sessionRef.current))
-        else flush({ ...sessionRef.current, isRun: false })
+        if (!serverTruth) {
+          if (listening) applyStopToSession()
+          else flush(finalizeLiveSession(sessionRef.current))
+        } else flush({ ...sessionRef.current, isRun: false })
       }
     },
     [applyStopToSession, flush, msgApi, onRunRequest, serverTruth]

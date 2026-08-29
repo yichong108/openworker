@@ -146,6 +146,12 @@ export type ChatSessionRunRequest = {
   onEvent: (event: BaseEvent) => void
 }
 
+/** 挂载期订阅事件流（不发送）。与 onRunRequest.onEvent 同一套折叠。 */
+export type ChatSessionListenRequest = {
+  signal: AbortSignal
+  onEvent: (event: BaseEvent) => void
+}
+
 /** 服务端会话快照（有则界面跟快照走，不再在本地折叠 AG-UI） */
 export type ChatSessionSnapshot = {
   messages: ChatSessionMessage[]
@@ -160,6 +166,11 @@ export type ChatSessionSnapshot = {
 export type ChatSessionWithHttpProps = {
   onRunRequest: (request: ChatSessionRunRequest) => void | Promise<void>
   onStopRequest: () => void | Promise<void | { restoredInput?: string }>
+  /**
+   * 挂载后订这一路 AG-UI 事件（打开弹窗即连，不经过 send）。
+   * 有 snapshot 时不调用。
+   */
+  onListenRequest?: (request: ChatSessionListenRequest) => void | Promise<void>
   sessionKey?: string | null
   className?: string
   /** 服务端快照；传入后消息/running 以快照为准 */
