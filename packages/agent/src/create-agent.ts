@@ -8,13 +8,10 @@ import { createBaseAgent, type CoreMessage } from '@openworker/base-agent'
 import { type AgentComposerMode, normalizeComposerMode } from '@openworker/shared'
 import { mergeToolSets, type ToolObservation, type ToolOnTool } from '@openworker/tools'
 
+import { buildWorkspaceRunPrompt, type WorkspacePromptExtras } from './build-prompt.js'
 import { buildApprovedPlanSystemSection } from './plan-artifact.js'
 import { wrapToolExecuteForContext, wrapToolOnTool } from './tool-context.js'
-import {
-  buildWorkspaceRunPrompt,
-  buildWorkspaceTools,
-  type WorkspacePromptExtras
-} from './workspace-tools.js'
+import { buildWorkspaceTools } from './workspace-tools.js'
 
 /**
  * createAgent 本地运行环境配置。

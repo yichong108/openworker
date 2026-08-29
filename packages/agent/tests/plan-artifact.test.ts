@@ -10,7 +10,8 @@ import {
   extractPlanTitle,
   parsePlanArtifact
 } from '../src/plan-artifact.js'
-import { buildWorkspaceRunPrompt, buildWorkspaceTools } from '../src/workspace-tools.js'
+import { buildWorkspaceRunPrompt } from '../src/build-prompt.js'
+import { buildWorkspaceTools } from '../src/workspace-tools.js'
 
 describe('normalizeComposerMode', () => {
   it('识别 ask / plan，其余回退 build', () => {

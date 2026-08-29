@@ -33,14 +33,15 @@ export {
   userMessage
 } from '@openworker/base-agent'
 
-/** 工作区工具组装与 ReAct system prompt */
+/** 工作区工具组装 */
 export {
-  buildWorkspaceRunPrompt,
   buildWorkspaceTools,
   isReadonlyComposerMode,
-  type BuildWorkspaceToolsOptions,
-  type WorkspacePromptExtras
+  type BuildWorkspaceToolsOptions
 } from './workspace-tools.js'
+
+/** 工作区 ReAct system prompt */
+export { buildWorkspaceRunPrompt, type WorkspacePromptExtras } from './build-prompt.js'
 
 /** Plan 工件解析 */
 export {
