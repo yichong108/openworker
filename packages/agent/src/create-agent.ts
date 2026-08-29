@@ -195,22 +195,6 @@ export type Agent = {
 const DEFAULT_LOCAL: CreateAgentLocalOptions = {}
 
 /**
- * 解析本轮工作区根目录。
- *
- * @param workspacePath - send 入参
- * @param defaultCwd - createAgent local.cwd
- * @returns 非空工作区根
- * @throws 两者皆空时抛出
- */
-function resolveWorkspaceRoot(workspacePath: string | undefined, defaultCwd: string): string {
-  const root = workspacePath?.trim() || defaultCwd
-  if (!root) {
-    throw new Error('workspacePath is required')
-  }
-  return root
-}
-
-/**
  * 创建通用产品 agent 实例。
  *
  * 系统 prompt 在本函数内与工作区 prompt、宿主 extras、记忆段、批准计划合并。
@@ -247,17 +231,16 @@ export function createAgent(options: CreateAgentOptions): Agent {
 
     const composerMode = normalizeComposerMode(input.composerMode)
     const provider: LanguageModel = input.provider ?? defaultProvider
-    const root = resolveWorkspaceRoot(input.workspacePath, defaultCwd)
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
     const resolved = resolveCapabilities
-      ? await resolveCapabilities({ composerMode, workspaceRoot: root, onTool })
+      ? await resolveCapabilities({ composerMode, workspaceRoot: defaultCwd, onTool })
       : { tools: {}, promptExtras: {} }
     const extraTools = resolved.tools ?? {}
     const promptExtras = resolved.promptExtras ?? {}
 
     const workspaceTools = buildWorkspaceTools({
-      root,
+      root: defaultCwd,
       tavilyApiKey,
       onTool,
       mode: composerMode
@@ -266,7 +249,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
       mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
     )
 
-    const basePrompt = buildWorkspaceRunPrompt(composerMode, root, tavilyApiKey, promptExtras)
+    const basePrompt = buildWorkspaceRunPrompt(composerMode, defaultCwd, tavilyApiKey, promptExtras)
     const memorySection = input.memorySystemSection?.trim()
     const approvedPlanSection =
       composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''

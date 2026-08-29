@@ -29,7 +29,7 @@
     "landing:build": "pnpm --filter @openworker/landing build",
     "ap-web:dev": "pnpm --filter @openworker/ap-web dev",
     "ap-web:build": "pnpm --filter @openworker/ap-web build",
-    "ap-web:start": "pnpm --filter @openworker/ap-web start",
+    "ap-web:start": "cross-env INIT_CWD=D:\\wishzhang\\project\\owner\\agent-weave pnpm --filter @openworker/ap-web start",
     "ap": "pnpm --dir apps/ap-cli exec tsx src/index.ts",
     "ap:build": "pnpm --filter @openworker/ap build",
     "ap:start:dist": "pnpm --filter @openworker/ap start:dist",

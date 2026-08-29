@@ -1,6 +1,9 @@
 import {
+  closeSync,
   existsSync,
+  fsyncSync,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   statSync,
@@ -141,6 +144,24 @@ function sortTasks(tasks: TaskSummary[]): TaskSummary[] {
  */
 function fileUpdatedAt(abs: string): string {
   return statSync(abs).mtime.toISOString()
+}
+
+/**
+ * 把已写入的文件刷到磁盘，并读回确认当前进程能打开。
+ *
+ * @param abs - 文件绝对路径
+ */
+function flushAndAssertReadable(abs: string): void {
+  const fd = openSync(abs, 'r+')
+  try {
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
+  if (!existsSync(abs)) {
+    throw new TaskFsError('任务文件尚未落盘', 500)
+  }
+  readFileSync(abs, 'utf8')
 }
 
 /**
@@ -360,6 +381,7 @@ export function moveTask(id: string, column: TaskColumn): TaskDetail {
 
   const markdown = replaceTaskStatus(readFileSync(src, 'utf8'), column)
   writeFileSync(dest, markdown, 'utf8')
+  flushAndAssertReadable(dest)
   unlinkSync(src)
 
   return readTask(toPosixId(getTasksRoot(), dest))

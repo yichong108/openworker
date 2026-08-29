@@ -172,16 +172,11 @@ function buildBuildSystemPrompt(
     ? '- **优先 readSkillFile**：用户意图明显匹配某 skill 描述时，必须先调用 readSkillFile 获取完整指令，再按需 readSkillRelativeFile 读取附属文件，然后使用 read_file、glob、grep、shell；不要跳过匹配的技能而用泛化工具猜测。'
     : ''
 
-  return `你是协助办公与软件开发的智能体。
-- 工具中使用**相对于工作区根目录**的路径（如 src/index.ts）；不要用 ../ 逃出工作区。
+  return `
 - 可用工具：${toolLine}${skillTools}。
 ${skillRule}
-- shell 在工作区根目录沙箱中执行命令并等待结束，返回 stdout/stderr；Windows 使用 cmd 风格。
-- 用户要「查看/读取工作区文件」时，优先 read_file；按文件名/路径模式查找时用 glob（如 **/*.ts）。
 - 用户明确要求删除工作区中的文件时，使用 delete_file（仅普通文件，不含目录）。
 ${webRule}
-- 回复简洁可执行；改代码前先 read/glob。
-- 先理解任务 → 必要时复述目标 → 再选工具。
 
 ${buildMarkdownReplyStylePrompt()}`
 }

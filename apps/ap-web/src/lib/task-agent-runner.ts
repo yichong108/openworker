@@ -19,6 +19,7 @@ import type { Subscription } from 'rxjs'
 
 import type { ChatTranscript, TaskChatHint } from '@/components/chat/chat-types'
 import { createApWebAgent } from '@/ai/agent-runtime'
+import { buildTaskPrompt } from '@/ai/build-prompt'
 import { isAiAuthFailure } from '@/ai/config'
 import { chatTranscriptHint, hasAssistantText, messageText } from './agui-message'
 import { readTaskChatFile, writeTaskChatFile } from './task-chat-fs'
@@ -244,24 +245,6 @@ function retainAssistantEvents(
     if (ids.has(id) && events.length > 0) next[id] = events
   }
   return next
-}
-
-/**
- * 根据任务详情拼出自动执行 prompt。
- *
- * @param task - 任务详情
- * @returns Agent prompt
- */
-function buildTaskPrompt(task: TaskDetail): string {
-  return [
-    '你只执行下面这一件任务，不要领取、移动或改动其它任务文件。',
-    `当前任务文件：${task.id}`,
-    '',
-    `# ${task.title}`,
-    '',
-    '# Human Notes',
-    task.humanNotes.trim() || '（空）'
-  ].join('\n')
 }
 
 /**
