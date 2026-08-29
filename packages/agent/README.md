@@ -8,14 +8,13 @@
 import { createAgent } from '@openworker/agent'
 
 const agent = createAgent({
-  provider: model,
   cwd: '/path/to/workspace',
   resolveCapabilities: async ({ composerMode, workspaceRoot, onTool }) => ({
     tools: {},
     promptExtras: {}
   })
 })
-await agent.send('hi', { composerMode: 'build' })
+await agent.send('hi', { provider: model, composerMode: 'build' })
 ```
 
 工作区根须由 `cwd` 或 `send({ workspacePath })` 显式传入。额外工具与 prompt 经 `resolveCapabilities` 注入。

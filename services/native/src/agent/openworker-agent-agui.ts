@@ -37,10 +37,9 @@ import { Observable, type Subscriber } from 'rxjs'
 
 import { OpenWorkerAgent, type AgentMcp } from './openworker-agent.js'
 
-/** 每轮 send 的默认参数（不含流式回调） */
-export type OpenWorkerAgentRunDefaults = Omit<
-  AgentRunInput,
-  'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'
+/** 每轮 send 的默认参数（不含流式回调；字段均可选，合并后须含 provider） */
+export type OpenWorkerAgentRunDefaults = Partial<
+  Omit<AgentRunInput, 'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'>
 >
 
 /**
@@ -351,9 +350,11 @@ export class OpenWorkerAgentAGUI extends AbstractAgent {
     this.role = role ?? 'session'
     this.runDefaults = runDefaults ?? {}
     this.inner = new OpenWorkerAgent({
-      cwd,
-      provider
+      cwd
     })
+    if (provider) {
+      this.runDefaults = { ...this.runDefaults, provider }
+    }
   }
 
   /**
@@ -558,10 +559,15 @@ export class OpenWorkerAgentAGUI extends AbstractAgent {
 
     try {
       const { userText, history } = extractUserTurn(input.messages ?? [])
-      this.inner.messages = history
+      const provider = merged.provider ?? this.config.provider
+      if (!provider) {
+        throw new Error('请先在设置中配置 API Key')
+      }
 
       const runResult = await this.inner.send(userText, {
         ...merged,
+        provider,
+        messages: history,
         onTextDelta: (text) => {
           if (!text) return
           pendingResultText += text

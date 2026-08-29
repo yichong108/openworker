@@ -39,11 +39,6 @@ export type OpenWorkerAgentConfig = {
   messages?: CoreMessage[]
 }
 
-/** 创建时占位模型（run 时经 send.provider 覆盖） */
-const PLACEHOLDER_PROVIDER = {
-  modelId: 'openworker-placeholder'
-} as LanguageModel
-
 /**
  * OpenWorker 产品 Agent：createAgent + 约定 Skills/MCP 装配 + 自有 mcp API。
  */
@@ -54,16 +49,17 @@ export class OpenWorkerAgent {
   /**
    * 创建产品 Agent。
    *
-   * @param config - cwd / provider / messages
+   * @param config - cwd / messages（messages 写入 agent 实例，send 时亦可经 input 覆盖）
    */
   constructor(config: OpenWorkerAgentConfig = {}) {
     const cwd = config.cwd?.trim() || undefined
     this.inner = createAgent({
-      provider: config.provider ?? PLACEHOLDER_PROVIDER,
-      ...(config.messages ? { messages: config.messages } : {}),
       ...(cwd ? { cwd } : {}),
       resolveCapabilities: resolveOpenWorkerCapabilities
     })
+    if (config.messages) {
+      this.inner.messages = config.messages
+    }
 
     const mcpManager = getDefaultMcpManager()
     this.mcp = {
@@ -92,7 +88,7 @@ export class OpenWorkerAgent {
    * @param input - 可选 run 参数
    * @returns 运行结束后的 messages 与助手文本
    */
-  send(userText: string, input?: AgentRunInput): Promise<AgentRunResult> {
+  send(userText: string, input: AgentRunInput): Promise<AgentRunResult> {
     return this.inner.send(userText, input)
   }
 

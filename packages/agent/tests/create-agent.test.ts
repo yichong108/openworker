@@ -12,7 +12,7 @@ vi.mock('../../base-agent/src/react-loop.js', () => ({
   ])
 }))
 
-import { createAgent } from '../src/create-agent.js'
+import { createAgent, type AgentRunInput } from '../src/create-agent.js'
 import { runReActLoop } from '../../base-agent/src/react-loop.js'
 
 function createCallbacks() {
@@ -23,8 +23,15 @@ function createCallbacks() {
   }
 }
 
-/** 测试用占位模型（send 不再内部 resolve） */
+/** 测试用占位模型 */
 const stubModel = { modelId: 'test-model' } as LanguageModel
+
+function runInput(extra: Partial<AgentRunInput> = {}): AgentRunInput {
+  return {
+    provider: stubModel,
+    ...extra
+  }
+}
 
 describe('createAgent', () => {
   beforeEach(() => {
@@ -36,39 +43,46 @@ describe('createAgent', () => {
   })
 
   it('返回含 send 的实例，不含 mcp', () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
     expect(agent.messages).toEqual([])
   })
 
-  it('createAgent 可注入初始 messages', () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws',
-      messages: [{ role: 'user', content: 'hi' }]
+  it('send 可通过 messages 注入本轮起点历史', async () => {
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    const callbacks = createCallbacks()
+
+    const result = await agent.send('next', {
+      ...runInput(),
+      messages: [{ role: 'user', content: 'prev' }],
+      composerMode: 'ask',
+      ...callbacks
     })
-    expect(agent.messages).toEqual([{ role: 'user', content: 'hi' }])
+
+    expect(result.messages).toEqual([
+      { role: 'user', content: 'prev' },
+      { role: 'user', content: 'next' },
+      { role: 'assistant', content: 'hello' }
+    ])
+    expect(agent.messages).toEqual(result.messages)
   })
 
   it('send 未传 workspacePath 时回退 cwd', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
     const callbacks = createCallbacks()
 
-    const result = await agent.send('ping', {
-      composerMode: 'ask',
-      abortController: new AbortController(),
-      terminalKey: 'term:s1',
-      ...callbacks,
-      maxSteps: 10,
-      invokeTimeoutMs: 60_000
-    })
+    const result = await agent.send(
+      'ping',
+      runInput({
+        composerMode: 'ask',
+        abortController: new AbortController(),
+        terminalKey: 'term:s1',
+        ...callbacks,
+        maxSteps: 10,
+        invokeTimeoutMs: 60_000
+      })
+    )
 
     expect(runReActLoop).toHaveBeenCalledOnce()
     const [{ model, systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
@@ -84,48 +98,45 @@ describe('createAgent', () => {
   })
 
   it('send 优先使用本轮 workspacePath', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
     const callbacks = createCallbacks()
 
-    await agent.send('ping', {
-      composerMode: 'ask',
-      abortController: new AbortController(),
-      workspacePath: '/other/root',
-      ...callbacks
-    })
+    await agent.send(
+      'ping',
+      runInput({
+        composerMode: 'ask',
+        abortController: new AbortController(),
+        workspacePath: '/other/root',
+        ...callbacks
+      })
+    )
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('工作区根目录：/other/root')
   })
 
   it('send 无 workspacePath 且无 cwd 时抛错', async () => {
-    const agent = createAgent({ provider: stubModel })
-    await expect(agent.send('hi')).rejects.toThrow('workspacePath is required')
+    const agent = createAgent()
+    await expect(agent.send('hi', runInput())).rejects.toThrow('workspacePath is required')
   })
 
   it('send 空 userText 抛错', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
-    await expect(agent.send('   ')).rejects.toThrow('userText is empty')
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    await expect(agent.send('   ', runInput())).rejects.toThrow('userText is empty')
   })
 
   it('send 成功时写回 messages', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws',
-      messages: [{ role: 'user', content: 'prev' }]
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    agent.messages = [{ role: 'user', content: 'prev' }]
     const callbacks = createCallbacks()
 
-    const result = await agent.send('next', {
-      composerMode: 'ask',
-      ...callbacks
-    })
+    const result = await agent.send(
+      'next',
+      runInput({
+        composerMode: 'ask',
+        ...callbacks
+      })
+    )
 
     expect(result.messages).toEqual([
       { role: 'user', content: 'prev' },
@@ -136,10 +147,7 @@ describe('createAgent', () => {
   })
 
   it('send 取消时抛错且不写回助手消息', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
     const callbacks = createCallbacks()
     const abortController = new AbortController()
     vi.mocked(runReActLoop).mockImplementation(async () => {
@@ -148,39 +156,39 @@ describe('createAgent', () => {
     })
 
     await expect(
-      agent.send('hi', {
-        composerMode: 'ask',
-        abortController,
-        ...callbacks
-      })
+      agent.send(
+        'hi',
+        runInput({
+          composerMode: 'ask',
+          abortController,
+          ...callbacks
+        })
+      )
     ).rejects.toThrow('Aborted')
 
     expect(agent.messages).toEqual([{ role: 'user', content: 'hi' }])
   })
 
   it('失败时 send 抛错', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
     const callbacks = createCallbacks()
     const boom = new Error('model failed')
     vi.mocked(runReActLoop).mockRejectedValueOnce(boom)
 
     await expect(
-      agent.send('hi', {
-        composerMode: 'ask',
-        ...callbacks
-      })
+      agent.send(
+        'hi',
+        runInput({
+          composerMode: 'ask',
+          ...callbacks
+        })
+      )
     ).rejects.toThrow('model failed')
   })
 
   it('未注入 resolveCapabilities 时不出现技能摘要', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
-    await agent.send('修一下报错', { composerMode: 'build' })
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    await agent.send('修一下报错', runInput({ composerMode: 'build' }))
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).not.toContain('可用技能（渐进加载）')
@@ -190,7 +198,6 @@ describe('createAgent', () => {
   it('resolveCapabilities 的 tools 与 extraPrompt 会合并', async () => {
     const extraExecute = vi.fn(async () => 'ok')
     const agent = createAgent({
-      provider: stubModel,
       cwd: '/tmp/ws',
       resolveCapabilities: async () => ({
         tools: {
@@ -205,7 +212,7 @@ describe('createAgent', () => {
         }
       })
     })
-    await agent.send('修一下报错', { composerMode: 'build' })
+    await agent.send('修一下报错', runInput({ composerMode: 'build' }))
 
     const [{ systemPrompt: runPrompt, tools }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('可用技能（渐进加载）')
@@ -215,11 +222,8 @@ describe('createAgent', () => {
   })
 
   it('ask 模式不暴露 shell', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
-    await agent.send('这段代码做什么？', { composerMode: 'ask' })
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    await agent.send('这段代码做什么？', runInput({ composerMode: 'ask' }))
 
     const [{ systemPrompt: runPrompt, tools }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).not.toContain('可用技能（渐进加载）')
@@ -227,11 +231,8 @@ describe('createAgent', () => {
   })
 
   it('plan 模式使用计划 prompt', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
-    await agent.send('设计会话压缩', { composerMode: 'plan' })
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    await agent.send('设计会话压缩', runInput({ composerMode: 'plan' }))
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('计划模式')
@@ -239,14 +240,14 @@ describe('createAgent', () => {
   })
 
   it('build 注入 planMarkdown 到 system prompt', async () => {
-    const agent = createAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
-    await agent.send('执行', {
-      composerMode: 'build',
-      planMarkdown: '# 计划\n- 改 A'
-    })
+    const agent = createAgent({ cwd: '/tmp/ws' })
+    await agent.send(
+      '执行',
+      runInput({
+        composerMode: 'build',
+        planMarkdown: '# 计划\n- 改 A'
+      })
+    )
 
     const [{ systemPrompt: runPrompt }] = vi.mocked(runReActLoop).mock.calls[0]!
     expect(runPrompt).toContain('Approved plan')

@@ -31,10 +31,9 @@ import { Observable, type Subscriber } from 'rxjs'
 
 import { createApAgent, type CreateApAgentOptions } from './create-ap-agent.js'
 
-/** 每轮 send 的默认参数（不含流式回调） */
-export type ApAgentRunDefaults = Omit<
-  AgentRunInput,
-  'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'
+/** 每轮 send 的默认参数（不含流式回调；字段均可选，合并后须含 provider） */
+export type ApAgentRunDefaults = Partial<
+  Omit<AgentRunInput, 'onTextDelta' | 'onTextRevoke' | 'onThinking' | 'onTool' | 'onEmit'>
 >
 
 /**
@@ -48,11 +47,6 @@ export type ApAgentWithAGUIConfig = AgentConfig & {
   /** 每轮 send 的默认参数 */
   runDefaults?: ApAgentRunDefaults
 }
-
-/** 创建时占位模型（run 时经 forwardedProps.provider 覆盖） */
-const PLACEHOLDER_PROVIDER = {
-  modelId: 'ap-agent-placeholder'
-} as LanguageModel
 
 /**
  * 从 RunAgentInput.forwardedProps 解析可覆盖的运行参数。
@@ -327,14 +321,15 @@ export class ApAgentWithAGUI extends AbstractAgent {
     this.config = config
     this.runDefaults = runDefaults ?? {}
 
-    const apOptions: CreateApAgentOptions = {
-      provider: provider ?? PLACEHOLDER_PROVIDER
-    }
+    const apOptions: CreateApAgentOptions = {}
     const trimmedCwd = cwd?.trim()
     if (trimmedCwd) {
       apOptions.cwd = trimmedCwd
     }
     this.inner = createApAgent(apOptions)
+    if (provider) {
+      this.runDefaults = { ...this.runDefaults, provider }
+    }
   }
 
   /**
@@ -484,10 +479,15 @@ export class ApAgentWithAGUI extends AbstractAgent {
 
     try {
       const { userText, history } = extractUserTurn(input.messages ?? [])
-      this.inner.messages = history
+      const provider = merged.provider ?? this.config.provider
+      if (!provider) {
+        throw new Error('provider is required')
+      }
 
       const runResult = await this.inner.send(userText, {
         ...merged,
+        provider,
+        messages: history,
         onTextDelta: (text) => {
           if (!text) return
           pendingResultText += text

@@ -51,26 +51,15 @@ export type ResolveAgentCapabilities = (
 /**
  * createAgent 配置项。
  *
- * provider 必填；messages / cwd 可选。工作区根须由 cwd 或 send.workspacePath 显式提供。
+ * cwd 可选。工作区根须由 cwd 或 send.workspacePath 显式提供；provider / messages 在 send 的 AgentRunInput 中传入。
  *
  * @example
  * ```ts
- * const agent = createAgent({
- *   provider: model,
- *   messages: history,
- *   cwd: '/path/to/workspace'
- * })
- * await agent.send('hi', { composerMode: 'build' })
+ * const agent = createAgent({ cwd: '/path/to/workspace' })
+ * await agent.send('hi', { provider: model, composerMode: 'build' })
  * ```
  */
 export type CreateAgentOptions = {
-  /** AI SDK LanguageModel；创建时必填，send 未传 provider 时作为本轮对话模型 */
-  provider: LanguageModel
-  /**
-   * 会话消息初始值；由 agent 持有。
-   * 可选，默认 []。send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
-   */
-  messages?: CoreMessage[]
   /** 工作区根目录；send 时若未指定 workspacePath 则使用此值 */
   cwd?: string
   /** 本轮额外工具与 prompt；未传则仅工作区工具 */
@@ -80,19 +69,22 @@ export type CreateAgentOptions = {
 /**
  * 单次 agent run 的可选参数（send 的第二参）。
  *
- * 调用形态：`send(userText, options?)`。
+ * 调用形态：`send(userText, input)`。
  * 可经 `tools` 传入宿主额外工具，与工作区工具 / resolveCapabilities 合并（同名时 tools 覆盖）。
  */
 export type AgentRunInput = {
+  /** AI SDK LanguageModel；本轮对话模型，必填 */
+  provider: LanguageModel
+  /**
+   * 本轮会话历史；可选。
+   * 传入时作为本轮起点（覆盖 agent 当前 messages）；未传则使用 agent 持有的 messages。
+   * send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
+   */
+  messages?: CoreMessage[]
   /**
    * 发送模式；可选，默认 build（非法值亦回退 build）。
    */
   composerMode?: AgentComposerMode
-  /**
-   * 本轮已解析的聊天模型。
-   * 可选；未传时回退 createAgent 时注入的 provider。
-   */
-  provider?: LanguageModel
   /**
    * 取消控制器；可选，未传时内部新建 AbortController。
    * 宿主若需外部取消（如 Stop），应自行传入并持有引用。
@@ -169,15 +161,15 @@ export type AgentRunResult = {
  */
 export type Agent = {
   /**
-   * 当前会话消息；创建时来自 CreateAgentOptions.messages。
+   * 当前会话消息；初始为 []，也可由 send 的 input.messages 覆盖。
    * send 会追加本轮用户消息，成功后写回含助手回复的完整轨迹，可直接再 send。
    */
   messages: CoreMessage[]
   /**
-   * 发起一次 run：`send(userText, options?)`。
+   * 发起一次 run：`send(userText, input)`。
    * 内部更新 messages；同会话互斥由宿主保证，不同会话可并行。
    */
-  send: (userText: string, input?: AgentRunInput) => Promise<AgentRunResult>
+  send: (userText: string, input: AgentRunInput) => Promise<AgentRunResult>
 }
 
 /**
@@ -185,17 +177,13 @@ export type Agent = {
  *
  * 系统 prompt 在本函数内与工作区 prompt、宿主 extras、记忆段、批准计划合并。
  *
- * @param options - 创建配置；provider 必填
+ * @param options - 创建配置
  * @returns 可 send 的 agent 实例
  */
-export function createAgent(options: CreateAgentOptions): Agent {
+export function createAgent(options: CreateAgentOptions = {}): Agent {
   const defaultCwd = options.cwd?.trim() || ''
-  const defaultProvider = options.provider
   const resolveCapabilities = options.resolveCapabilities
   const inner = createBaseAgent(defaultCwd ? { cwd: defaultCwd } : {})
-  if (options.messages) {
-    inner.messages = options.messages
-  }
 
   /**
    * 发起一次 agent run：合并工作区工具与宿主能力 → 委托 createBaseAgent.send。
@@ -205,7 +193,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
    * @returns 运行结束后的 messages 与助手文本
    * @throws 消息为空、无工作区、运行失败或取消时抛出
    */
-  async function send(userText: string, input: AgentRunInput = {}): Promise<AgentRunResult> {
+  async function send(userText: string, input: AgentRunInput): Promise<AgentRunResult> {
     const trimmed = userText.trim()
     if (!trimmed) {
       throw new Error('userText is empty')
@@ -220,7 +208,8 @@ export function createAgent(options: CreateAgentOptions): Agent {
     }
 
     const composerMode = normalizeComposerMode(input.composerMode)
-    const provider: LanguageModel = input.provider ?? defaultProvider
+    const provider = input.provider
+    const conversation = input.messages ?? inner.messages
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
     const resolved = resolveCapabilities
@@ -253,7 +242,7 @@ export function createAgent(options: CreateAgentOptions): Agent {
     return inner.send(userText, {
       provider,
       abortController: input.abortController,
-      messages: [{ role: 'system', content: runPrompt }, ...inner.messages],
+      messages: [{ role: 'system', content: runPrompt }, ...conversation],
       tools,
       toolsMode: 'replace',
       onTextDelta: input.onTextDelta,

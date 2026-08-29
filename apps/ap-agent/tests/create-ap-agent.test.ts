@@ -28,31 +28,34 @@ describe('createApAgent', () => {
   })
 
   it('返回含 send 的实例，不含 mcp', () => {
-    const agent = createApAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createApAgent({ cwd: '/tmp/ws' })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
     expect(agent.messages).toEqual([])
   })
 
-  it('可注入初始 messages', () => {
-    const agent = createApAgent({
+  it('send 可通过 messages 注入本轮起点历史', async () => {
+    const agent = createApAgent({ cwd: '/tmp/ws' })
+
+    const result = await agent.send('next', {
       provider: stubModel,
-      cwd: '/tmp/ws',
-      messages: [{ role: 'user', content: 'hi' }]
+      messages: [{ role: 'user', content: 'prev' }],
+      composerMode: 'ask'
     })
-    expect(agent.messages).toEqual([{ role: 'user', content: 'hi' }])
+
+    expect(result.messages).toEqual([
+      { role: 'user', content: 'prev' },
+      { role: 'user', content: 'next' },
+      { role: 'assistant', content: 'hello' }
+    ])
+    expect(agent.messages).toEqual(result.messages)
   })
 
   it('send 能跑通', async () => {
-    const agent = createApAgent({
-      provider: stubModel,
-      cwd: '/tmp/ws'
-    })
+    const agent = createApAgent({ cwd: '/tmp/ws' })
 
     const result = await agent.send('ping', {
+      provider: stubModel,
       composerMode: 'ask',
       abortController: new AbortController(),
       terminalKey: 'term:s1',
