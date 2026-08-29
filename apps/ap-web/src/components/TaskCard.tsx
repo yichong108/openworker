@@ -2,34 +2,18 @@
 
 import { useEffect, useState } from 'react'
 
-import type { TaskColumn, TaskDetail, TaskPriority, TaskSummary } from '@/lib/task-types'
-import { COLUMN_LABELS } from '@/lib/task-types'
+import type { TaskColumn, TaskSummary } from '@/lib/task-types'
 
-import { ApInput } from '@/components/antd/ApInput'
-import { ApPriorityRadio } from '@/components/antd/ApPriorityRadio'
-import { ApTextArea } from '@/components/antd/ApTextArea'
 import { PRIORITY_BADGE_CLASS } from '@/lib/task-priority-style'
 
 import type { TaskChatHint } from './chat/chat-types'
-import { columnAccent } from '@/lib/task-column-style'
 
 type TaskCardProps = {
   task: TaskSummary
-  expanded: boolean
-  detail: TaskDetail | undefined
-  loading: boolean
-  error: string | null
-  saving: boolean
   chat: TaskChatHint
-  onToggle: () => void
-  onCollapse: () => void
+  onEdit: () => void
   onMove: (status: TaskColumn) => void
   onOpenChat: () => void
-  onUpdate: (input: {
-    title: string
-    priority: TaskPriority
-    humanNotes: string
-  }) => Promise<boolean>
   onDelete: () => void
 }
 
@@ -157,50 +141,8 @@ function StopIcon() {
 /**
  * 单张任务卡片
  */
-export function TaskCard({
-  task,
-  expanded,
-  detail,
-  loading,
-  error,
-  saving,
-  chat,
-  onToggle,
-  onCollapse,
-  onMove,
-  onOpenChat,
-  onUpdate,
-  onDelete
-}: TaskCardProps) {
-  const [editing, setEditing] = useState(false)
-  const [pendingEdit, setPendingEdit] = useState(false)
-  const [title, setTitle] = useState(task.title)
-  const [priority, setPriority] = useState<TaskPriority>(task.priority)
-  const [humanNotes, setHumanNotes] = useState('')
+export function TaskCard({ task, chat, onEdit, onMove, onOpenChat, onDelete }: TaskCardProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
-
-  useEffect(() => {
-    if (!expanded) {
-      setEditing(false)
-      setPendingEdit(false)
-    }
-  }, [expanded])
-
-  useEffect(() => {
-    if (!detail || editing) return
-    setTitle(detail.title)
-    setPriority(detail.priority)
-    setHumanNotes(detail.humanNotes)
-  }, [detail, editing])
-
-  useEffect(() => {
-    if (!pendingEdit || loading || !detail) return
-    setTitle(detail.title)
-    setPriority(detail.priority)
-    setHumanNotes(detail.humanNotes)
-    setEditing(true)
-    setPendingEdit(false)
-  }, [pendingEdit, loading, detail])
 
   useEffect(() => {
     if (!contextMenu) return
@@ -221,29 +163,11 @@ export function TaskCard({
     }
   }, [contextMenu])
 
-  const startEdit = () => {
-    if (!detail) return
-    setTitle(detail.title)
-    setPriority(detail.priority)
-    setHumanNotes(detail.humanNotes)
-    setEditing(true)
-  }
-
-  const requestEdit = () => {
-    setContextMenu(null)
-    if (!expanded) onToggle()
-    if (detail && !loading) {
-      startEdit()
-      return
-    }
-    setPendingEdit(true)
-  }
-
   const updatedAtLabel = formatUpdatedAt(task.updatedAt)
 
   return (
     <article
-      draggable={!expanded}
+      draggable
       onDragStart={(event) => {
         if ((event.target as HTMLElement).closest('[data-chat-trigger], [data-run-trigger]')) {
           event.preventDefault()
@@ -261,18 +185,13 @@ export function TaskCard({
         const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8)
         setContextMenu({ x: Math.max(8, x), y: Math.max(8, y) })
       }}
-      className={`rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition-shadow ${
-        expanded ? 'shadow-lift' : 'hover:shadow-lift'
-      }`}
+      className="rounded-xl bg-[var(--paper)] text-[var(--ink)] shadow-card transition-shadow hover:shadow-lift"
     >
       <div className="flex items-start">
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3 text-left"
-          onClick={() => {
-            if (editing) return
-            onToggle()
-          }}
+          className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 px-3 py-3 text-left"
+          onClick={onEdit}
         >
           <span
             className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${PRIORITY_CLASS[task.priority]}`}
@@ -323,135 +242,6 @@ export function TaskCard({
         ) : null}
       </div>
 
-      {expanded ? (
-        <div className="border-t border-black/10 px-3 pb-3 pt-2">
-          {loading ? <p className="text-sm text-[var(--ink-soft)]">加载详情…</p> : null}
-          {error ? <p className="text-sm text-[var(--rust)]">{error}</p> : null}
-          {detail && !loading && editing ? (
-            <form
-              className="space-y-3 text-sm"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const notes = humanNotes.trim()
-                if (!notes) return
-                void onUpdate({
-                  title: title.trim(),
-                  priority,
-                  humanNotes: notes
-                }).then((ok) => {
-                  if (ok) setEditing(false)
-                })
-              }}
-            >
-              <label className="block font-medium">
-                <span className="flex items-center gap-1.5">
-                  备注
-                  <span
-                    className="font-display text-base leading-none text-[var(--rust)]"
-                    aria-hidden
-                  >
-                    *
-                  </span>
-                  <span className="text-[11px] font-normal text-[var(--ink-soft)]">必填</span>
-                </span>
-                <ApTextArea
-                  value={humanNotes}
-                  onChange={setHumanNotes}
-                  required
-                  autoFocus
-                  rows={5}
-                  className="mt-1 resize-y text-[13px]"
-                  placeholder="要做什么"
-                />
-              </label>
-              <label className="block font-medium">
-                名称
-                <ApInput
-                  value={title}
-                  onChange={setTitle}
-                  className="mt-1 text-[13px]"
-                  placeholder="非必填，留空则保留原名称"
-                />
-              </label>
-              <div className="block font-medium">
-                <span id={`task-priority-label-${task.id}`}>优先级</span>
-                <ApPriorityRadio
-                  aria-labelledby={`task-priority-label-${task.id}`}
-                  value={priority}
-                  onChange={setPriority}
-                  disabled={saving}
-                  className="mt-1"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-md px-2 py-1 text-[11px] text-[var(--ink-soft)] hover:bg-black/5"
-                  disabled={saving}
-                  onClick={() => setEditing(false)}
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-md bg-[var(--ink)] px-3 py-1 text-[11px] text-[var(--paper)] disabled:opacity-60"
-                  disabled={saving}
-                >
-                  {saving ? '保存中…' : '保存'}
-                </button>
-              </div>
-            </form>
-          ) : null}
-          {detail && !loading && !editing ? (
-            <div className="space-y-3 text-sm leading-6">
-              <DetailBlock title="Human Notes" body={detail.humanNotes || '（空）'} />
-              <DetailBlock title="Agent Notes" body={detail.agentNotes || '（空）'} />
-            </div>
-          ) : null}
-
-          {!editing ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                className="text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline disabled:opacity-40"
-                disabled={!detail || loading}
-                onClick={startEdit}
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                className="ml-auto text-[11px] text-[var(--ink-soft)] underline-offset-2 hover:underline"
-                onClick={onCollapse}
-              >
-                收起
-              </button>
-            </div>
-          ) : null}
-
-          <div className="mt-3 border-t border-black/10 pt-3">
-            <p className="truncate font-mono text-[11px] text-[var(--ink-soft)]">{task.fileName}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(['todo', 'doing', 'done', 'blocked'] as TaskColumn[]).map((column) => (
-                <button
-                  key={column}
-                  type="button"
-                  disabled={column === task.status || editing}
-                  onClick={() => onMove(column)}
-                  className="rounded-md px-2 py-1 text-[11px] disabled:opacity-40"
-                  style={{
-                    background: column === task.status ? columnAccent(column) : 'rgba(0,0,0,0.06)',
-                    color: column === task.status ? '#fff' : 'var(--ink-soft)'
-                  }}
-                >
-                  {COLUMN_LABELS[column]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <div className="block px-3 pb-3">
         <button
           type="button"
@@ -498,7 +288,10 @@ export function TaskCard({
             type="button"
             role="menuitem"
             className="block w-full px-3 py-1.5 text-left hover:bg-black/5"
-            onClick={requestEdit}
+            onClick={() => {
+              setContextMenu(null)
+              onEdit()
+            }}
           >
             编辑
           </button>
@@ -516,18 +309,5 @@ export function TaskCard({
         </div>
       ) : null}
     </article>
-  )
-}
-
-function DetailBlock({ title, body }: { title: string; body: string }) {
-  return (
-    <section>
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-        {title}
-      </h3>
-      <pre className="mt-1 whitespace-pre-wrap break-words font-body text-[13px] text-[var(--ink)]">
-        {body}
-      </pre>
-    </section>
   )
 }

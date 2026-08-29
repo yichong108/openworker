@@ -4,23 +4,21 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { request } from '@/lib/request'
 import { taskApiPath } from '@/lib/task-paths'
-import type { TaskBoardPayload, TaskColumn, TaskDetail, TaskPriority } from '@/lib/task-types'
+import type {
+  TaskBoardPayload,
+  TaskColumn,
+  TaskDetail,
+  TaskPriority,
+  TaskSummary
+} from '@/lib/task-types'
 import { TASK_COLUMNS } from '@/lib/task-types'
 
 import type { TaskChatHint } from './chat/chat-types'
 import { AiChatDialog } from './chat/AiChatDialog'
 import { ConfigDialog } from './ConfigDialog'
+import { EditTaskDialog } from './EditTaskDialog'
 import { TaskColumnView } from './TaskColumn'
 import { ToolsColumn } from './ToolsColumn'
-
-type ExpandedMap = Record<TaskColumn, string | null>
-
-const EMPTY_EXPANDED: ExpandedMap = {
-  todo: null,
-  doing: null,
-  done: null,
-  blocked: null
-}
 
 /**
  * 从接口 JSON 中取出 error 字段，否则返回回退文案。
@@ -47,10 +45,11 @@ function readErrorMessage(payload: unknown, fallback: string): string {
 export function TaskBoard() {
   const [board, setBoard] = useState<TaskBoardPayload | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<ExpandedMap>(EMPTY_EXPANDED)
+  const [editingTask, setEditingTask] = useState<TaskSummary | null>(null)
   const [details, setDetails] = useState<Record<string, TaskDetail>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<Record<string, string>>({})
+  const [editSaveError, setEditSaveError] = useState<string | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const [configAuthError, setConfigAuthError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
@@ -62,8 +61,8 @@ export function TaskBoard() {
   } | null>(null)
   const detailsRef = useRef(details)
   detailsRef.current = details
-  const expandedRef = useRef(expanded)
-  expandedRef.current = expanded
+  const editingTaskRef = useRef(editingTask)
+  editingTaskRef.current = editingTask
 
   const fetchDetail = useCallback(async (id: string) => {
     setLoadingId(id)
@@ -93,21 +92,17 @@ export function TaskBoard() {
     (payload: TaskBoardPayload) => {
       setBoard(payload)
       setLoadError(null)
-      const current = expandedRef.current
-      const next: ExpandedMap = { ...current }
-      const toRefetch: string[] = []
-      for (const column of TASK_COLUMNS) {
-        const id = next[column]
-        if (!id) continue
-        if (!payload[column].some((task) => task.id === id)) {
-          next[column] = null
-          continue
+      const editingId = editingTaskRef.current?.id
+      setEditingTask((current) => {
+        if (!current) return null
+        for (const column of TASK_COLUMNS) {
+          const match = payload[column].find((task) => task.id === current.id)
+          if (match) return match
         }
-        if (detailsRef.current[id]) toRefetch.push(id)
-      }
-      setExpanded(next)
-      for (const id of toRefetch) {
-        void fetchDetail(id)
+        return null
+      })
+      if (editingId && detailsRef.current[editingId]) {
+        void fetchDetail(editingId)
       }
     },
     [fetchDetail]
@@ -175,23 +170,16 @@ export function TaskBoard() {
     }
   }, [])
 
-  const toggleCard = useCallback(
-    (column: TaskColumn, id: string) => {
-      const collapsing = expanded[column] === id
-      setExpanded((current) => ({
-        ...current,
-        [column]: collapsing ? null : id
-      }))
-      if (!collapsing && !detailsRef.current[id]) {
-        void fetchDetail(id)
+  const openEditTask = useCallback(
+    (task: TaskSummary) => {
+      setEditSaveError(null)
+      setEditingTask(task)
+      if (!detailsRef.current[task.id]) {
+        void fetchDetail(task.id)
       }
     },
-    [expanded, fetchDetail]
+    [fetchDetail]
   )
-
-  const collapseColumn = useCallback((column: TaskColumn) => {
-    setExpanded((current) => ({ ...current, [column]: null }))
-  }, [])
 
   const onAiAuthError = useCallback((message: string) => {
     setConfigAuthError(message)
@@ -214,7 +202,6 @@ export function TaskBoard() {
         setLoadError(readErrorMessage(payload, '无法移动任务'))
         return
       }
-      setExpanded(EMPTY_EXPANDED)
       if (payload.agentError) {
         setLoadError(payload.agentError)
         if (payload.code === 'ai_auth') {
@@ -229,37 +216,59 @@ export function TaskBoard() {
     [refresh]
   )
 
-  const updateTask = useCallback(
-    async (
-      id: string,
-      input: { title: string; priority: TaskPriority; humanNotes: string }
-    ): Promise<boolean> => {
+  const saveEditedTask = useCallback(
+    async (input: {
+      title: string
+      priority: TaskPriority
+      humanNotes: string
+      status: TaskColumn
+    }) => {
+      if (!editingTask) return
+      const id = editingTask.id
       setSavingId(id)
+      setEditSaveError(null)
       try {
+        const body: Record<string, string> = {
+          title: input.title,
+          priority: input.priority,
+          humanNotes: input.humanNotes
+        }
+        if (input.status !== editingTask.status) {
+          body.status = input.status
+        }
         const response = await request(taskApiPath(id), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input)
+          body: JSON.stringify(body)
         })
         const payload = (await response.json()) as TaskDetail & {
           error?: string
+          agentError?: string
+          code?: string
         }
         if (!response.ok) {
-          setLoadError(readErrorMessage(payload, '无法保存任务'))
-          return false
+          setEditSaveError(readErrorMessage(payload, '无法保存任务'))
+          return
         }
-        setDetails((current) => ({ ...current, [id]: payload }))
-        setLoadError(null)
+        setDetails((current) => ({ ...current, [payload.id]: payload }))
+        if (payload.agentError) {
+          setLoadError(payload.agentError)
+          if (payload.code === 'ai_auth') {
+            setConfigAuthError(payload.agentError)
+            setConfigOpen(true)
+          }
+        } else {
+          setLoadError(null)
+        }
+        setEditingTask(null)
         await refresh()
-        return true
       } catch (error) {
-        setLoadError(error instanceof Error ? error.message : '无法保存任务')
-        return false
+        setEditSaveError(error instanceof Error ? error.message : '无法保存任务')
       } finally {
         setSavingId(null)
       }
     },
-    [refresh]
+    [editingTask, refresh]
   )
 
   const deleteTask = useCallback(
@@ -272,16 +281,10 @@ export function TaskBoard() {
           return
         }
         setChatTask((current) => (current?.id === id ? null : current))
+        setEditingTask((current) => (current?.id === id ? null : current))
         setDetails((current) => {
           const next = { ...current }
           delete next[id]
-          return next
-        })
-        setExpanded((current) => {
-          const next = { ...current }
-          for (const column of TASK_COLUMNS) {
-            if (next[column] === id) next[column] = null
-          }
           return next
         })
         setLoadError(null)
@@ -333,14 +336,8 @@ export function TaskBoard() {
                 key={column}
                 column={column}
                 tasks={board[column]}
-                expandedId={expanded[column]}
-                details={details}
-                loadingId={loadingId}
-                detailError={detailError}
-                savingId={savingId}
                 chatHints={chatHints}
-                onToggle={toggleCard}
-                onCollapse={collapseColumn}
+                onEdit={openEditTask}
                 onMove={moveTask}
                 onDropTask={moveTask}
                 onOpenChat={(task) => {
@@ -352,7 +349,6 @@ export function TaskBoard() {
                     })
                   })
                 }}
-                onUpdate={updateTask}
                 onDelete={(id) => void deleteTask(id)}
                 onTaskCreated={refresh}
               />
@@ -368,6 +364,20 @@ export function TaskBoard() {
         <ToolsColumn onAiAuthError={onAiAuthError} />
       </div>
 
+      <EditTaskDialog
+        open={Boolean(editingTask)}
+        task={editingTask}
+        detail={editingTask ? details[editingTask.id] : undefined}
+        loading={Boolean(editingTask && loadingId === editingTask.id)}
+        loadError={editingTask ? (detailError[editingTask.id] ?? null) : null}
+        busy={Boolean(editingTask && savingId === editingTask.id)}
+        saveError={editSaveError}
+        onClose={() => {
+          setEditingTask(null)
+          setEditSaveError(null)
+        }}
+        onSubmit={(input) => void saveEditedTask(input)}
+      />
       <ConfigDialog
         open={configOpen}
         authError={configAuthError}
