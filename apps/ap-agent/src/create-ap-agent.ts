@@ -12,7 +12,7 @@ export type CreateApAgentOptions = Omit<CreateAgentOptions, 'resolveCapabilities
 /**
  * 创建 AP 产品 Agent 实例。
  *
- * 仅透传 createAgent 的 provider / messages / local，不装配 MCP、Skills 等额外能力。
+ * 仅透传 createAgent 的 provider / messages / cwd，不装配 MCP、Skills 等额外能力。
  *
  * @param options - 创建配置；provider 必填
  * @returns 可 send 的 agent 实例

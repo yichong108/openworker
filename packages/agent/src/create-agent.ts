@@ -14,14 +14,6 @@ import { wrapToolExecuteForContext, wrapToolOnTool } from './tool-context.js'
 import { buildWorkspaceTools } from './workspace-tools.js'
 
 /**
- * createAgent 本地运行环境配置。
- */
-export type CreateAgentLocalOptions = {
-  /** 工作区根目录；send 时若未指定 workspacePath 则使用此值 */
-  cwd?: string
-}
-
-/**
  * 单次 run 的 Tavily 联网搜索配置。
  *
  * 由宿主从应用设置等注入。
@@ -59,14 +51,14 @@ export type ResolveAgentCapabilities = (
 /**
  * createAgent 配置项。
  *
- * provider 必填；messages / local 可选。工作区根须由 local.cwd 或 send.workspacePath 显式提供。
+ * provider 必填；messages / cwd 可选。工作区根须由 cwd 或 send.workspacePath 显式提供。
  *
  * @example
  * ```ts
  * const agent = createAgent({
  *   provider: model,
  *   messages: history,
- *   local: { cwd: '/path/to/workspace' }
+ *   cwd: '/path/to/workspace'
  * })
  * await agent.send('hi', { composerMode: 'build' })
  * ```
@@ -79,8 +71,8 @@ export type CreateAgentOptions = {
    * 可选，默认 []。send 会追加本轮用户消息并在结束后写回完整轨迹，以支持连续 send。
    */
   messages?: CoreMessage[]
-  /** 本地运行环境；可选。cwd 缺省时须在 send 传入 workspacePath */
-  local?: CreateAgentLocalOptions
+  /** 工作区根目录；send 时若未指定 workspacePath 则使用此值 */
+  cwd?: string
   /** 本轮额外工具与 prompt；未传则仅工作区工具 */
   resolveCapabilities?: ResolveAgentCapabilities
 }
@@ -108,7 +100,7 @@ export type AgentRunInput = {
   abortController?: AbortController
   /**
    * 本轮工作区根目录绝对路径。
-   * 优先于 createAgent local.cwd；均未提供时抛错。
+   * 优先于 createAgent cwd；均未提供时抛错。
    */
   workspacePath?: string
   /**
@@ -188,9 +180,6 @@ export type Agent = {
   send: (userText: string, input?: AgentRunInput) => Promise<AgentRunResult>
 }
 
-/** createAgent 未传 local 时的默认值 */
-const DEFAULT_LOCAL: CreateAgentLocalOptions = {}
-
 /**
  * 创建通用产品 agent 实例。
  *
@@ -200,8 +189,7 @@ const DEFAULT_LOCAL: CreateAgentLocalOptions = {}
  * @returns 可 send 的 agent 实例
  */
 export function createAgent(options: CreateAgentOptions): Agent {
-  const local = options.local ?? DEFAULT_LOCAL
-  const defaultCwd = local.cwd?.trim() || ''
+  const defaultCwd = options.cwd?.trim() || ''
   const defaultProvider = options.provider
   const resolveCapabilities = options.resolveCapabilities
   const inner = createBaseAgent(defaultCwd ? { cwd: defaultCwd } : {})
@@ -226,18 +214,23 @@ export function createAgent(options: CreateAgentOptions): Agent {
     const onTool = wrapToolOnTool(input.onTool ?? (() => {}))
     const { maxSteps, invokeTimeoutMs, tools: hostTools } = input
 
+    const workspaceRoot = input.workspacePath?.trim() || defaultCwd
+    if (!workspaceRoot) {
+      throw new Error('workspacePath is required')
+    }
+
     const composerMode = normalizeComposerMode(input.composerMode)
     const provider: LanguageModel = input.provider ?? defaultProvider
     const tavilyApiKey = input.tavily?.apiKey?.trim() || undefined
 
     const resolved = resolveCapabilities
-      ? await resolveCapabilities({ composerMode, workspaceRoot: defaultCwd, onTool })
+      ? await resolveCapabilities({ composerMode, workspaceRoot, onTool })
       : { tools: {}, promptExtras: {} }
     const extraTools = resolved.tools ?? {}
     const promptExtras = resolved.promptExtras ?? {}
 
     const workspaceTools = buildWorkspaceTools({
-      root: defaultCwd,
+      root: workspaceRoot,
       tavilyApiKey,
       onTool,
       mode: composerMode
@@ -246,7 +239,12 @@ export function createAgent(options: CreateAgentOptions): Agent {
       mergeToolSets(workspaceTools, extraTools, hostTools ?? {})
     )
 
-    const basePrompt = buildWorkspaceRunPrompt(composerMode, defaultCwd, tavilyApiKey, promptExtras)
+    const basePrompt = buildWorkspaceRunPrompt(
+      composerMode,
+      workspaceRoot,
+      tavilyApiKey,
+      promptExtras
+    )
     const memorySection = input.memorySystemSection?.trim()
     const approvedPlanSection =
       composerMode === 'build' ? buildApprovedPlanSystemSection(input.planMarkdown ?? '') : ''

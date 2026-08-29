@@ -332,7 +332,7 @@ export class ApAgentWithAGUI extends AbstractAgent {
     }
     const trimmedCwd = cwd?.trim()
     if (trimmedCwd) {
-      apOptions.local = { cwd: trimmedCwd }
+      apOptions.cwd = trimmedCwd
     }
     this.inner = createApAgent(apOptions)
   }

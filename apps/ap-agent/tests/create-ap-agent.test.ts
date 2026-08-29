@@ -30,7 +30,7 @@ describe('createApAgent', () => {
   it('返回含 send 的实例，不含 mcp', () => {
     const agent = createApAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
@@ -40,7 +40,7 @@ describe('createApAgent', () => {
   it('可注入初始 messages', () => {
     const agent = createApAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' },
+      cwd: '/tmp/ws',
       messages: [{ role: 'user', content: 'hi' }]
     })
     expect(agent.messages).toEqual([{ role: 'user', content: 'hi' }])
@@ -49,7 +49,7 @@ describe('createApAgent', () => {
   it('send 能跑通', async () => {
     const agent = createApAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
 
     const result = await agent.send('ping', {

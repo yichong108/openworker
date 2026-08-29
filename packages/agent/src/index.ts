@@ -11,7 +11,6 @@ export {
   type AgentRunInput,
   type AgentRunResult,
   type AgentRunTavilyOptions,
-  type CreateAgentLocalOptions,
   type CreateAgentOptions,
   type ResolveAgentCapabilities,
   type ResolveAgentCapabilitiesContext

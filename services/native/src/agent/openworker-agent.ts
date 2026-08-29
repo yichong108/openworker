@@ -61,7 +61,7 @@ export class OpenWorkerAgent {
     this.inner = createAgent({
       provider: config.provider ?? PLACEHOLDER_PROVIDER,
       ...(config.messages ? { messages: config.messages } : {}),
-      ...(cwd ? { local: { cwd } } : {}),
+      ...(cwd ? { cwd } : {}),
       resolveCapabilities: resolveOpenWorkerCapabilities
     })
 

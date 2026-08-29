@@ -38,7 +38,7 @@ describe('createAgent', () => {
   it('返回含 send 的实例，不含 mcp', () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     expect(agent.send).toBeTypeOf('function')
     expect(agent).not.toHaveProperty('mcp')
@@ -48,16 +48,16 @@ describe('createAgent', () => {
   it('createAgent 可注入初始 messages', () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' },
+      cwd: '/tmp/ws',
       messages: [{ role: 'user', content: 'hi' }]
     })
     expect(agent.messages).toEqual([{ role: 'user', content: 'hi' }])
   })
 
-  it('send 未传 workspacePath 时回退 local.cwd', async () => {
+  it('send 未传 workspacePath 时回退 cwd', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     const callbacks = createCallbacks()
 
@@ -86,7 +86,7 @@ describe('createAgent', () => {
   it('send 优先使用本轮 workspacePath', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     const callbacks = createCallbacks()
 
@@ -101,7 +101,7 @@ describe('createAgent', () => {
     expect(runPrompt).toContain('工作区根目录：/other/root')
   })
 
-  it('send 无 workspacePath 且无 local.cwd 时抛错', async () => {
+  it('send 无 workspacePath 且无 cwd 时抛错', async () => {
     const agent = createAgent({ provider: stubModel })
     await expect(agent.send('hi')).rejects.toThrow('workspacePath is required')
   })
@@ -109,7 +109,7 @@ describe('createAgent', () => {
   it('send 空 userText 抛错', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     await expect(agent.send('   ')).rejects.toThrow('userText is empty')
   })
@@ -117,7 +117,7 @@ describe('createAgent', () => {
   it('send 成功时写回 messages', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' },
+      cwd: '/tmp/ws',
       messages: [{ role: 'user', content: 'prev' }]
     })
     const callbacks = createCallbacks()
@@ -138,7 +138,7 @@ describe('createAgent', () => {
   it('send 取消时抛错且不写回助手消息', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     const callbacks = createCallbacks()
     const abortController = new AbortController()
@@ -161,7 +161,7 @@ describe('createAgent', () => {
   it('失败时 send 抛错', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     const callbacks = createCallbacks()
     const boom = new Error('model failed')
@@ -178,7 +178,7 @@ describe('createAgent', () => {
   it('未注入 resolveCapabilities 时不出现技能摘要', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     await agent.send('修一下报错', { composerMode: 'build' })
 
@@ -191,7 +191,7 @@ describe('createAgent', () => {
     const extraExecute = vi.fn(async () => 'ok')
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' },
+      cwd: '/tmp/ws',
       resolveCapabilities: async () => ({
         tools: {
           extra_tool: {
@@ -217,7 +217,7 @@ describe('createAgent', () => {
   it('ask 模式不暴露 shell', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     await agent.send('这段代码做什么？', { composerMode: 'ask' })
 
@@ -229,7 +229,7 @@ describe('createAgent', () => {
   it('plan 模式使用计划 prompt', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     await agent.send('设计会话压缩', { composerMode: 'plan' })
 
@@ -241,7 +241,7 @@ describe('createAgent', () => {
   it('build 注入 planMarkdown 到 system prompt', async () => {
     const agent = createAgent({
       provider: stubModel,
-      local: { cwd: '/tmp/ws' }
+      cwd: '/tmp/ws'
     })
     await agent.send('执行', {
       composerMode: 'build',
