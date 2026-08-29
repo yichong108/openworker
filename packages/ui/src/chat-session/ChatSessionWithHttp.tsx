@@ -1,7 +1,7 @@
 import type { BaseEvent } from '@ag-ui/client'
 import type { AgentComposerMode } from '@openworker/shared'
 import { App as AntdApp } from 'antd'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   applyAguiEvent,
@@ -12,7 +12,13 @@ import {
   type LiveAgentSession
 } from './apply-agui-event.js'
 import { ChatSessionView } from './ChatSessionView.js'
-import type { ChatSessionMessage, ChatSessionWithHttpProps } from './types.js'
+import {
+  applySkillSlashSelection,
+  filterSkillsByQuery,
+  findActiveSlashSkillToken,
+  type SlashSkillToken
+} from './composer-slash-skills.js'
+import type { ChatComposerSkill, ChatSessionMessage, ChatSessionWithHttpProps } from './types.js'
 
 function toRunMessages(messages: ChatSessionMessage[]) {
   return messages
@@ -61,6 +67,7 @@ export function ChatSessionWithHttp({
   onRunRequest,
   onStopRequest,
   onListenRequest,
+  loadSkills,
   sessionKey = 'http-session',
   className,
   snapshot,
@@ -73,6 +80,8 @@ export function ChatSessionWithHttp({
   const serverTruth = Boolean(snapshot)
   const listenRef = useRef(onListenRequest)
   listenRef.current = onListenRequest
+  const loadSkillsRef = useRef(loadSkills)
+  loadSkillsRef.current = loadSkills
   const initialSession = buildInitialSession({
     initialMessages,
     initialLiveEvents,
@@ -86,8 +95,73 @@ export function ChatSessionWithHttp({
   const [liveEvents, setLiveEvents] = useState(initialSession.liveEvents)
   const [isRun, setIsRun] = useState(initialSession.isRun)
   const [runStats, setRunStats] = useState(initialSession.runStats)
+  const [skills, setSkills] = useState<ChatComposerSkill[]>([])
+  const [skillsLoading, setSkillsLoading] = useState(false)
+  const [slashToken, setSlashToken] = useState<SlashSkillToken | null>(null)
+  const [skillMenuActiveIndex, setSkillMenuActiveIndex] = useState(0)
+  const skillsLoadedRef = useRef(false)
+  const skillsFetchGenRef = useRef(0)
   const sessionRef = useRef<LiveAgentSession>(initialSession)
   const abortRef = useRef<AbortController | null>(null)
+
+  const filteredSkills = useMemo(
+    () => (slashToken && loadSkills ? filterSkillsByQuery(skills, slashToken.query) : []),
+    [loadSkills, skills, slashToken]
+  )
+
+  const ensureSkillsLoaded = useCallback(async () => {
+    const load = loadSkillsRef.current
+    if (!load || skillsLoadedRef.current) return
+    const gen = ++skillsFetchGenRef.current
+    setSkillsLoading(true)
+    try {
+      const list = await load()
+      if (gen !== skillsFetchGenRef.current) return
+      setSkills(Array.isArray(list) ? list : [])
+      skillsLoadedRef.current = true
+    } catch {
+      if (gen !== skillsFetchGenRef.current) return
+      setSkills([])
+    } finally {
+      if (gen === skillsFetchGenRef.current) {
+        setSkillsLoading(false)
+      }
+    }
+  }, [])
+
+  const syncSlashSkillMenu = useCallback((text: string, cursor?: number) => {
+    if (!loadSkillsRef.current) return
+    const pos = cursor ?? text.length
+    setSlashToken(findActiveSlashSkillToken(text, pos))
+  }, [])
+
+  const selectSkill = useCallback(
+    (skill: ChatComposerSkill) => {
+      if (!slashToken) return
+      const { nextText } = applySkillSlashSelection(input, slashToken, skill.name)
+      setInput(nextText)
+      setSlashToken(null)
+    },
+    [input, slashToken]
+  )
+
+  useEffect(() => {
+    if (!slashToken) {
+      skillsLoadedRef.current = false
+      return
+    }
+    setSkillMenuActiveIndex(0)
+  }, [slashToken?.query, slashToken])
+
+  useEffect(() => {
+    if (!slashToken || !loadSkills) return
+    void ensureSkillsLoaded()
+  }, [ensureSkillsLoaded, loadSkills, slashToken])
+
+  useEffect(() => {
+    if (skillMenuActiveIndex < filteredSkills.length) return
+    setSkillMenuActiveIndex(filteredSkills.length > 0 ? filteredSkills.length - 1 : 0)
+  }, [filteredSkills.length, skillMenuActiveIndex])
 
   const flush = useCallback((next: LiveAgentSession) => {
     sessionRef.current = next
@@ -185,6 +259,7 @@ export function ChatSessionWithHttp({
     if (!text || isRun) return
     const user: ChatSessionMessage = { id: nextMessageId('u'), role: 'user', content: text }
     setInput('')
+    setSlashToken(null)
     void runSession([...sessionRef.current.messages, user], text)
   }, [input, isRun, runSession])
 
@@ -230,11 +305,27 @@ export function ChatSessionWithHttp({
       }}
       composer={{
         value: input,
-        onChange: (value) => setInput(value),
+        onChange: (value, cursor) => {
+          setInput(value)
+          syncSlashSkillMenu(value, cursor)
+        },
         onSend: send,
         canSend: input.trim().length > 0,
         composerMode,
-        onComposerModeChange: setComposerMode
+        onComposerModeChange: setComposerMode,
+        ...(loadSkills
+          ? {
+              skillMenu: {
+                open: slashToken != null,
+                skills: filteredSkills,
+                activeIndex: skillMenuActiveIndex,
+                loading: skillsLoading,
+                onSelect: selectSkill,
+                onActiveIndexChange: setSkillMenuActiveIndex,
+                onClose: () => setSlashToken(null)
+              }
+            }
+          : {})
       }}
     />
   )

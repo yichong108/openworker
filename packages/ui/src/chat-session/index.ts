@@ -21,6 +21,12 @@ export { ChatSessionView } from './ChatSessionView.js'
 export { ChatSessionWithHttp } from './ChatSessionWithHttp.js'
 export { ComposerSkillMenu } from './ComposerSkillMenu.js'
 export type { ComposerSkillMenuProps } from './ComposerSkillMenu.js'
+export {
+  applySkillSlashSelection,
+  filterSkillsByQuery,
+  findActiveSlashSkillToken
+} from './composer-slash-skills.js'
+export type { SlashSkillToken } from './composer-slash-skills.js'
 export { MessageTurnItem } from './MessageTurnItem.js'
 export {
   assistantDisplayTimeline,

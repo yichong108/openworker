@@ -165,6 +165,19 @@ export function AiChatDialog({
     }
   }, [fileName])
 
+  const loadSkills = useCallback(async () => {
+    const response = await request('/api/skills')
+    const payload = (await response.json()) as {
+      skills?: Array<{ name: string; summary: string; source?: string }>
+    }
+    if (!response.ok) return []
+    return (payload.skills ?? []).map((skill) => ({
+      name: skill.name,
+      description: skill.summary,
+      source: skill.source ?? 'builtin'
+    }))
+  }, [])
+
   const sessionKey = fileName || readyFileNameRef.current || ''
   const ready = Boolean(sessionKey && hydrated && !hydrating)
   const history = hydrated
@@ -200,6 +213,7 @@ export function AiChatDialog({
                 onListenRequest={onListenRequest}
                 onRunRequest={onRunRequest}
                 onStopRequest={onStopRequest}
+                loadSkills={loadSkills}
               />
             ) : open && fileName ? (
               <div className="flex flex-1 items-center justify-center">

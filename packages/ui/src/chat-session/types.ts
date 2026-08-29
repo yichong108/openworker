@@ -183,4 +183,8 @@ export type ChatSessionWithHttpProps = {
   initialIsRun?: boolean
   /** 挂载时的 run 统计 */
   initialRunStats?: ChatSessionRunStats
+  /**
+   * 打开 `/` 技能菜单时拉取列表；省略则不展示斜杠菜单。
+   */
+  loadSkills?: () => ChatComposerSkill[] | Promise<ChatComposerSkill[]>
 }
