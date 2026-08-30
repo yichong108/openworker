@@ -34,18 +34,9 @@ function toRunMessages(messages: ChatSessionMessage[]) {
 function buildInitialSession(
   props: Pick<
     ChatSessionWithHttpProps,
-    'initialMessages' | 'initialLiveEvents' | 'initialIsRun' | 'initialRunStats' | 'snapshot'
+    'initialMessages' | 'initialLiveEvents' | 'initialIsRun' | 'initialRunStats'
   >
 ): LiveAgentSession {
-  if (props.snapshot) {
-    return {
-      ...emptyLiveSession(),
-      messages: props.snapshot.messages,
-      liveEvents: props.snapshot.liveEvents ?? [],
-      isRun: props.snapshot.isRun ?? false,
-      runStats: props.snapshot.runStats
-    }
-  }
   return {
     ...emptyLiveSession(),
     messages: props.initialMessages ?? [],
@@ -58,7 +49,6 @@ function buildInitialSession(
 /**
  * 自包含聊天会话：内部管 AG-UI 事件与会话状态，run/stop 由宿主回调实现。
  *
- * 传入 snapshot 时界面跟服务端快照走，不再在本地折叠 AG-UI。
  * 传入 onListenRequest 时挂载即订事件流，走 applyAguiEvent（与 playground onEvent 同一套）。
  *
  * @param props - onRunRequest / onStopRequest / onListenRequest
@@ -70,14 +60,12 @@ export function ChatSessionWithHttp({
   loadSkills,
   sessionKey = 'http-session',
   className,
-  snapshot,
   initialMessages,
   initialLiveEvents,
   initialIsRun,
   initialRunStats
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
-  const serverTruth = Boolean(snapshot)
   const listenRef = useRef(onListenRequest)
   listenRef.current = onListenRequest
   const loadSkillsRef = useRef(loadSkills)
@@ -86,8 +74,7 @@ export function ChatSessionWithHttp({
     initialMessages,
     initialLiveEvents,
     initialIsRun,
-    initialRunStats,
-    snapshot
+    initialRunStats
   })
   const [input, setInput] = useState('')
   const [composerMode, setComposerMode] = useState<AgentComposerMode>('build')
@@ -172,18 +159,6 @@ export function ChatSessionWithHttp({
   }, [])
 
   useEffect(() => {
-    if (!snapshot) return
-    flush({
-      ...sessionRef.current,
-      messages: snapshot.messages,
-      liveEvents: snapshot.liveEvents ?? [],
-      isRun: snapshot.isRun ?? false,
-      runStats: snapshot.runStats
-    })
-  }, [flush, snapshot?.isRun, snapshot?.liveEvents, snapshot?.messages, snapshot?.runStats])
-
-  useEffect(() => {
-    if (serverTruth) return
     const listen = listenRef.current
     if (!listen) return
     const abort = new AbortController()
@@ -201,7 +176,7 @@ export function ChatSessionWithHttp({
     return () => {
       abort.abort()
     }
-  }, [flush, serverTruth, sessionKey])
+  }, [flush, sessionKey])
 
   useEffect(() => {
     return () => {
@@ -231,27 +206,25 @@ export function ChatSessionWithHttp({
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
-            if (serverTruth || listening) return
+            if (listening) return
             if (!event || typeof event !== 'object' || !('type' in event)) return
             flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
           }
         })
-        if (!serverTruth && !listening && sessionRef.current.isRun) {
+        if (!listening && sessionRef.current.isRun) {
           flush(finalizeLiveSession(sessionRef.current))
         }
       } catch (error) {
         if (abort.signal.aborted) {
-          if (!serverTruth && !listening) applyStopToSession()
+          if (!listening) applyStopToSession()
           return
         }
         msgApi.error(error instanceof Error ? error.message : String(error))
-        if (!serverTruth) {
-          if (listening) applyStopToSession()
-          else flush(finalizeLiveSession(sessionRef.current))
-        } else flush({ ...sessionRef.current, isRun: false })
+        if (listening) applyStopToSession()
+        else flush(finalizeLiveSession(sessionRef.current))
       }
     },
-    [applyStopToSession, flush, msgApi, onRunRequest, serverTruth]
+    [applyStopToSession, flush, msgApi, onRunRequest]
   )
 
   const send = useCallback(() => {
@@ -270,12 +243,8 @@ export function ChatSessionWithHttp({
         setInput(result.restoredInput)
       }
     })
-    if (serverTruth) {
-      flush({ ...sessionRef.current, isRun: false, liveEvents: [] })
-    } else {
-      applyStopToSession()
-    }
-  }, [applyStopToSession, flush, onStopRequest, serverTruth])
+    applyStopToSession()
+  }, [applyStopToSession, onStopRequest])
 
   return (
     <ChatSessionView

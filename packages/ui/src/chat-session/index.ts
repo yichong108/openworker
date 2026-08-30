@@ -44,7 +44,6 @@ export type {
   ChatSessionListenRequest,
   ChatSessionRunRequest,
   ChatSessionRunStats,
-  ChatSessionSnapshot,
   ChatSessionViewProps,
   ChatSessionWithHttpProps
 } from './types.js'

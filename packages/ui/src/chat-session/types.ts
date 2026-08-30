@@ -152,29 +152,16 @@ export type ChatSessionListenRequest = {
   onEvent: (event: BaseEvent) => void
 }
 
-/** 服务端会话快照（有则界面跟快照走，不再在本地折叠 AG-UI） */
-export type ChatSessionSnapshot = {
-  messages: ChatSessionMessage[]
-  liveEvents?: BaseEvent[]
-  isRun?: boolean
-  runStats?: ChatSessionRunStats
-}
-
 /**
  * 自包含会话组件：内部管 AG-UI 事件与会话状态，传输层通过回调注入。
  */
 export type ChatSessionWithHttpProps = {
   onRunRequest: (request: ChatSessionRunRequest) => void | Promise<void>
   onStopRequest: () => void | Promise<void | { restoredInput?: string }>
-  /**
-   * 挂载后订这一路 AG-UI 事件（打开弹窗即连，不经过 send）。
-   * 有 snapshot 时不调用。
-   */
+  /** 挂载后订这一路 AG-UI 事件（打开弹窗即连，不经过 send）。 */
   onListenRequest?: (request: ChatSessionListenRequest) => void | Promise<void>
   sessionKey?: string | null
   className?: string
-  /** 服务端快照；传入后消息/running 以快照为准 */
-  snapshot?: ChatSessionSnapshot
   /** 挂载时的历史消息（仅初值，之后由组件内部维护） */
   initialMessages?: ChatSessionMessage[]
   /** 挂载时的未落盘 AG-UI 事件 */
