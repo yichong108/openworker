@@ -67,7 +67,14 @@ export function ChatSessionWithHttp({
   initialMessages,
   initialLiveEvents,
   initialIsRun,
-  initialRunStats
+  initialRunStats,
+  emptyToolbar,
+  sendDisabled = false,
+  onOpenExternal,
+  onInputChange,
+  onRunStateChange,
+  plan,
+  sendTextRef
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
   const loadSkillsRef = useRef(loadSkills)
@@ -94,6 +101,14 @@ export function ChatSessionWithHttp({
   const abortRef = useRef<AbortController | null>(null)
   const onRunRequestRef = useRef(onRunRequest)
   onRunRequestRef.current = onRunRequest
+  const composerModeRef = useRef<AgentComposerMode>('build')
+  composerModeRef.current = composerMode
+  const onOpenExternalRef = useRef(onOpenExternal)
+  onOpenExternalRef.current = onOpenExternal
+  const onInputChangeRef = useRef(onInputChange)
+  onInputChangeRef.current = onInputChange
+  const onRunStateChangeRef = useRef(onRunStateChange)
+  onRunStateChangeRef.current = onRunStateChange
 
   const filteredSkills = useMemo(
     () => (slashToken && loadSkills ? filterSkillsByQuery(skills, slashToken.query) : []),
@@ -155,11 +170,15 @@ export function ChatSessionWithHttp({
   }, [filteredSkills.length, skillMenuActiveIndex])
 
   const flush = useCallback((next: LiveAgentSession) => {
+    const prevIsRun = sessionRef.current.isRun
     sessionRef.current = next
     setMessages(next.messages)
     setLiveEvents(next.liveEvents)
     setIsRun(next.isRun)
     setRunStats(next.runStats)
+    if (prevIsRun !== next.isRun) {
+      onRunStateChangeRef.current?.(next.isRun)
+    }
   }, [])
 
   const applyAguiEventToSession = useCallback(
@@ -183,6 +202,7 @@ export function ChatSessionWithHttp({
       onRunRequestRef.current({
         reconnect: true,
         text: '',
+        mode: composerModeRef.current,
         messages: toRunMessages(sessionRef.current.messages),
         signal: abort.signal,
         onEvent: (event) => {
@@ -208,16 +228,27 @@ export function ChatSessionWithHttp({
   }, [flush])
 
   const runSession = useCallback(
-    async (history: ChatSessionMessage[], text: string, editMessageId?: string) => {
+    async (
+      history: ChatSessionMessage[],
+      text: string,
+      editMessageId?: string,
+      runOpts?: { mode?: AgentComposerMode; planMarkdown?: string }
+    ) => {
       abortRef.current?.abort()
       const abort = new AbortController()
       abortRef.current = abort
+      const mode = runOpts?.mode ?? composerModeRef.current
+      if (runOpts?.mode) {
+        setComposerMode(runOpts.mode)
+      }
       flush({ ...sessionRef.current, messages: history, isRun: true, liveEvents: [] })
 
       try {
         await onRunRequest({
           text,
           editMessageId,
+          mode,
+          planMarkdown: runOpts?.planMarkdown,
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
@@ -245,9 +276,23 @@ export function ChatSessionWithHttp({
     if (!text || isRun) return
     const user: ChatSessionMessage = { id: nextMessageId('u'), role: 'user', content: text }
     setInput('')
+    onInputChangeRef.current?.('')
     setSlashToken(null)
     void runSession([...sessionRef.current.messages, user], text)
   }, [input, isRun, runSession])
+
+  useEffect(() => {
+    if (!sendTextRef) return
+    sendTextRef.current = (text, opts) => {
+      const trimmed = text.trim()
+      if (!trimmed || sessionRef.current.isRun) return
+      const user: ChatSessionMessage = { id: nextMessageId('u'), role: 'user', content: trimmed }
+      void runSession([...sessionRef.current.messages, user], trimmed, undefined, opts)
+    }
+    return () => {
+      sendTextRef.current = null
+    }
+  }, [runSession, sendTextRef])
 
   const stopRun = useCallback(() => {
     abortRef.current?.abort()
@@ -281,7 +326,11 @@ export function ChatSessionWithHttp({
         ]
         void runSession(history, trimmed, messageId)
       }}
+      emptyToolbar={emptyToolbar}
+      plan={plan}
       onOpenExternal={async (href) => {
+        const open = onOpenExternalRef.current
+        if (open) return open(href)
         window.open(href, '_blank', 'noopener,noreferrer')
         return { ok: true }
       }}
@@ -289,10 +338,12 @@ export function ChatSessionWithHttp({
         value: input,
         onChange: (value, cursor) => {
           setInput(value)
+          onInputChangeRef.current?.(value)
           syncSlashSkillMenu(value, cursor)
         },
         onSend: send,
         canSend: input.trim().length > 0,
+        sendDisabled,
         composerMode,
         onComposerModeChange: setComposerMode,
         ...(loadSkills

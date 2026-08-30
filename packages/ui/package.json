@@ -6,7 +6,8 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./agui-timeline": "./src/chat-session/agui-timeline.ts"
+    "./agui-timeline": "./src/chat-session/agui-timeline.ts",
+    "./chat-session/chat-session.scss": "./src/chat-session/chat-session.scss"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

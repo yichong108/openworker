@@ -52,6 +52,10 @@ const aliasShared = resolve(rootDir, '../../packages/shared/src/index.ts')
 const aliasSharedLoadEnv = resolve(rootDir, '../../packages/shared/src/load-env.ts')
 const aliasLog = resolve(rootDir, '../../packages/log/src/index.ts')
 const aliasUi = resolve(rootDir, '../../packages/ui/src/index.ts')
+const aliasUiChatSessionScss = resolve(
+  rootDir,
+  '../../packages/ui/src/chat-session/chat-session.scss'
+)
 /** monaco-themes 未在 package exports 中暴露 themes/，需直连磁盘路径供 Vite 解析 */
 const monacoGithubLightThemeJson = resolve(
   rootDir,
@@ -122,6 +126,8 @@ export default defineConfig({
       alias: {
         '@': aliasSrc,
         '@openworker/shared': aliasShared,
+        // 须在 @openworker/ui 之前：Vite alias 不读 package exports，子路径需显式映射
+        '@openworker/ui/chat-session/chat-session.scss': aliasUiChatSessionScss,
         '@openworker/ui': aliasUi,
         '@monaco-themes/github-light': monacoGithubLightThemeJson,
         react: resolve(rootDir, 'node_modules/react'),

@@ -1,6 +1,6 @@
 import type { BaseEvent } from '@ag-ui/client'
 import type { AgentComposerMode } from '@openworker/shared'
-import type { ReactNode } from 'react'
+import type { MutableRefObject, ReactNode } from 'react'
 
 /** 会话消息角色 */
 export type ChatSessionRole = 'user' | 'assistant' | 'system'
@@ -143,6 +143,10 @@ export type ChatSessionRunRequest = {
   editMessageId?: string
   /** 仅重连事件流，不发送新消息（弹窗打开时已在 running） */
   reconnect?: boolean
+  /** 当前 composer 模式（build / ask / plan） */
+  mode?: AgentComposerMode
+  /** Build 模式下附带的已批准计划正文 */
+  planMarkdown?: string
   messages: ChatSessionRunMessage[]
   signal: AbortSignal
   onEvent: (event: BaseEvent) => void
@@ -168,4 +172,23 @@ export type ChatSessionWithHttpProps = {
    * 打开 `/` 技能菜单时拉取列表；省略则不展示斜杠菜单。
    */
   loadSkills?: () => ChatComposerSkill[] | Promise<ChatComposerSkill[]>
+  /** 空会话时展示在输入区上方的工具栏（如工作区选择） */
+  emptyToolbar?: ReactNode
+  /** 额外禁用发送（例如未绑定工作区路径） */
+  sendDisabled?: boolean
+  /** 自定义外链打开；省略时使用 window.open */
+  onOpenExternal?: (href: string) => Promise<{ ok: boolean }>
+  /** 输入框内容变化时回调（如同步侧栏草稿会话名） */
+  onInputChange?: (text: string) => void
+  /** run 状态变化时回调（如同步侧栏执行中圆点） */
+  onRunStateChange?: (isRun: boolean) => void
+  /** 计划卡片（宿主从 CUSTOM(openworker.plan) 解析后传入） */
+  plan?: ChatPlanCardProps | null
+  /**
+   * 宿主可通过此 ref 触发发送（如计划卡「开始构建」）。
+   * 签名：`(text, opts?) => void`
+   */
+  sendTextRef?: MutableRefObject<
+    ((text: string, opts?: { mode?: AgentComposerMode; planMarkdown?: string }) => void) | null
+  >
 }

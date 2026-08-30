@@ -1,23 +1,83 @@
 import 'simplebar-react/dist/simplebar.min.css'
+import '@openworker/ui/chat-session/chat-session.scss'
 import '@/renderer/src/center-pane/WorkspaceCenterPane.scss'
+import { DesktopChatSession } from './DesktopChatSession'
 import {
   useWorkspaceCenterPane,
   type UseWorkspaceCenterPaneOptions
 } from './useWorkspaceCenterPane'
-import { WorkspaceMessagesInner } from './WorkspaceMessagesInner'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
 import { Alert, Button } from 'antd'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
+import { useUiStore } from '@/renderer/src/store/ui-store'
 
 export type WorkspaceCenterPaneProps = UseWorkspaceCenterPaneOptions
 
+type SessionSlot = {
+  instanceKey: string
+  sessionId: string | null
+  visible: boolean
+}
+
 export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
   const p = useWorkspaceCenterPane(props)
+  const runningBySessionId = useUiStore((s) => s.runningBySessionId)
+  const [promotedDraftId, setPromotedDraftId] = useState<string | null>(null)
+  /** 草稿转正后会话是否曾进入 running；用于 run 结束后再释放 draft 实例 */
+  const draftHadRunningRef = useRef(false)
+
+  useEffect(() => {
+    if (promotedDraftId && p.activeId !== promotedDraftId) {
+      draftHadRunningRef.current = false
+      setPromotedDraftId(null)
+    }
+  }, [p.activeId, promotedDraftId])
+
+  useEffect(() => {
+    if (!promotedDraftId) return
+    if (runningBySessionId[promotedDraftId]) {
+      draftHadRunningRef.current = true
+      return
+    }
+    if (draftHadRunningRef.current) {
+      draftHadRunningRef.current = false
+      setPromotedDraftId(null)
+    }
+  }, [promotedDraftId, runningBySessionId])
+
+  const sessionSlots = useMemo((): SessionSlot[] => {
+    const draftKey = `draft-${p.composerSelectedWorkspaceId}`
+    const draftOwnsActive = promotedDraftId != null && p.activeId === promotedDraftId
+    const slots: SessionSlot[] = []
+
+    if (p.activeId === null) {
+      slots.push({ instanceKey: draftKey, sessionId: null, visible: true })
+    } else if (draftOwnsActive) {
+      slots.push({ instanceKey: draftKey, sessionId: promotedDraftId, visible: true })
+    } else {
+      slots.push({ instanceKey: p.activeId, sessionId: p.activeId, visible: true })
+    }
+
+    for (const [sessionId, running] of Object.entries(runningBySessionId)) {
+      if (!running) continue
+      if (sessionId === p.activeId) continue
+      if (draftOwnsActive && sessionId === promotedDraftId) continue
+      if (slots.some((slot) => slot.sessionId === sessionId)) continue
+      slots.push({ instanceKey: sessionId, sessionId, visible: false })
+    }
+
+    return slots
+  }, [p.activeId, p.composerSelectedWorkspaceId, promotedDraftId, runningBySessionId])
+
+  const handleSessionCreated = (sessionId: string) => {
+    setPromotedDraftId(sessionId)
+    p.handleSessionCreated(sessionId)
+  }
 
   return (
     <div className="app-main-pane">
-      {/* 顶部栏 */}
       <div className="app-topbar">
         {p.isWinCustomChrome ? (
           <div
@@ -60,10 +120,8 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
           </div>
         ) : null}
       </div>
-      {/* 内容区 */}
-      <div
-        className={`app-content ${p.isEmptyConversation ? 'is-empty-conversation' : ''} ${p.isSessionMessagesLoading ? 'is-session-loading' : ''}`}
-      >
+
+      <div className="app-content">
         {!p.preloadOk && (
           <div className="app-preload-alert-wrap">
             <Alert
@@ -74,37 +132,20 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
             />
           </div>
         )}
-        {p.isSessionMessagesLoading ? (
-          <div
-            className="app-session-messages-loading"
-            role="status"
-            aria-live="polite"
-            aria-label="加载会话中"
-          >
-            <span className="app-session-messages-loading-circle" aria-hidden />
-          </div>
-        ) : p.isEmptyConversation ? (
-          <div className="app-composer-hero">
-            <div className="app-composer-hero-inner">
-              {p.composerWorkspaceToolbar}
-              {p.composerInput}
-            </div>
-          </div>
-        ) : (
-          <>
-            <WorkspaceMessagesInner
-              activeId={p.activeId}
-              currentMessages={p.currentMessages}
-              currentTimeline={p.currentTimeline}
-              isRun={Boolean(p.isRun)}
-              currentRunStats={p.currentRunStats}
-              onStopRun={p.stopRun}
-              onEditResend={p.editResendUserMessage}
-            />
-            {p.planCard ? <div className="app-plan-card-stack">{p.planCard}</div> : null}
-            <div className="app-composer-stack">{p.composerInput}</div>
-          </>
-        )}
+
+        {sessionSlots.map((slot) => (
+          <DesktopChatSession
+            key={slot.instanceKey}
+            instanceKey={slot.instanceKey}
+            sessionId={slot.sessionId}
+            workspaceId={p.composerSelectedWorkspaceId}
+            workspacePath={p.activeWorkspace?.path ?? null}
+            visible={slot.visible}
+            emptyToolbar={p.composerWorkspaceToolbar}
+            onSessionCreated={handleSessionCreated}
+            refreshSessionsForWorkspace={p.refreshSessionsForWorkspace}
+          />
+        ))}
       </div>
     </div>
   )

@@ -9,6 +9,9 @@
       "@/*": ["src/*"],
       "@openworker/shared": ["../../packages/shared/src/index.ts"],
       "@openworker/ui": ["../../packages/ui/src/index.ts"],
+      "@openworker/ui/chat-session/chat-session.scss": [
+        "../../packages/ui/src/chat-session/chat-session.scss"
+      ],
       "@ag-ui/client": ["node_modules/@ag-ui/client"],
       "@monaco-themes/github-light": ["node_modules/monaco-themes/themes/GitHub Light.json"]
     }
