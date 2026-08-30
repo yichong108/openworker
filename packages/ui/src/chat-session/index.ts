@@ -41,7 +41,6 @@ export type {
   ChatPlanCardProps,
   ChatSessionMessage,
   ChatSessionRole,
-  ChatSessionListenRequest,
   ChatSessionRunRequest,
   ChatSessionRunStats,
   ChatSessionViewProps,

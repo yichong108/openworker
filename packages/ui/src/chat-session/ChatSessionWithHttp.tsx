@@ -46,17 +46,21 @@ function buildInitialSession(
   }
 }
 
+function isAguiEvent(event: unknown): event is BaseEvent {
+  return Boolean(event && typeof event === 'object' && 'type' in event)
+}
+
 /**
  * 自包含聊天会话：内部管 AG-UI 事件与会话状态，run/stop 由宿主回调实现。
  *
- * 传入 onListenRequest 时挂载即订事件流，走 applyAguiEvent（与 playground onEvent 同一套）。
+ * 流式事件由宿主在 `onRunRequest` 内消费并回调 `onEvent`。
+ * `initialIsRun` 时挂载后自动 `onRunRequest({ reconnect: true })` 补订流。
  *
- * @param props - onRunRequest / onStopRequest / onListenRequest
+ * @param props - onRunRequest / onStopRequest
  */
 export function ChatSessionWithHttp({
   onRunRequest,
   onStopRequest,
-  onListenRequest,
   loadSkills,
   sessionKey = 'http-session',
   className,
@@ -66,8 +70,6 @@ export function ChatSessionWithHttp({
   initialRunStats
 }: ChatSessionWithHttpProps) {
   const { message: msgApi } = AntdApp.useApp()
-  const listenRef = useRef(onListenRequest)
-  listenRef.current = onListenRequest
   const loadSkillsRef = useRef(loadSkills)
   loadSkillsRef.current = loadSkills
   const initialSession = buildInitialSession({
@@ -90,6 +92,8 @@ export function ChatSessionWithHttp({
   const skillsFetchGenRef = useRef(0)
   const sessionRef = useRef<LiveAgentSession>(initialSession)
   const abortRef = useRef<AbortController | null>(null)
+  const onRunRequestRef = useRef(onRunRequest)
+  onRunRequestRef.current = onRunRequest
 
   const filteredSkills = useMemo(
     () => (slashToken && loadSkills ? filterSkillsByQuery(skills, slashToken.query) : []),
@@ -158,31 +162,43 @@ export function ChatSessionWithHttp({
     setRunStats(next.runStats)
   }, [])
 
-  useEffect(() => {
-    const listen = listenRef.current
-    if (!listen) return
-    const abort = new AbortController()
-    void Promise.resolve(
-      listen({
-        signal: abort.signal,
-        onEvent: (event) => {
-          if (!event || typeof event !== 'object' || !('type' in event)) return
-          flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
-        }
-      })
-    ).catch(() => {
-      /* 取消或断开时忽略 */
-    })
-    return () => {
-      abort.abort()
-    }
-  }, [flush, sessionKey])
+  const applyAguiEventToSession = useCallback(
+    (event: BaseEvent) => {
+      flush(applyAguiEvent(sessionRef.current, event))
+    },
+    [flush]
+  )
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
     }
   }, [])
+
+  useEffect(() => {
+    if (!initialIsRun) return
+    const abort = new AbortController()
+    abortRef.current = abort
+    void Promise.resolve(
+      onRunRequestRef.current({
+        reconnect: true,
+        text: '',
+        messages: toRunMessages(sessionRef.current.messages),
+        signal: abort.signal,
+        onEvent: (event) => {
+          if (!isAguiEvent(event)) return
+          applyAguiEventToSession(event)
+        }
+      })
+    ).catch((error) => {
+      if (abort.signal.aborted) return
+      msgApi.error(error instanceof Error ? error.message : String(error))
+      flush(finalizeLiveSession(sessionRef.current))
+    })
+    return () => {
+      abort.abort()
+    }
+  }, [applyAguiEventToSession, flush, initialIsRun, msgApi, sessionKey])
 
   const applyStopToSession = useCallback(() => {
     const finalized = finalizeLiveSession(sessionRef.current)
@@ -197,7 +213,6 @@ export function ChatSessionWithHttp({
       const abort = new AbortController()
       abortRef.current = abort
       flush({ ...sessionRef.current, messages: history, isRun: true, liveEvents: [] })
-      const listening = Boolean(listenRef.current)
 
       try {
         await onRunRequest({
@@ -206,25 +221,23 @@ export function ChatSessionWithHttp({
           messages: toRunMessages(history),
           signal: abort.signal,
           onEvent: (event) => {
-            if (listening) return
-            if (!event || typeof event !== 'object' || !('type' in event)) return
-            flush(applyAguiEvent(sessionRef.current, event as BaseEvent))
+            if (!isAguiEvent(event)) return
+            applyAguiEventToSession(event)
           }
         })
-        if (!listening && sessionRef.current.isRun) {
+        if (sessionRef.current.isRun) {
           flush(finalizeLiveSession(sessionRef.current))
         }
       } catch (error) {
         if (abort.signal.aborted) {
-          if (!listening) applyStopToSession()
+          applyStopToSession()
           return
         }
         msgApi.error(error instanceof Error ? error.message : String(error))
-        if (listening) applyStopToSession()
-        else flush(finalizeLiveSession(sessionRef.current))
+        flush(finalizeLiveSession(sessionRef.current))
       }
     },
-    [applyStopToSession, flush, msgApi, onRunRequest]
+    [applyAguiEventToSession, applyStopToSession, flush, msgApi, onRunRequest]
   )
 
   const send = useCallback(() => {

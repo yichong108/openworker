@@ -28,7 +28,7 @@ function sseHeaders(): HeadersInit {
  * 任务对话 SSE。
  *
  * - 无 fileName：看板卡片 hint（瘦快照）
- * - 有 fileName：该任务 AG-UI BaseEvent（弹窗 onListenRequest）
+ * - 有 fileName：该任务 AG-UI BaseEvent（由 onRunRequest / reconnect 订流）
  */
 export async function GET(request: Request): Promise<Response> {
   return withApiLogContext(request, async () => {

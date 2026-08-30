@@ -141,13 +141,9 @@ export type ChatSessionRunRequest = {
   text: string
   /** 从该条 user 消息编辑重发；省略则为追加新消息 */
   editMessageId?: string
+  /** 仅重连事件流，不发送新消息（弹窗打开时已在 running） */
+  reconnect?: boolean
   messages: ChatSessionRunMessage[]
-  signal: AbortSignal
-  onEvent: (event: BaseEvent) => void
-}
-
-/** 挂载期订阅事件流（不发送）。与 onRunRequest.onEvent 同一套折叠。 */
-export type ChatSessionListenRequest = {
   signal: AbortSignal
   onEvent: (event: BaseEvent) => void
 }
@@ -158,8 +154,6 @@ export type ChatSessionListenRequest = {
 export type ChatSessionWithHttpProps = {
   onRunRequest: (request: ChatSessionRunRequest) => void | Promise<void>
   onStopRequest: () => void | Promise<void | { restoredInput?: string }>
-  /** 挂载后订这一路 AG-UI 事件（打开弹窗即连，不经过 send）。 */
-  onListenRequest?: (request: ChatSessionListenRequest) => void | Promise<void>
   sessionKey?: string | null
   className?: string
   /** 挂载时的历史消息（仅初值，之后由组件内部维护） */
