@@ -92,6 +92,8 @@ export function DesktopChatSession({
   const [planSaving, setPlanSaving] = useState(false)
   const [isRunLocal, setIsRunLocal] = useState(false)
 
+  const isDraftInstance = instanceKey.startsWith('draft-')
+
   useEffect(() => {
     if (!sessionId) {
       setHydrated(true)
@@ -99,7 +101,11 @@ export function DesktopChatSession({
       if (!resolvedSessionIdRef.current) setInitialMessages([])
       return
     }
-    if (hydratedForRef.current === sessionId) return
+    if (isDraftInstance || hydratedForRef.current === sessionId) {
+      setHydrated(true)
+      setHydrating(false)
+      return
+    }
     let cancelled = false
     setHydrating(true)
     void apiGetSessionChatMessages(sessionId)
@@ -122,7 +128,7 @@ export function DesktopChatSession({
     return () => {
       cancelled = true
     }
-  }, [sessionId])
+  }, [isDraftInstance, sessionId])
 
   const ensureSessionId = useCallback(
     async (text: string): Promise<string | null> => {

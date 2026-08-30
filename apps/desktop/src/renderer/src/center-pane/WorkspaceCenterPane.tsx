@@ -9,6 +9,7 @@ import {
 import { MenuUnfoldOutlined } from '@ant-design/icons'
 import { Alert, Button } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
 import { useUiStore } from '@/renderer/src/store/ui-store'
@@ -25,37 +26,27 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
   const p = useWorkspaceCenterPane(props)
   const runningBySessionId = useUiStore((s) => s.runningBySessionId)
   const [promotedDraftId, setPromotedDraftId] = useState<string | null>(null)
-  /** 草稿转正后会话是否曾进入 running；用于 run 结束后再释放 draft 实例 */
-  const draftHadRunningRef = useRef(false)
+  /** 同步可读：Zustand setActiveId 会立刻触发重渲染，早于 React setState */
+  const promotedDraftIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (promotedDraftId && p.activeId !== promotedDraftId) {
-      draftHadRunningRef.current = false
+    // activeId 尚未跟上时（草稿转正瞬间）不要清 promotedDraftId
+    if (promotedDraftId && p.activeId != null && p.activeId !== promotedDraftId) {
+      promotedDraftIdRef.current = null
       setPromotedDraftId(null)
     }
   }, [p.activeId, promotedDraftId])
 
-  useEffect(() => {
-    if (!promotedDraftId) return
-    if (runningBySessionId[promotedDraftId]) {
-      draftHadRunningRef.current = true
-      return
-    }
-    if (draftHadRunningRef.current) {
-      draftHadRunningRef.current = false
-      setPromotedDraftId(null)
-    }
-  }, [promotedDraftId, runningBySessionId])
-
   const sessionSlots = useMemo((): SessionSlot[] => {
     const draftKey = `draft-${p.composerSelectedWorkspaceId}`
-    const draftOwnsActive = promotedDraftId != null && p.activeId === promotedDraftId
+    const effectivePromoted = promotedDraftIdRef.current ?? promotedDraftId
+    const draftOwnsActive = effectivePromoted != null && p.activeId === effectivePromoted
     const slots: SessionSlot[] = []
 
     if (p.activeId === null) {
       slots.push({ instanceKey: draftKey, sessionId: null, visible: true })
     } else if (draftOwnsActive) {
-      slots.push({ instanceKey: draftKey, sessionId: promotedDraftId, visible: true })
+      slots.push({ instanceKey: draftKey, sessionId: effectivePromoted, visible: true })
     } else {
       slots.push({ instanceKey: p.activeId, sessionId: p.activeId, visible: true })
     }
@@ -63,7 +54,7 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
     for (const [sessionId, running] of Object.entries(runningBySessionId)) {
       if (!running) continue
       if (sessionId === p.activeId) continue
-      if (draftOwnsActive && sessionId === promotedDraftId) continue
+      if (draftOwnsActive && sessionId === effectivePromoted) continue
       if (slots.some((slot) => slot.sessionId === sessionId)) continue
       slots.push({ instanceKey: sessionId, sessionId, visible: false })
     }
@@ -72,7 +63,8 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
   }, [p.activeId, p.composerSelectedWorkspaceId, promotedDraftId, runningBySessionId])
 
   const handleSessionCreated = (sessionId: string) => {
-    setPromotedDraftId(sessionId)
+    promotedDraftIdRef.current = sessionId
+    flushSync(() => setPromotedDraftId(sessionId))
     p.handleSessionCreated(sessionId)
   }
 
