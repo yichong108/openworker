@@ -11,6 +11,7 @@ dist
 # Logs
 *.log
 npm-debug.log*
+*_out.txt
 
 # IDE
 .DS_Store
