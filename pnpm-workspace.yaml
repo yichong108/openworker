@@ -8,7 +8,7 @@ catalog:
   '@ag-ui/core': 0.0.57
   '@ai-sdk/openai': ^4.0.46
   '@cursor/sdk': ^1.0.27
-  '@types/node': ^22.15.21
+  '@types/node': ^24
   ai: ^7.0.77
   dayjs: ^1.11.13
   highlight.js: ^11.11.1

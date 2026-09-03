@@ -6,6 +6,9 @@
   "license": "MIT",
   "main": "out/main/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "cross-env CHANNEL=dev electron-vite dev",
