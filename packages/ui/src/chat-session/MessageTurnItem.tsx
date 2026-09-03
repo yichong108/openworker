@@ -1,5 +1,6 @@
 import { RightOutlined, StopOutlined } from '@ant-design/icons'
 import type { ToolCallEvent, ToolTimelineEvent } from '@openworker/shared'
+import { AiOutlineArrowUp } from 'react-icons/ai'
 import { App as AntdApp, Button, Card, Dropdown, Input, Typography, type MenuProps } from 'antd'
 import type { InputRef } from 'antd/es/input'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -575,12 +576,12 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
             <Button
               size="small"
               type="primary"
+              icon={<AiOutlineArrowUp />}
               onClick={() => void submitEdit()}
               disabled={!draft.trim() || submitting}
               loading={submitting}
-            >
-              发送
-            </Button>
+              aria-label="发送"
+            />
           </div>
         </Card>
       </div>

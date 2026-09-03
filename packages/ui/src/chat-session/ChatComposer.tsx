@@ -1,7 +1,9 @@
-import { CheckOutlined, PlusOutlined, SendOutlined, StopOutlined } from '@ant-design/icons'
+import { CheckOutlined, PlusOutlined } from '@ant-design/icons'
 import type { AgentComposerMode } from '@openworker/shared'
 import { Button, Dropdown, Input, type MenuProps } from 'antd'
 import type { InputRef } from 'antd/es/input'
+import { AiOutlineArrowUp } from 'react-icons/ai'
+import { FaStop } from 'react-icons/fa'
 import { useMemo, useRef } from 'react'
 
 import { ComposerSkillMenu } from './ComposerSkillMenu.js'
@@ -173,18 +175,20 @@ export function ChatComposer({
             {showSendButton ? (
               <Button
                 type="primary"
-                icon={<SendOutlined />}
+                icon={<AiOutlineArrowUp size={16} />}
                 onClick={() => onSend()}
                 disabled={sendDisabled || !canSend}
                 className="app-send-btn"
-              >
-                发送
-              </Button>
+                aria-label="发送"
+              />
             ) : null}
             {showStopButton ? (
-              <Button danger icon={<StopOutlined />} onClick={onStop} className="app-stop-btn">
-                停止
-              </Button>
+              <Button
+                icon={<FaStop />}
+                onClick={onStop}
+                className="app-stop-btn"
+                aria-label="停止"
+              />
             ) : null}
           </div>
         </div>
