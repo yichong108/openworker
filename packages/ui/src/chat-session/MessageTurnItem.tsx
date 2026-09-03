@@ -1,6 +1,7 @@
-import { RightOutlined, StopOutlined } from '@ant-design/icons'
+import { RightOutlined } from '@ant-design/icons'
 import type { ToolCallEvent, ToolTimelineEvent } from '@openworker/shared'
 import { AiOutlineArrowUp } from 'react-icons/ai'
+import { FaStop } from 'react-icons/fa'
 import { App as AntdApp, Button, Card, Dropdown, Input, Typography, type MenuProps } from 'antd'
 import type { InputRef } from 'antd/es/input'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -585,10 +586,11 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
             <Button
               size="small"
               type="primary"
-              icon={<AiOutlineArrowUp />}
+              icon={<AiOutlineArrowUp size={14} />}
               onClick={() => void submitEdit()}
               disabled={!draft.trim() || submitting}
               loading={submitting}
+              className="app-send-btn app-msg-send-btn"
               aria-label="发送"
             />
           </div>
@@ -640,8 +642,7 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
                 aria-label="停止"
                 title="停止"
               >
-                <StopOutlined />
-                <span>停止</span>
+                <FaStop size={10} />
               </button>
             </div>
           ) : null}
