@@ -467,6 +467,7 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
   const [draft, setDraft] = useState(msg.content)
   const [submitting, setSubmitting] = useState(false)
   const editInputRef = useRef<InputRef>(null)
+  const editContainerRef = useRef<HTMLDivElement>(null)
   const isLatestUser = msg.id === ctx.latestUserMessageId
   const showStop = Boolean(ctx.isRun && isLatestUser)
   const canEdit = !ctx.isRun
@@ -502,6 +503,17 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
     setDraft(msg.content)
     setEditing(false)
   }, [msg.content])
+
+  useEffect(() => {
+    if (!editing) return
+    const onMouseDown = (event: MouseEvent) => {
+      if (editContainerRef.current?.contains(event.target as Node)) return
+      if (submitting) return
+      cancelEdit()
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [editing, submitting, cancelEdit])
 
   const submitEdit = useCallback(async () => {
     const next = draft.trim()
@@ -548,7 +560,7 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
 
   if (editing) {
     return (
-      <div className="app-message-sticky-prompt">
+      <div className="app-message-sticky-prompt" ref={editContainerRef}>
         <Card size="small" variant="outlined" className="app-message-card is-user is-editing">
           <Input.TextArea
             ref={editInputRef}
@@ -570,9 +582,6 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
             }}
           />
           <div className="app-message-user-actions is-editing">
-            <Button size="small" onClick={cancelEdit} disabled={submitting}>
-              取消
-            </Button>
             <Button
               size="small"
               type="primary"
