@@ -1,5 +1,7 @@
 import './chat-session.scss'
 
+import { useEffect, useRef } from 'react'
+
 import { ChatComposer } from './ChatComposer.js'
 import { ChatMessageList } from './ChatMessageList.js'
 import { ChatPlanCard } from './ChatPlanCard.js'
@@ -31,8 +33,27 @@ export function ChatSessionView({
 }: ChatSessionViewProps) {
   const resolvedSessionKey = sessionKey ?? messages[0]?.id ?? null
 
+  const contentRef = useRef<HTMLDivElement | null>(null)
+
+  // 监听 .app-content 高度变化，设 CSS 变量供 padding-bottom 取半使用
+  // （组件外部容器不确定，不能依赖 vh 或百分比）
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+
+    const apply = () => {
+      el.style.setProperty('--aw-chat-container-height', `${el.clientHeight}px`)
+    }
+    apply()
+
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <div
+      ref={contentRef}
       className={`app-content${isEmpty ? ' is-empty-conversation' : ''}${isLoading ? ' is-session-loading' : ''}${className ? ` ${className}` : ''}`}
     >
       {isLoading ? (

@@ -73,6 +73,9 @@
     width: 100%;
     box-sizing: border-box;
     padding-inline: var(--aw-main-column-padding-x);
+    padding-bottom: calc(
+      var(--aw-chat-container-height, 250px) * 0.5
+    ); /* 滚动到底部时最后一条消息与 composer 之间留出半个组件高度的间距 */
   }
 
   .app-plan-card-stack {
