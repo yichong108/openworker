@@ -94,3 +94,152 @@ body {
 .anim-delay-3 {
   animation-delay: 0.36s;
 }
+
+/* ========== 文档页面样式（Stripe/Linear 极简风） ========== */
+
+/* 文档内容排版 - 从长 className 提取 */
+.doc-prose {
+  @apply prose prose-lg max-w-none;
+
+  /* 标题 */
+  @apply prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-[var(--ink)];
+  @apply prose-h1:mb-6 prose-h1:pb-4 prose-h1:text-3xl;
+
+  /* H1 用 display 字体 */
+  h1 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  }
+  @apply prose-h2:mb-4 prose-h2:mt-10 prose-h2:text-2xl;
+  @apply prose-h3:mb-3 prose-h3:mt-8 prose-h3:text-xl;
+
+  /* 段落 - 使用默认 prose 灰色，更克制 */
+  @apply prose-p:mb-4 prose-p:leading-relaxed;
+
+  /* 链接 */
+  @apply prose-a:font-medium prose-a:text-[var(--teal)] prose-a:no-underline hover:prose-a:underline;
+
+  /* 加粗 */
+  @apply prose-strong:text-[var(--ink)] prose-strong:font-semibold;
+
+  /* 行内代码 - 更克制 */
+  @apply prose-code:rounded prose-code:bg-gray-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:font-mono prose-code:text-sm prose-code:text-[var(--ink)] prose-code:before:content-none prose-code:after:content-none;
+
+  /* 代码块 - 扁平，无圆角渐变，更像 Stripe */
+  @apply prose-pre:mb-6 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-[var(--panel)] prose-pre:p-4 prose-pre:text-gray-100;
+}
+
+/* 侧边栏 - 纯白，无渐变 */
+.doc-sidebar {
+  background: #ffffff;
+}
+
+/* 主内容区 - 纯白 */
+.doc-content-bg {
+  background: #ffffff;
+}
+
+/* 侧边栏导航项 - Stripe 风：active 用左侧竖线 */
+.sidebar-nav-item {
+  position: relative;
+  padding-left: 0.75rem;
+}
+
+.sidebar-nav-item.active {
+  background: transparent;
+  color: var(--teal);
+}
+
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 2px;
+  background: var(--teal);
+  border-radius: 1px;
+}
+
+/* 代码块容器 - 用于添加复制按钮和语言标签 */
+.code-block-wrapper {
+  position: relative;
+}
+
+.code-block-wrapper .code-lang-label {
+  position: absolute;
+  top: 0.625rem;
+  left: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.code-block-wrapper .copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.code-block-wrapper:hover .copy-btn,
+.code-block-wrapper .copy-btn.copied {
+  opacity: 1;
+}
+
+.code-block-wrapper .copy-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.code-block-wrapper .copy-btn.copied {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+/* 导航按钮悬停效果 */
+.doc-nav-btn {
+  @apply transition-all duration-200;
+}
+
+.doc-nav-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* 移动端侧边栏遮罩 */
+.mobile-sidebar-overlay {
+  animation: fade-in 0.2s ease-out;
+}
+
+.mobile-sidebar {
+  animation: slide-in-left 0.25s ease-out;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

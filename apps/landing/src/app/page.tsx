@@ -69,10 +69,7 @@ export default function Home() {
       <section id="features" className="scroll-mt-8 border-t border-[var(--line)]">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div className="anim-fade">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--teal)]">
-              产品能力
-            </p>
-            <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
               把 AI 助手放进你的电脑里
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-[var(--ink-soft)]">
