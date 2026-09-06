@@ -70,11 +70,10 @@ pnpm native:dev
 
 启动时若检测到旧多用户库，会将 `admin`（或最早用户）的数据迁移到单租户表。异常半迁移时可删除 `native.sqlite` 后冷启动。
 
-可选覆盖（例如单测隔离）：
+可选覆盖（例如单测隔离）：通过环境变量传入即可，运行时不自动加载 `.env` 文件。
 
 ```bash
-# services/native/.env
-SQLITE_PATH=./data/native.sqlite
+cross-env CHANNEL=dev SQLITE_PATH=./data/native.sqlite pnpm --filter @openworker/native dev
 ```
 
 ## 健康检查
@@ -110,9 +109,9 @@ SQLite 不可用时返回 HTTP `503`，`status` 为 `degraded`。
 
 ## 环境变量
 
-参见 [`.env.example`](./.env.example)。
-
 | 变量          | 默认                                 | 说明            |
 | ------------- | ------------------------------------ | --------------- |
 | `PORT`        | `3200`                               | HTTP 监听端口   |
 | `SQLITE_PATH` | `~/.openworker/native/native.sqlite` | SQLite 文件路径 |
+
+> 注意：运行 Prisma CLI 命令（`db:migrate` / `db:push` / `db:studio`）时，需确保 `DATABASE_URL` 已设置（schema.prisma 依赖它）。可用 shell 环境变量传入，或在 `services/native/` 下放一个 `.env` 文件（已在 `.gitignore` 中）。
