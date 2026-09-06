@@ -20,9 +20,8 @@ NPM_REGISTRY="https://registry.npmmirror.com"
 
 STEP1_TITLE="准备运行环境"
 STEP2_TITLE="安装 AI 任务助手"
-STEP3_TITLE="检查更新"
-STEP4_TITLE="准备项目"
-STEP5_TITLE="打开看板"
+STEP3_TITLE="准备项目"
+STEP4_TITLE="打开看板"
 
 # 橘黄色（RGB 255,200,90）；非 TTY 时不着色
 if [[ -t 1 ]]; then
@@ -64,7 +63,7 @@ show_welcome() {
   show_logo
   echo ""
   say "你好，这里是 AI 任务助手。"
-  say "我先帮你做一点准备工作，一共 5 小步，通常很快。"
+  say "我先帮你做一点准备工作，一共 4 小步，通常很快。"
   say "准备的时候请先不要关掉这个窗口，好了之后会帮你打开看板。"
   echo ""
 }
@@ -72,7 +71,7 @@ show_welcome() {
 show_step() {
   echo ""
   say "${AP_SEP}"
-  say "[${1}/5] ${2}"
+  say "[${1}/4] ${2}"
 }
 
 show_indent() {
@@ -229,34 +228,16 @@ ap_installed() {
 
 step_install_assistant() {
   show_step 2 "${STEP2_TITLE}"
-  if ap_installed; then
-    show_indent "已经安装过，继续下一步。"
-    return 0
-  fi
   local npm
   npm="$(npm_cmd)" || fail_step 2 "${STEP2_TITLE}" "暂时找不到安装工具，请先完成上一步。"
-  show_indent "正在安装 AI 任务助手，可能需要一点时间…"
-  if ! "${npm}" install @openworker/ap -g --registry="${NPM_REGISTRY}"; then
+  show_indent "正在安装/更新 AI 任务助手到最新版本，可能需要一点时间…"
+  if ! "${npm}" install @openworker/ap@latest -g --registry="${NPM_REGISTRY}"; then
     fail_step 2 "${STEP2_TITLE}" "安装没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   fi
   if ! command -v ap >/dev/null 2>&1; then
     fail_step 2 "${STEP2_TITLE}" "安装后仍无法启动，请把窗口截图发给支持的人。"
   fi
-  show_indent "AI 任务助手已安装。"
-}
-
-step_update_assistant() {
-  show_step 3 "${STEP3_TITLE}"
-  local npm
-  npm="$(npm_cmd)" || fail_step 3 "${STEP3_TITLE}" "暂时找不到更新工具，请把窗口截图发给支持的人。"
-  show_indent "正在确认是否有新版本，请稍候…"
-  if ! "${npm}" update @openworker/ap -g --registry="${NPM_REGISTRY}"; then
-    fail_step 3 "${STEP3_TITLE}" "更新没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
-  fi
-  if ! command -v ap >/dev/null 2>&1; then
-    fail_step 3 "${STEP3_TITLE}" "更新后仍无法启动，请把窗口截图发给支持的人。"
-  fi
-  show_indent "已经是最新版本。"
+  show_indent "AI 任务助手已就绪（最新版本）。"
 }
 
 project_initialized() {
@@ -264,23 +245,23 @@ project_initialized() {
 }
 
 step_prepare_project() {
-  show_step 4 "${STEP4_TITLE}"
+  show_step 3 "${STEP3_TITLE}"
   if project_initialized; then
     show_indent "这个文件夹已经准备过，继续下一步。"
     return 0
   fi
   show_indent "正在准备项目文件…"
   if ! ap init -C "${SCRIPT_DIR}"; then
-    fail_step 4 "${STEP4_TITLE}" "项目没有准备好，请确认这个文件夹可以写入。"
+    fail_step 3 "${STEP3_TITLE}" "项目没有准备好，请确认这个文件夹可以写入。"
   fi
   if ! project_initialized; then
-    fail_step 4 "${STEP4_TITLE}" "项目没有准备好，请确认这个文件夹可以写入。"
+    fail_step 3 "${STEP3_TITLE}" "项目没有准备好，请确认这个文件夹可以写入。"
   fi
   show_indent "项目已准备好。"
 }
 
 step_open_board() {
-  show_step 5 "${STEP5_TITLE}"
+  show_step 4 "${STEP4_TITLE}"
   show_indent "即将在浏览器中打开任务看板。"
   show_indent "请保持本窗口开着；关掉窗口，看板也会一起关掉。"
   echo ""
@@ -288,7 +269,7 @@ step_open_board() {
   ap view -C "${SCRIPT_DIR}" || exit_code=$?
   echo ""
   if [[ "${exit_code}" -ne 0 ]]; then
-    fail_step 5 "${STEP5_TITLE}" "看板没能打开，请保留上面的说明，关掉后重试。"
+    fail_step 4 "${STEP4_TITLE}" "看板没能打开，请保留上面的说明，关掉后重试。"
   fi
   say "看板已关闭。"
   pause_exit 0
@@ -298,6 +279,5 @@ step_open_board() {
 show_welcome
 step_prepare_runtime
 step_install_assistant
-step_update_assistant
 step_prepare_project
 step_open_board

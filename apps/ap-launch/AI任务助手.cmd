@@ -45,7 +45,7 @@ echo.
 call :show_logo
 echo.
 call :say "你好，这里是 AI 任务助手。"
-call :say "我先帮你做一点准备工作，一共 5 小步，通常很快。"
+call :say "我先帮你做一点准备工作，一共 4 小步，通常很快。"
 call :say "准备的时候请先不要关掉这个窗口，好了之后会帮你打开看板。"
 echo.
 exit /b 0
@@ -53,7 +53,7 @@ exit /b 0
 :show_step
 echo.
 call :say "============================================================"
-call :say "[%~1/5] %~2"
+call :say "[%~1/4] %~2"
 exit /b 0
 
 :show_indent
@@ -163,20 +163,14 @@ exit /b 0
 
 :step_install_assistant
 call :show_step 2 "安装 AI 任务助手"
-call :ap_installed
-if not errorlevel 1 (
-  call :show_indent "已经安装过，继续下一步。"
-  exit /b 0
-)
-
 where npm >nul 2>&1
 if errorlevel 1 (
   call :fail_step 2 "安装 AI 任务助手" "暂时找不到安装工具，请先完成上一步。"
   exit /b 1
 )
 
-call :show_indent "正在安装 AI 任务助手，可能需要一点时间..."
-call npm install @openworker/ap -g --registry=%NPM_REGISTRY%
+call :show_indent "正在安装/更新 AI 任务助手到最新版本，可能需要一点时间..."
+call npm install @openworker/ap@latest -g --registry=%NPM_REGISTRY%
 if errorlevel 1 (
   call :fail_step 2 "安装 AI 任务助手" "安装没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
   exit /b 1
@@ -188,35 +182,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
-call :show_indent "AI 任务助手已安装。"
-exit /b 0
-
-:step_update_assistant
-call :show_step 3 "检查更新"
-where npm >nul 2>&1
-if errorlevel 1 (
-  call :fail_step 3 "检查更新" "暂时找不到更新工具，请把窗口截图发给支持的人。"
-  exit /b 1
-)
-
-call :show_indent "正在确认是否有新版本，请稍候..."
-call npm update @openworker/ap -g --registry=%NPM_REGISTRY%
-if errorlevel 1 (
-  call :fail_step 3 "检查更新" "更新没有成功，请检查网络；若多次失败，把窗口截图发给支持的人。"
-  exit /b 1
-)
-
-where ap >nul 2>&1
-if errorlevel 1 (
-  call :fail_step 3 "检查更新" "更新后仍无法启动，请把窗口截图发给支持的人。"
-  exit /b 1
-)
-
-call :show_indent "已经是最新版本。"
+call :show_indent "AI 任务助手已就绪（最新版本）。"
 exit /b 0
 
 :step_prepare_project
-call :show_step 4 "准备项目"
+call :show_step 3 "准备项目"
 if exist "%AP_CONFIG%" (
   call :show_indent "这个文件夹已经准备过，继续下一步。"
   exit /b 0
@@ -225,12 +195,12 @@ if exist "%AP_CONFIG%" (
 call :show_indent "正在准备项目文件..."
 call ap init -C "%SCRIPT_DIR%"
 if errorlevel 1 (
-  call :fail_step 4 "准备项目" "项目没有准备好，请确认这个文件夹可以写入。"
+  call :fail_step 3 "准备项目" "项目没有准备好，请确认这个文件夹可以写入。"
   exit /b 1
 )
 
 if not exist "%AP_CONFIG%" (
-  call :fail_step 4 "准备项目" "项目没有准备好，请确认这个文件夹可以写入。"
+  call :fail_step 3 "准备项目" "项目没有准备好，请确认这个文件夹可以写入。"
   exit /b 1
 )
 
@@ -238,7 +208,7 @@ call :show_indent "项目已准备好。"
 exit /b 0
 
 :step_open_board
-call :show_step 5 "打开看板"
+call :show_step 4 "打开看板"
 call :show_indent "即将在浏览器中打开任务看板。"
 call :show_indent "请保持本窗口开着；关掉窗口，看板也会一起关掉。"
 echo.
@@ -247,7 +217,7 @@ call ap view -C "%SCRIPT_DIR%"
 set "VIEW_EXIT=!ERRORLEVEL!"
 echo.
 if not "!VIEW_EXIT!"=="0" (
-  call :fail_step 5 "打开看板" "看板没能打开，请保留上面的说明，关掉后重试。"
+  call :fail_step 4 "打开看板" "看板没能打开，请保留上面的说明，关掉后重试。"
   exit /b 1
 )
 
@@ -263,9 +233,6 @@ call :step_prepare_runtime
 if errorlevel 1 goto :main_fail
 
 call :step_install_assistant
-if errorlevel 1 goto :main_fail
-
-call :step_update_assistant
 if errorlevel 1 goto :main_fail
 
 call :step_prepare_project
