@@ -19,6 +19,6 @@ OpenWorker 是你的 **日常信息处理 AI 伙伴**：帮你提问、整理、
 
 ## 下一步
 
-1. [安装指南](#installation) — 在 Windows / macOS / Linux 上安装
+1. [安装指南](#installation) — 在 Windows 上安装
 2. [快速开始](#quick-start) — 创建工作区并发出第一条消息
 3. 功能文档 — Workspace、MCP 等按需阅读
