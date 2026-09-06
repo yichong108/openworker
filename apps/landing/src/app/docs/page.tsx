@@ -11,9 +11,6 @@ import 'highlight.js/styles/github-dark.css'
 import introductionContent from './markdown/getting-started/introduction.md'
 import installationContent from './markdown/getting-started/installation.md'
 import quickStartContent from './markdown/getting-started/quick-start.md'
-import mcpSupportContent from './markdown/features/mcp-support.md'
-import workspaceContent from './markdown/features/workspace.md'
-import agentConfigContent from './markdown/configuration/agent-config.md'
 import settingsContent from './markdown/configuration/settings.md'
 
 interface DocSection {
@@ -51,30 +48,9 @@ const docSections: DocSection[] = [
     ]
   },
   {
-    id: 'features',
-    title: '功能特性',
-    items: [
-      {
-        id: 'mcp-support',
-        title: 'MCP 协议支持',
-        content: mcpSupportContent
-      },
-      {
-        id: 'workspace',
-        title: 'Workspace 管理',
-        content: workspaceContent
-      }
-    ]
-  },
-  {
     id: 'configuration',
     title: '配置',
     items: [
-      {
-        id: 'agent-config',
-        title: 'Agent 配置',
-        content: agentConfigContent
-      },
       {
         id: 'settings',
         title: '应用设置',
