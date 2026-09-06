@@ -68,8 +68,11 @@
   width: 100%;
   min-height: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 
   .ow-ui-chat-session-messages-shell {
+    flex: 1 1 auto;
     width: 100%;
     box-sizing: border-box;
     padding-inline: var(--aw-main-column-padding-x);
