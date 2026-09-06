@@ -48,14 +48,14 @@ show_logo() {
   while IFS= read -r line; do
     printf '%s%s%s\n' "${AP_ORANGE}" "${line}" "${AP_RESET}"
   done <<'EOF'
-                                  /\_/\ 
-                                ( >o.o< )
-                               (   =w=   )
-                              (           )
-                             (             )
-                            (               )~
-                             (_____________)
-                               u         u
+      /\_/\ 
+    ( >o.o< )
+   (   =w=   )
+  (           )
+ (             )
+(               )~
+ (_____________)
+   u         u
 EOF
 }
 

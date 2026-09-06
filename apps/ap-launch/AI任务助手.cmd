@@ -28,14 +28,14 @@ set "AP_SAY="
 exit /b 0
 
 :show_logo
-call :say "                                  /\_/\ "
-call :say "                                ( >o.o< )"
-call :say "                               (   =w=   )"
-call :say "                              (           )"
-call :say "                             (             )"
-call :say "                            (               )~"
-call :say "                             (_____________)"
-call :say "                               u         u"
+call :say "      /\_/\ "
+call :say "    ( >o.o< )"
+call :say "   (   =w=   )"
+call :say "  (           )"
+call :say " (             )"
+call :say "(               )~"
+call :say " (_____________)"
+call :say "   u         u"
 exit /b 0
 
 :show_welcome
