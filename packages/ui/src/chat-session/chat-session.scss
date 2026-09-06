@@ -979,6 +979,8 @@ textarea.ow-ui-chat-session-composer-input.ant-input {
   border: none !important;
   box-shadow: none !important;
   resize: none;
+  transition: none !important;
+  animation: none !important;
 }
 
 .ow-ui-chat-session-composer-input.ant-input::placeholder,
