@@ -1,4 +1,4 @@
-﻿import type { BaseEvent } from '@ag-ui/client'
+import type { BaseEvent } from '@ag-ui/client'
 import { App as AntdApp } from 'antd'
 import {
   useCallback,
@@ -168,12 +168,9 @@ function useChatMessageList({
     return () => scrollContainer.removeEventListener('scroll', handler)
   }, [isNearBottom, sessionKey])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     autoScrollRef.current = true
-    const rafId = window.requestAnimationFrame(() => {
-      scrollMessagesToBottom('auto')
-    })
-    return () => window.cancelAnimationFrame(rafId)
+    scrollMessagesToBottom('auto')
   }, [sessionKey, scrollMessagesToBottom])
 
   useLayoutEffect(() => {
