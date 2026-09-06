@@ -12,7 +12,7 @@
   background: var(--aw-color-bg-layout);
 
   &.is-empty-conversation {
-    min-height: 0;
+    min-height: 100%;
   }
 
   .ow-ui-chat-session-session-messages-loading {
@@ -74,7 +74,7 @@
     box-sizing: border-box;
     padding-inline: var(--aw-main-column-padding-x);
     padding-bottom: calc(
-      var(--aw-chat-container-height, 250px) * 0.5
+      var(--aw-chat-container-height, 50vh) * 0.5
     ); /* 滚动到底部时最后一条消息与 composer 之间留出半个组件高度的间距 */
   }
 
@@ -100,24 +100,19 @@
   }
 }
 
-/* 空会话时：居中对齐，消息区隐藏 */
+/* 空会话时：消息区隐藏，composer 贴底 */
 .ow-ui-chat-session-content.is-empty-conversation {
-  overflow: hidden;
+  overflow-y: auto;
 
   .ow-ui-chat-session-content-inner {
     min-height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-end;
   }
 
   .ow-ui-chat-session-messages-shell {
     display: none;
-  }
-
-  .ow-ui-chat-session-composer-stack {
-    position: static; /* 取消 sticky，让它参与 flex 居中 */
-    background: transparent;
   }
 }
 

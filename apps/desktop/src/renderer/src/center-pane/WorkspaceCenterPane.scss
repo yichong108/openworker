@@ -116,15 +116,6 @@
   }
 
   &.is-empty-conversation {
-    justify-content: center;
-    padding: 24px 0 clamp(96px, 20vh, 220px);
-
-    > .ow-ui-chat-session-content-inner {
-      width: 100%;
-      max-width: var(--aw-main-content-max-width);
-      margin-inline: auto;
-    }
-
     .ow-ui-chat-session-messages-shell {
       display: none;
     }
