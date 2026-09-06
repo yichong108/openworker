@@ -1,4 +1,3 @@
-/* 宿主层滚动容器：loading 时全屏铺满隐藏，有内容时 overflow-y:auto 滚 */
 .app-content {
   box-sizing: border-box;
   width: 100%;
@@ -12,11 +11,6 @@
   border-radius: 0;
   background: var(--aw-color-bg-layout);
 
-  /* 有内容（非 loading）时滚；loading 时 spinner 需要铺满不滚 */
-  &:not(.is-session-loading) {
-    overflow-y: auto;
-  }
-
   &.is-empty-conversation {
     min-height: 0;
   }
@@ -26,59 +20,54 @@
     min-height: 0;
   }
 
-  /* 原生滚动条样式：使用 --aw-chat-scrollbar-* tokens */
-  scrollbar-width: thin;
-  scrollbar-color: var(--aw-chat-scrollbar-thumb) transparent;
+  /* 有内容时整体滚动 */
+  &:not(.is-session-loading):not(.is-empty-conversation) {
+    overflow-y: auto;
 
-  &::-webkit-scrollbar {
-    width: var(--aw-chat-scrollbar-size);
-    height: var(--aw-chat-scrollbar-size);
-  }
+    /* 原生滚动条样式 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--aw-chat-scrollbar-thumb) transparent;
 
-  &::-webkit-scrollbar-thumb {
-    background: var(--aw-chat-scrollbar-thumb);
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-    transition: background-color 0.15s ease;
-  }
+    &::-webkit-scrollbar {
+      width: var(--aw-chat-scrollbar-size);
+      height: var(--aw-chat-scrollbar-size);
+    }
 
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--aw-chat-scrollbar-thumb-hover);
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
+    &::-webkit-scrollbar-thumb {
+      background: var(--aw-chat-scrollbar-thumb);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+      transition: background-color 0.15s ease;
+    }
 
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
+    &::-webkit-scrollbar-thumb:hover {
+      background: var(--aw-chat-scrollbar-thumb-hover);
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
 
-  &::-webkit-scrollbar-corner {
-    background: transparent;
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-corner {
+      background: transparent;
+    }
   }
 }
 
 /*
- * 内容整体容器：position:relative 给 composer absolute 做锚点，
- * 消息 + plan + composer 全部在这个容器里自然流。
- *
- * 滚动容器是宿主层的 .app-content（overflow-y:auto），
- * 所以这里 min-height:100% 保证内容少时 composer 也贴到视口底部。
- * padding-bottom 补偿 composer 高度，让最后一条消息不被遮挡。
+ * 内容整体容器：纯 position:relative，所有内容（消息/plan/composer）在一个整体里自然流。
+ * 滚动容器是宿主层 .app-content，composer 用 position:sticky;bottom:0 钉在视口底部。
+ * min-height:100% 保证内容少时 composer 也贴到视口底部。
  */
 .app-content-inner {
   position: relative;
   min-width: 0;
   width: 100%;
-  box-sizing: border-box;
-
-  /* 至少撑满一屏，让内容少时 composer 也贴底 */
   min-height: 100%;
-
-  /* composer 绝对定位占位：通过 CSS 变量动态测量，缺省 110px */
-  padding-bottom: calc(
-    var(--aw-composer-outer-height, 110px) + 16px + var(--aw-main-column-padding-x)
-  );
+  box-sizing: border-box;
 
   .app-messages-shell {
     width: 100%;
@@ -94,55 +83,38 @@
   }
 
   /*
-   * 底部输入区：absolute 定位在 .app-content-inner 底部。
-   * left/right 0 让它贴紧内容列两边（800px max-width）。
-   * ::before 伪元素：底部渐变遮罩，absolute bottom:100% 让它浮在 composer 上方，
-   * 不占用正常流空间，避免消息滚到 composer 后面硬切。
+   * 底部输入区：position:sticky; bottom:0 钉在视口底部。
+   * 滚动时 composer 始终可见，消息从它上方滚过。
    */
   .app-composer-stack {
-    position: absolute;
+    position: sticky;
     bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 5;
-    margin: 0;
-    padding-inline: var(--aw-main-column-padding-x);
+    width: 100%;
     box-sizing: border-box;
-
-    &::before {
-      content: '';
-      position: absolute;
-      bottom: 100%;
-      left: 0;
-      right: 0;
-      height: 120px;
-      z-index: 4;
-      pointer-events: none;
-      background: linear-gradient(
-        to bottom,
-        transparent 0%,
-        color-mix(in srgb, var(--aw-color-bg-layout) 75%, transparent) 100%
-      );
-    }
+    padding-inline: var(--aw-main-column-padding-x);
+    z-index: 5;
+    background: var(--aw-color-bg-layout); /* sticky 需要背景，避免消息从下面透过来 */
   }
 }
 
-/* 空会话时取消 absolute + gradient + 滚 */
+/* 空会话时：居中对齐，消息区隐藏 */
 .app-content.is-empty-conversation {
-  overflow-y: hidden;
-
-  .app-composer-stack {
-    position: static; /* 让它跟随内容流自然居中 */
-    margin-bottom: 14px;
-
-    &::before {
-      display: none;
-    }
-  }
+  overflow: hidden;
 
   .app-content-inner {
-    padding-bottom: 0;
-    min-height: auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .app-messages-shell {
+    display: none;
+  }
+
+  .app-composer-stack {
+    position: static; /* 取消 sticky，让它参与 flex 居中 */
+    background: transparent;
   }
 }
 

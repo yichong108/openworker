@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react'
-
 import './chat-session.scss'
 
 import { ChatComposer } from './ChatComposer.js'
@@ -10,10 +8,8 @@ import type { ChatSessionViewProps } from './types.js'
 /**
  * 中间栏聊天会话视图：加载态、消息列表、计划卡与底部输入框。
  *
- * 对话面消费 AG-UI `liveEvents` / `message.aguiEvents`；输入与计划编辑仍由宿主受控传入。
- *
- * composer 高度通过 ResizeObserver 动态写入 CSS 变量 --aw-composer-outer-height，
- * 让 padding-bottom 补偿精确匹配实际高度（多行输入/工具栏展开时自动调整）。
+ * flex column 布局：.app-messages-shell 是滚动容器（flex:1 + overflow-y:auto），
+ * .app-composer-stack flex-shrink:0 固定底部。
  *
  * @param props - 会话展示数据与回调
  */
@@ -34,26 +30,6 @@ export function ChatSessionView({
   className
 }: ChatSessionViewProps) {
   const resolvedSessionKey = sessionKey ?? messages[0]?.id ?? null
-  const composerStackRef = useRef<HTMLDivElement | null>(null)
-  const innerRef = useRef<HTMLDivElement | null>(null)
-
-  /** 动态测量 composer 外框高度，写入 CSS 变量供 padding-bottom 补偿 */
-  useEffect(() => {
-    const composerEl = composerStackRef.current
-    const innerEl = innerRef.current
-    if (!composerEl || !innerEl) return
-    if (typeof ResizeObserver === 'undefined') return
-
-    const applyHeight = () => {
-      const h = composerEl.getBoundingClientRect().height
-      if (h > 0) innerEl.style.setProperty('--aw-composer-outer-height', `${h}px`)
-    }
-
-    applyHeight()
-    const ro = new ResizeObserver(applyHeight)
-    ro.observe(composerEl)
-    return () => ro.disconnect()
-  }, [sessionKey, isLoading, isEmpty])
 
   return (
     <div
@@ -69,7 +45,7 @@ export function ChatSessionView({
           <span className="app-session-messages-loading-circle" aria-hidden />
         </div>
       ) : (
-        <div className="app-content-inner" ref={innerRef}>
+        <div className="app-content-inner">
           <ChatMessageList
             sessionKey={resolvedSessionKey}
             messages={messages}
@@ -85,7 +61,7 @@ export function ChatSessionView({
               <ChatPlanCard {...plan} />
             </div>
           ) : null}
-          <div className="app-composer-stack" ref={composerStackRef}>
+          <div className="app-composer-stack">
             {isEmpty ? emptyToolbar : null}
             <ChatComposer {...composer} isRun={isRun} onStop={onStopRun} />
           </div>
