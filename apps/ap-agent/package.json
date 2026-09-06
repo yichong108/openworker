@@ -16,6 +16,7 @@
     "@ag-ui/client": "catalog:",
     "@openworker/agent": "workspace:*",
     "@openworker/base-agent": "workspace:*",
+    "@openworker/shared": "workspace:*",
     "@openworker/tools": "workspace:*",
     "@openworker/skills": "workspace:*",
     "ai": "catalog:",
