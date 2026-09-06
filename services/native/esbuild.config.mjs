@@ -4,6 +4,8 @@
  * - 使用 CJS + `.cjs` 后缀，避免安装包/仓库内上层 `"type":"module"` 把入口当 ESM。
  * - `@vscode/ripgrep` 走本地 shim，并复制 `rg` 二进制到 `dist/bin/`，避免 bundle 内
  *   `createRequire(import.meta.url)` 被掏空导致进程秒退。
+ * - `@prisma/client` 与 `prisma` 标记为 external（Prisma 内部动态 require 无法被 bundle），
+ *   Desktop 打包需同时携带这两个包的 node_modules。
  * - `node:*` 内置模块由 platform:node 自动 external；Express 等依赖打进 bundle。
  */
 import { execFileSync } from 'node:child_process'
@@ -30,6 +32,8 @@ await esbuild.build({
   alias: {
     '@vscode/ripgrep': shimPath
   },
+  // Prisma Client 内部使用动态 require 加载 engine，必须 external
+  external: ['@prisma/client', '@prisma/client/*', 'prisma'],
   // CJS 下 esbuild 会把 import.meta 置空；用 __filename 回填，兜底其它引用
   banner: {
     js: 'var __import_meta_url = require("url").pathToFileURL(__filename).href;'

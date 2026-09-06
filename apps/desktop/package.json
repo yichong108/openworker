@@ -95,6 +95,20 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "../../services/native/node_modules/@prisma",
+        "to": "node_modules/@prisma",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../../services/native/node_modules/prisma",
+        "to": "node_modules/prisma",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {

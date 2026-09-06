@@ -1,25 +1,17 @@
 /**
- * 本机画像持久化 — 单行读写 facts_json（SQLite TEXT）
+ * 本机画像持久化 — 单行读写 facts_json（Prisma String）
  */
 
 import type { PutUserProfileRequest, UserFactDto, UserProfileDto } from '@openworker/shared'
 
 import { BadRequestError } from '../http/envelope.js'
-import { getDb, LOCAL_PROFILE_ID } from '../db/sqlite.js'
-
-type ProfileRow = {
-  id: string
-  facts_json: string
-  updated_at: string
-}
+import { getPrisma, LOCAL_PROFILE_ID } from '../db/prisma.js'
 
 const MAX_FACTS = 64
 
 /**
  * 校验并规范化事实列表。
  *
- * @param facts - 原始 facts
- * @returns 规范化后的 UserFactDto[]
  * @throws BadRequestError 当 facts 非法时
  */
 function normalizeFacts(facts: unknown): UserFactDto[] {
@@ -53,9 +45,7 @@ function normalizeFacts(facts: unknown): UserFactDto[] {
 }
 
 /**
- * 解析 SQLite TEXT JSON 字段为事实数组。
- *
- * @param raw - facts_json
+ * 解析 facts_json 为事实数组。
  */
 function parseFactsJson(raw: unknown): UserFactDto[] {
   if (raw == null) return []
@@ -76,18 +66,12 @@ function parseFactsJson(raw: unknown): UserFactDto[] {
 
 /**
  * 读取本机画像；无记录时返回空 facts。
- *
- * @returns UserProfileDto
  */
 export async function getUserProfile(): Promise<UserProfileDto> {
-  const row = getDb()
-    .prepare(
-      `SELECT id, facts_json, updated_at
-       FROM user_profiles
-       WHERE id = ?
-       LIMIT 1`
-    )
-    .get(LOCAL_PROFILE_ID) as ProfileRow | undefined
+  const prisma = getPrisma()
+  const row = await prisma.user_profiles.findUnique({
+    where: { id: LOCAL_PROFILE_ID }
+  })
   if (!row) {
     return { facts: [], updatedAt: 0 }
   }
@@ -100,22 +84,26 @@ export async function getUserProfile(): Promise<UserProfileDto> {
 /**
  * 整包覆盖写入本机画像。
  *
- * @param body - PutUserProfileRequest
- * @returns 写入后的 UserProfileDto
  * @throws BadRequestError 当 body 非法时
  */
 export async function putUserProfile(body: PutUserProfileRequest): Promise<UserProfileDto> {
+  const prisma = getPrisma()
   const facts = normalizeFacts(body?.facts)
   const now = new Date().toISOString()
-  getDb()
-    .prepare(
-      `INSERT INTO user_profiles (id, facts_json, updated_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         facts_json = excluded.facts_json,
-         updated_at = excluded.updated_at`
-    )
-    .run(LOCAL_PROFILE_ID, JSON.stringify(facts), now)
+
+  await prisma.user_profiles.upsert({
+    where: { id: LOCAL_PROFILE_ID },
+    create: {
+      id: LOCAL_PROFILE_ID,
+      facts_json: JSON.stringify(facts),
+      updated_at: now
+    },
+    update: {
+      facts_json: JSON.stringify(facts),
+      updated_at: now
+    }
+  })
+
   return {
     facts,
     updatedAt: new Date(now).getTime()

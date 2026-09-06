@@ -6,24 +6,28 @@ import { ensureUserSkillsLayout } from './agent/skills.js'
 import { createApp } from './app.js'
 import { bootstrapNativeLogging } from './bootstrap-log.js'
 import './config/env.js'
-import { closeDb, ensureSchema } from './db/sqlite.js'
+import { closeDb, getPrisma } from './db/prisma.js'
 import { nativeLog } from './logger.js'
 import { getAppSettings } from './services/settings-service.js'
 
 /**
  * 启动 Native HTTP 服务
  *
- * 先确保 SQLite schema 就绪，再仅绑定本机回环地址，便于 Desktop 等本地宿主拉起与探活。
- * 注册 SIGTERM/SIGINT 以关闭 HTTP、MCP 宿主与 SQLite；listen 失败（如端口占用）以非零退出码结束。
+ * 先确保 Prisma schema 就绪，再仅绑定本机回环地址，便于 Desktop 等本地宿主拉起与探活。
+ * 注册 SIGTERM/SIGINT 以关闭 HTTP、MCP 宿主与 Prisma；listen 失败（如端口占用）以非零退出码结束。
  */
 function main() {
   bootstrapNativeLogging()
 
   const port = Number(process.env.PORT ?? process.env.OPENWORKER_NATIVE_PORT)
-  const sqlitePath = process.env.SQLITE_PATH!
+  const databaseUrl = process.env.DATABASE_URL!
 
-  ensureSchema()
-  nativeLog.info(`sqlite ready: ${sqlitePath}`)
+  // 预热 Prisma client（懒加载首次连接）
+  void getPrisma()
+    .$connect()
+    .then(() => {
+      nativeLog.info(`prisma connected: ${databaseUrl}`)
+    })
 
   // 同步 mcp.json 种子 + 复制内置 skills；MCP 预热异步不阻塞 listen
   void getAppSettings()
@@ -63,26 +67,23 @@ function main() {
       void isPeerHealthy(port).then((healthy) => {
         if (healthy) {
           nativeLog.info(`port ${port} already served by healthy peer, skip duplicate dev instance`)
-          closeDb()
-          process.exit(0)
+          void closeDb().finally(() => process.exit(0))
           return
         }
         nativeLog.error('listen failed', error)
-        closeDb()
-        process.exit(1)
+        void closeDb().finally(() => process.exit(1))
       })
       return
     }
 
     nativeLog.error('listen failed', error)
-    closeDb()
-    process.exit(1)
+    void closeDb().finally(() => process.exit(1))
   })
 
   let shuttingDown = false
 
   /**
-   * 优雅关闭：停止接收连接后关闭 MCP 与 SQLite，再退出进程。
+   * 优雅关闭：停止接收连接后关闭 MCP 与 Prisma，再退出进程。
    *
    * @param signal - 触发关闭的信号名，仅用于日志
    */
@@ -96,8 +97,8 @@ function main() {
       }
       void disposeMcpHostAgent()
         .catch(() => undefined)
-        .finally(() => {
-          closeDb()
+        .finally(async () => {
+          await closeDb()
           process.exit(closeError ? 1 : 0)
         })
     })

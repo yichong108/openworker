@@ -1,0 +1,58 @@
+// Prisma schema for @openworker/native
+// SQLite — single-tenant local database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 工作区
+model workspaces {
+  id         String   @id
+  name       String
+  path       String?
+  sort_order Int      @default(0)
+  is_default Int      @default(0)
+  created_at String
+  updated_at String
+  deleted_at String?
+
+  sessions sessions[]
+
+  @@index([sort_order])
+  @@index([deleted_at])
+}
+
+/// 会话
+model sessions {
+  id            String   @id
+  workspace_id  String
+  name          String
+  messages_json String
+  created_at    String
+  updated_at    String
+  deleted_at    String?
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id])
+
+  @@index([workspace_id, updated_at])
+  @@index([workspace_id, deleted_at])
+}
+
+/// 应用设置（单行，id = 'default'）
+model app_settings {
+  id         String @id
+  payload    String
+  updated_at String
+}
+
+/// 本机画像（单行，id = 'default'）
+model user_profiles {
+  id         String @id
+  facts_json String
+  updated_at String
+}

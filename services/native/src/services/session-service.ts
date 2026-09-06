@@ -7,24 +7,19 @@ import type {
 import { randomUUID } from 'node:crypto'
 
 import { BadRequestError, NotFoundError } from '../http/envelope.js'
-import { getDb } from '../db/sqlite.js'
+import { getPrisma } from '../db/prisma.js'
 import { getWorkspace } from './workspace-service.js'
 
-type SessionRow = {
+/**
+ * 将 Prisma session 记录映射为 SessionDto（不含 messages）
+ */
+function toDto(row: {
   id: string
   workspace_id: string
   name: string
-  messages_json?: string
   created_at: string
   updated_at: string
-}
-
-/**
- * 将 SQLite 行映射为 SessionDto（不含 messages）
- *
- * @param row - sessions 表行
- */
-function toDto(row: SessionRow): SessionDto {
+}): SessionDto {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
@@ -35,9 +30,7 @@ function toDto(row: SessionRow): SessionDto {
 }
 
 /**
- * 解析 messages_json 列为 unknown[]
- *
- * @param raw - SQLite TEXT JSON 字段
+ * 解析 messages_json 为 unknown[]
  */
 function parseMessagesJson(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw
@@ -54,50 +47,52 @@ function parseMessagesJson(raw: unknown): unknown[] {
 
 /**
  * 列出工作区下未删除会话（不含 messages_json）
- *
- * @param workspaceId - 工作区 id
  */
 export async function listSessions(workspaceId: string): Promise<SessionDto[]> {
+  const prisma = getPrisma()
   await getWorkspace(workspaceId)
-  const rows = getDb()
-    .prepare(
-      `SELECT id, workspace_id, name, created_at, updated_at
-       FROM sessions
-       WHERE workspace_id = ? AND deleted_at IS NULL
-       ORDER BY updated_at DESC`
-    )
-    .all(workspaceId) as SessionRow[]
+
+  const rows = await prisma.sessions.findMany({
+    where: { workspace_id: workspaceId, deleted_at: null },
+    orderBy: { updated_at: 'desc' },
+    select: {
+      id: true,
+      workspace_id: true,
+      name: true,
+      created_at: true,
+      updated_at: true
+    }
+  })
   return rows.map(toDto)
 }
 
 /**
  * 获取未删除会话元数据
- *
- * @param sessionId - 会话 id
  */
 export async function getSession(sessionId: string): Promise<SessionDto> {
-  const row = getDb()
-    .prepare(
-      `SELECT id, workspace_id, name, created_at, updated_at
-       FROM sessions
-       WHERE id = ? AND deleted_at IS NULL
-       LIMIT 1`
-    )
-    .get(sessionId) as SessionRow | undefined
+  const prisma = getPrisma()
+  const row = await prisma.sessions.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      workspace_id: true,
+      name: true,
+      created_at: true,
+      updated_at: true
+    }
+  })
   if (!row) throw new NotFoundError('Session not found')
   return toDto(row)
 }
 
 /**
  * 在指定工作区创建会话
- *
- * @param workspaceId - 工作区 id
- * @param body - 创建请求
  */
 export async function createSession(
   workspaceId: string,
   body: CreateSessionRequest
 ): Promise<SessionDto> {
+  const prisma = getPrisma()
   await getWorkspace(workspaceId)
 
   const id = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : randomUUID()
@@ -107,19 +102,23 @@ export async function createSession(
       : `会话 ${new Date().toLocaleString()}`
 
   const now = new Date().toISOString()
+
   try {
-    getDb()
-      .prepare(
-        `INSERT INTO sessions (id, workspace_id, name, messages_json, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .run(id, workspaceId, name, JSON.stringify([]), now, now)
+    await prisma.sessions.create({
+      data: {
+        id,
+        workspace_id: workspaceId,
+        name,
+        messages_json: JSON.stringify([]),
+        created_at: now,
+        updated_at: now
+      }
+    })
   } catch (error) {
+    // Prisma P2002: 唯一约束冲突
     const err = error as { code?: string; message?: string }
-    // SQLite unique / primary key conflict
     if (
-      err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' ||
-      err.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      err.code === 'P2002' ||
       (typeof err.message === 'string' && err.message.includes('UNIQUE'))
     ) {
       throw new BadRequestError('Session id already exists')
@@ -138,135 +137,105 @@ export async function createSession(
 
 /**
  * 部分更新会话（重命名 / touch）
- *
- * @param sessionId - 会话 id
- * @param body - 补丁
  */
 export async function patchSession(
   sessionId: string,
   body: PatchSessionRequest
 ): Promise<SessionDto> {
+  const prisma = getPrisma()
   await getSession(sessionId)
 
-  const sets: string[] = []
-  const params: Array<string | number | null> = []
+  const data: Record<string, unknown> = {
+    updated_at: new Date().toISOString()
+  }
 
   if (typeof body.name === 'string') {
     const name = body.name.trim()
     if (!name) throw new BadRequestError('name cannot be empty')
-    sets.push('name = ?')
-    params.push(name)
-  }
-  if (body.touch === true) {
-    sets.push('updated_at = ?')
-    params.push(new Date().toISOString())
-  } else if (sets.length > 0) {
-    sets.push('updated_at = ?')
-    params.push(new Date().toISOString())
+    data.name = name
   }
 
-  if (sets.length === 0) {
+  // 仅 touch 时保持 updated_at 更新，不额外改字段
+  if (body.touch !== true && Object.keys(data).length <= 1) {
     return getSession(sessionId)
   }
 
-  params.push(sessionId)
-  getDb()
-    .prepare(
-      `UPDATE sessions SET ${sets.join(', ')}
-       WHERE id = ? AND deleted_at IS NULL`
-    )
-    .run(...params)
-  return getSession(sessionId)
+  const row = await prisma.sessions.update({
+    where: { id: sessionId, deleted_at: null },
+    data,
+    select: {
+      id: true,
+      workspace_id: true,
+      name: true,
+      created_at: true,
+      updated_at: true
+    }
+  })
+  return toDto(row)
 }
 
 /**
  * 软删会话
- *
- * @param sessionId - 会话 id
  */
 export async function softDeleteSession(sessionId: string): Promise<void> {
+  const prisma = getPrisma()
   await getSession(sessionId)
+
   const now = new Date().toISOString()
-  const result = getDb()
-    .prepare(
-      `UPDATE sessions SET deleted_at = ?, updated_at = ?
-       WHERE id = ? AND deleted_at IS NULL`
-    )
-    .run(now, now, sessionId)
-  if (result.changes === 0) {
-    throw new NotFoundError('Session not found')
-  }
+  await prisma.sessions.update({
+    where: { id: sessionId, deleted_at: null },
+    data: { deleted_at: now, updated_at: now }
+  })
 }
 
 /**
  * 读取会话完整 Message[]
- *
- * @param sessionId - 会话 id
  */
 export async function getSessionMessages(sessionId: string): Promise<SessionMessagesPayload> {
-  const row = getDb()
-    .prepare(
-      `SELECT id, workspace_id, name, messages_json, created_at, updated_at
-       FROM sessions
-       WHERE id = ? AND deleted_at IS NULL
-       LIMIT 1`
-    )
-    .get(sessionId) as SessionRow | undefined
+  const prisma = getPrisma()
+  const row = await prisma.sessions.findUnique({
+    where: { id: sessionId, deleted_at: null },
+    select: { messages_json: true }
+  })
   if (!row) throw new NotFoundError('Session not found')
   return { messages: parseMessagesJson(row.messages_json) }
 }
 
 /**
  * 整包覆盖会话 Message[]，并刷新 updated_at
- *
- * @param sessionId - 会话 id
- * @param payload - `{ messages: Message[] }`
  */
 export async function putSessionMessages(
   sessionId: string,
   payload: SessionMessagesPayload
 ): Promise<SessionMessagesPayload> {
+  const prisma = getPrisma()
+
   if (!payload || !Array.isArray(payload.messages)) {
     throw new BadRequestError('messages must be an array')
   }
 
   await getSession(sessionId)
 
-  const json = JSON.stringify(payload.messages)
   const now = new Date().toISOString()
-  const result = getDb()
-    .prepare(
-      `UPDATE sessions
-       SET messages_json = ?, updated_at = ?
-       WHERE id = ? AND deleted_at IS NULL`
-    )
-    .run(json, now, sessionId)
-  if (result.changes === 0) {
-    throw new NotFoundError('Session not found')
-  }
+  await prisma.sessions.update({
+    where: { id: sessionId, deleted_at: null },
+    data: {
+      messages_json: JSON.stringify(payload.messages),
+      updated_at: now
+    }
+  })
   return { messages: payload.messages }
 }
 
 /**
  * 统计未删除会话数（可选按工作区）
- *
- * @param workspaceId - 可选工作区过滤
  */
 export async function countActiveSessions(workspaceId?: string): Promise<number> {
+  const prisma = getPrisma()
   if (workspaceId) {
-    const row = getDb()
-      .prepare(
-        `SELECT COUNT(*) AS cnt FROM sessions
-         WHERE workspace_id = ? AND deleted_at IS NULL`
-      )
-      .get(workspaceId) as { cnt: number }
-    return Number(row?.cnt ?? 0)
+    return prisma.sessions.count({
+      where: { workspace_id: workspaceId, deleted_at: null }
+    })
   }
-  const row = getDb()
-    .prepare(
-      `SELECT COUNT(*) AS cnt FROM sessions
-       WHERE deleted_at IS NULL`
-    )
-    .get() as { cnt: number }
-  return Number(row?.cnt ?? 0)
+  return prisma.sessions.count({ where: { deleted_at: null } })
 }
