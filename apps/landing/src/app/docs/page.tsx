@@ -387,68 +387,34 @@ export default function DocsPage() {
                 </ReactMarkdown>
               </article>
 
-              {/* 上一页/下一页导航 - 扁平 */}
-              <div className="mt-12 grid gap-px bg-gray-200 sm:grid-cols-2">
+              {/* 上一页/下一页导航 */}
+              <div className="mt-12 grid gap-4 sm:grid-cols-2">
                 {prevItem ? (
                   <button
                     type="button"
                     onClick={() => selectDoc(prevItem.sectionId, prevItem.id)}
-                    className="group flex items-start gap-3 bg-white px-5 py-4 text-left transition hover:bg-gray-50"
+                    className="group rounded-lg border border-gray-200 bg-white px-5 py-4 text-left transition hover:border-[var(--teal)] hover:bg-gray-50"
                   >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mt-1 flex-shrink-0 text-gray-400 transition group-hover:text-[var(--teal)]"
-                    >
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-                        上一页
-                      </div>
-                      <div className="mt-0.5 truncate text-sm font-medium text-[var(--ink)] group-hover:text-[var(--teal)]">
-                        {prevItem.title}
-                      </div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                      上一页
+                    </div>
+                    <div className="mt-1 truncate text-sm font-medium text-[var(--ink)] group-hover:text-[var(--teal)]">
+                      {prevItem.title}
                     </div>
                   </button>
-                ) : (
-                  <div className="hidden sm:block" />
-                )}
+                ) : null}
                 {nextItem ? (
                   <button
                     type="button"
                     onClick={() => selectDoc(nextItem.sectionId, nextItem.id)}
-                    className="group flex items-start gap-3 bg-white px-5 py-4 text-left transition hover:bg-gray-50 sm:text-right"
+                    className="group rounded-lg border border-gray-200 bg-white px-5 py-4 text-left transition hover:border-[var(--teal)] hover:bg-gray-50 sm:text-right"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
-                        下一页
-                      </div>
-                      <div className="mt-0.5 truncate text-sm font-medium text-[var(--ink)] group-hover:text-[var(--teal)]">
-                        {nextItem.title}
-                      </div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                      下一页
                     </div>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mt-1 flex-shrink-0 text-gray-400 transition group-hover:text-[var(--teal)]"
-                    >
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
+                    <div className="mt-1 truncate text-sm font-medium text-[var(--ink)] group-hover:text-[var(--teal)]">
+                      {nextItem.title}
+                    </div>
                   </button>
                 ) : null}
               </div>
