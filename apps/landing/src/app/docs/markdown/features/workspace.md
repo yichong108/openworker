@@ -29,7 +29,3 @@ Workspace 是 OpenWorker 中的工作空间概念，每个 Workspace 可以包�
   "settings": {...}
 }
 ```
-
-## 团队协作
-
-Workspace 配置可以通过 Git 进行版本控制，便于团队协作。

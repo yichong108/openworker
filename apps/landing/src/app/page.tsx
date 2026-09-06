@@ -77,7 +77,7 @@ export default function Home() {
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-[var(--ink-soft)]">
               OpenWorker
-              桌面端（以及配套移动端）面向日常使用：对话、整理资料、在工作区里完成任务。数据尽量留在本地，工具按需接入。
+              桌面端面向日常使用：对话、整理资料、在工作区里完成任务。数据尽量留在本地，工具按需接入。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -107,10 +107,6 @@ export default function Home() {
             <FeaturePoint
               title="Skills 与斜杠菜单"
               description="内置与自定义技能（如排错、代码评审、工作流）。在输入框输入 / 即可快速调用。"
-            />
-            <FeaturePoint
-              title="知识库与记忆"
-              description="可结合知识库检索回答问题；会话会压缩关键信息，并逐步形成偏好与项目画像，让后续对话更贴合你。"
             />
             <FeaturePoint
               title="本地优先与可扩展工具"

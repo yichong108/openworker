@@ -3,8 +3,6 @@
 ## 系统要求
 
 - **Windows**: Windows 10 或更高版本
-- **macOS**: macOS 10.15 或更高版本
-- **Linux**: Ubuntu 18.04 或更高版本
 
 ## 下载安装
 

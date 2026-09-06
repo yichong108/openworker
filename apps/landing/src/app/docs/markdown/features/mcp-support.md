@@ -23,11 +23,5 @@ MCP (Model Context Protocol) 是一个标准化的协议，定义了 AI Agent �
 
 ## 可用的 MCP 服务器
 
-- **文件系统**: 读取和写入本地文件
 - **数据库**: 连接和查询数据库
-- **API**: 调用外部 API 服务
 - **Git**: 版本控制操作
-
-## 开发自定义 MCP 服务器
-
-您可以开发自己的 MCP 服务器来扩展 OpenWorker 的功能。详细文档请参考 [MCP 官方文档](https://modelcontextprotocol.io)。
