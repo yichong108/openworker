@@ -1,4 +1,3 @@
-import 'simplebar-react/dist/simplebar.min.css'
 import '@openworker/ui/chat-session/chat-session.scss'
 import '@/renderer/src/center-pane/WorkspaceCenterPane.scss'
 import { DesktopChatSession } from './DesktopChatSession'

@@ -224,19 +224,6 @@ body {
   margin-inline: auto;
 }
 
-.ow-playground-chat-session .app-messages-shell {
-  flex: 1;
-  min-height: 0;
-}
-
-.ow-playground-chat-session .app-composer-stack {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: none;
-  box-sizing: border-box;
-  padding: 0 var(--aw-main-column-padding-x) 16px;
-}
-
 .ow-playground-chat-session .app-composer-plus-btn {
   display: none;
 }

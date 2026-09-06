@@ -1,4 +1,4 @@
-﻿/* 主栏聊天 / 弹窗正文：统一滚动条 token（Modal 传送门在 body 外，须挂 :root） */
+/* 主栏聊天 / 弹窗正文：统一滚动条 token（Modal 传送门在 body 外，须挂 :root） */
 :root {
   --aw-chat-scrollbar-size: 15px;
   --aw-chat-scrollbar-thumb: rgb(24 24 27 / 0.1);
@@ -804,9 +804,6 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
     transition-duration: 0.01ms !important;
   }
 
-  .app-messages-scroll.is-messages-scrollbar-hot .simplebar-scrollbar::before,
-  .app-messages-scroll.simplebar-scrolling .simplebar-scrollbar::before,
-  .app-messages-scroll.simplebar-dragging .simplebar-scrollbar::before,
   *::-webkit-scrollbar-thumb,
   .ant-modal-root .ant-modal-body::-webkit-scrollbar-thumb,
   .ant-modal-root .ant-table-body::-webkit-scrollbar-thumb {

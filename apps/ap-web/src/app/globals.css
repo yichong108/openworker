@@ -216,10 +216,6 @@ body {
   overflow: hidden;
 }
 
-.ap-task-chat-session .app-content .app-composer-stack {
-  margin-bottom: 0;
-}
-
 .ap-task-chat-session .app-content {
   display: flex;
   min-height: 0;
@@ -227,23 +223,6 @@ body {
   flex-direction: column;
   height: 100%;
   background: var(--aw-color-bg-layout);
-}
-
-.ap-task-chat-session .app-messages-shell {
-  flex: 1;
-  min-height: 0;
-}
-
-.ap-task-chat-session .app-messages-scroll[data-simplebar] {
-  background: var(--aw-color-bg-layout);
-}
-
-.ap-task-chat-session .app-composer-stack {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: none;
-  box-sizing: border-box;
-  padding: 0 var(--aw-main-column-padding-x) 16px;
 }
 
 .ap-task-chat-session .app-composer-plus-btn {

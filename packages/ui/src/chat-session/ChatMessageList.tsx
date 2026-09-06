@@ -1,5 +1,3 @@
-import 'simplebar-react/dist/simplebar.min.css'
-
 import type { BaseEvent } from '@ag-ui/client'
 import { App as AntdApp } from 'antd'
 import {
@@ -9,11 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
-  type UIEvent
+  type MouseEvent
 } from 'react'
-import type SimpleBarCore from 'simplebar-core'
-import SimpleBar from 'simplebar-react'
 
 import { aguiEventsToToolTimeline } from './agui-timeline.js'
 import { MessageTurnItem } from './MessageTurnItem.js'
@@ -33,8 +28,22 @@ export type ChatMessageListProps = {
   onOpenExternal: (href: string) => Promise<{ ok: boolean }>
 }
 
+/** 找到最近的可滚动祖先（用于从 .app-content-inner 向上找到 .app-content） */
+function findScrollableAncestor(start: HTMLElement | null): HTMLElement | null {
+  let el: HTMLElement | null = start
+  while (el) {
+    const style = window.getComputedStyle(el)
+    const overflowY = style.overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') return el
+    el = el.parentElement
+  }
+  return null
+}
+
 /**
  * 管理消息列表区的展示状态：时间线手风琴、自动滚动、Markdown 外链确认等。
+ *
+ * 滚动容器已上移到宿主层（`.app-content`），本组件通过向上查找祖先来监听滚动。
  *
  * @param options - 会话消息与直播 AG-UI 事件
  */
@@ -49,10 +58,9 @@ function useChatMessageList({
   const { message: msgApi, modal: modalApi } = AntdApp.useApp()
 
   const [timelineOpenOverride, setTimelineOpenOverride] = useState<Record<string, boolean>>({})
-  const messagesSimpleBarRef = useRef<SimpleBarCore | null>(null)
+  const shellRef = useRef<HTMLDivElement | null>(null)
   const messagesBottomRef = useRef<HTMLDivElement | null>(null)
   const autoScrollRef = useRef(true)
-  const [messagesScrollSurfaceHot, setMessagesScrollSurfaceHot] = useState(false)
   const [liveTick, setLiveTick] = useState(0)
 
   const liveTimeline = useMemo(
@@ -82,7 +90,7 @@ function useChatMessageList({
     return null
   }, [messages])
 
-  const isNearBottom = useCallback((el: HTMLDivElement) => {
+  const isNearBottom = useCallback((el: HTMLElement) => {
     const threshold = 48
     return el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
   }, [])
@@ -91,16 +99,7 @@ function useChatMessageList({
     const bottomEl = messagesBottomRef.current
     if (bottomEl) {
       bottomEl.scrollIntoView({ block: 'end', behavior })
-      return
     }
-    const el = messagesSimpleBarRef.current?.getScrollElement()
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior })
-  }, [])
-
-  const handleMessagesShellMouseLeave = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    const next = e.relatedTarget
-    if (next instanceof Node && e.currentTarget.contains(next)) return
-    setMessagesScrollSurfaceHot(false)
   }, [])
 
   useEffect(() => {
@@ -156,9 +155,18 @@ function useChatMessageList({
     [openExternalWithConfirm]
   )
 
+  /** 向上查找宿主滚动容器，监听 scroll 事件以更新 autoScrollRef */
   useEffect(() => {
-    setMessagesScrollSurfaceHot(false)
-  }, [sessionKey])
+    const shell = shellRef.current
+    if (!shell) return
+    const scrollContainer = findScrollableAncestor(shell)
+    if (!scrollContainer) return
+    const handler = () => {
+      autoScrollRef.current = isNearBottom(scrollContainer)
+    }
+    scrollContainer.addEventListener('scroll', handler, { passive: true })
+    return () => scrollContainer.removeEventListener('scroll', handler)
+  }, [isNearBottom, sessionKey])
 
   useEffect(() => {
     autoScrollRef.current = true
@@ -186,13 +194,9 @@ function useChatMessageList({
     timelineOpenOverride,
     setTimelineOpenOverride,
     timelineWallMs,
-    messagesScrollSurfaceHot,
-    setMessagesScrollSurfaceHot,
-    handleMessagesShellMouseLeave,
-    messagesSimpleBarRef,
+    shellRef,
     messagesBottomRef,
     autoScrollRef,
-    isNearBottom,
     onMarkdownClick,
     isRun,
     liveTimeline
@@ -200,7 +204,7 @@ function useChatMessageList({
 }
 
 /**
- * 会话消息列表：滚动容器、贴底跟随流式输出、Worked 时间线。
+ * 会话消息列表：纯内容容器，滚动交给宿主层（`.app-content`）。
  *
  * @param props - 当前会话消息与直播 AG-UI 事件
  */
@@ -208,38 +212,26 @@ export function ChatMessageList(props: ChatMessageListProps) {
   const m = useChatMessageList(props)
 
   return (
-    <div className="app-messages-shell" onMouseLeave={m.handleMessagesShellMouseLeave}>
-      <SimpleBar
-        className={`app-messages-scroll${m.messagesScrollSurfaceHot ? ' is-messages-scrollbar-hot' : ''}`}
-        ref={m.messagesSimpleBarRef}
-        autoHide={false}
-        scrollableNodeProps={{
-          onMouseEnter: () => m.setMessagesScrollSurfaceHot(true),
-          onScroll: (e: UIEvent<HTMLElement>) => {
-            m.autoScrollRef.current = m.isNearBottom(e.currentTarget as HTMLDivElement)
-          }
-        }}
-      >
-        <div className="app-messages-inner">
-          {m.messageTurns.map((turn) => (
-            <MessageTurnItem
-              key={turn.key}
-              turn={turn}
-              latestAssistantMessageId={m.latestAssistantMessageId}
-              latestUserMessageId={m.latestUserMessageId}
-              isRun={m.isRun}
-              currentTimeline={m.liveTimeline}
-              timelineOpenOverride={m.timelineOpenOverride}
-              setTimelineOpenOverride={m.setTimelineOpenOverride}
-              timelineWallMs={m.timelineWallMs}
-              onMarkdownClick={m.onMarkdownClick}
-              onStopRun={props.onStopRun}
-              onEditResend={props.onEditResend}
-            />
-          ))}
-          <div ref={m.messagesBottomRef} />
-        </div>
-      </SimpleBar>
+    <div className="app-messages-shell" ref={m.shellRef}>
+      <div className="app-messages-inner">
+        {m.messageTurns.map((turn) => (
+          <MessageTurnItem
+            key={turn.key}
+            turn={turn}
+            latestAssistantMessageId={m.latestAssistantMessageId}
+            latestUserMessageId={m.latestUserMessageId}
+            isRun={m.isRun}
+            currentTimeline={m.liveTimeline}
+            timelineOpenOverride={m.timelineOpenOverride}
+            setTimelineOpenOverride={m.setTimelineOpenOverride}
+            timelineWallMs={m.timelineWallMs}
+            onMarkdownClick={m.onMarkdownClick}
+            onStopRun={props.onStopRun}
+            onEditResend={props.onEditResend}
+          />
+        ))}
+        <div ref={m.messagesBottomRef} />
+      </div>
     </div>
   )
 }

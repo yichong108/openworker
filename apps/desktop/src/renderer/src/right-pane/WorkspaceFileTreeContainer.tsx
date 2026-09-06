@@ -16,6 +16,7 @@ import { useDataUpdates, useTreeApi } from 'react-arborist/dist/module/context.j
 import { focusNextElement, focusPrevElement } from 'react-arborist/dist/module/utils.js'
 import { FixedSizeList } from 'react-window'
 import SimpleBar from 'simplebar-react'
+import 'simplebar-react/dist/simplebar.min.css'
 
 let focusSearchTerm = ''
 let typeaheadTimeoutId: ReturnType<typeof setTimeout> | null = null

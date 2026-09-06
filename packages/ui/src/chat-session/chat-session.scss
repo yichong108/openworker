@@ -1,3 +1,4 @@
+/* 宿主层滚动容器：loading 时全屏铺满隐藏，有内容时 overflow-y:auto 滚 */
 .app-content {
   box-sizing: border-box;
   width: 100%;
@@ -11,56 +12,138 @@
   border-radius: 0;
   background: var(--aw-color-bg-layout);
 
+  /* 有内容（非 loading）时滚；loading 时 spinner 需要铺满不滚 */
+  &:not(.is-session-loading) {
+    overflow-y: auto;
+  }
+
   &.is-empty-conversation {
     min-height: 0;
   }
 
-  /* 加载态全屏铺满 */
   .app-session-messages-loading {
     flex: 1 1 auto;
     min-height: 0;
   }
-}
 
-/* 内容整体容器：包裹消息列表 + plan card + 输入框，由宿主决定 max-width 与居中 */
-.app-content-inner {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  max-width: none;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  /* 原生滚动条样式：使用 --aw-chat-scrollbar-* tokens */
+  scrollbar-width: thin;
+  scrollbar-color: var(--aw-chat-scrollbar-thumb) transparent;
 
-  /* 子元素铺满 inner 容器，不单独设 max-width */
-  .app-messages-shell {
-    align-self: stretch;
-    width: 100%;
-    max-width: none;
-    min-width: 0;
+  &::-webkit-scrollbar {
+    width: var(--aw-chat-scrollbar-size);
+    height: var(--aw-chat-scrollbar-size);
   }
 
-  .app-composer-stack,
-  .app-plan-card-stack {
+  &::-webkit-scrollbar-thumb {
+    background: var(--aw-chat-scrollbar-thumb);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background-color 0.15s ease;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--aw-chat-scrollbar-thumb-hover);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/*
+ * 内容整体容器：position:relative 给 composer absolute 做锚点，
+ * 消息 + plan + composer 全部在这个容器里自然流。
+ *
+ * 滚动容器是宿主层的 .app-content（overflow-y:auto），
+ * 所以这里 min-height:100% 保证内容少时 composer 也贴到视口底部。
+ * padding-bottom 补偿 composer 高度，让最后一条消息不被遮挡。
+ */
+.app-content-inner {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+
+  /* 至少撑满一屏，让内容少时 composer 也贴底 */
+  min-height: 100%;
+
+  /* composer 绝对定位占位：通过 CSS 变量动态测量，缺省 110px */
+  padding-bottom: calc(
+    var(--aw-composer-outer-height, 110px) + 16px + var(--aw-main-column-padding-x)
+  );
+
+  .app-messages-shell {
     width: 100%;
-    max-width: none;
     box-sizing: border-box;
-    margin-inline: 0;
     padding-inline: var(--aw-main-column-padding-x);
   }
 
-  .app-composer-stack {
-    margin-bottom: 14px;
+  .app-plan-card-stack {
+    width: 100%;
+    box-sizing: border-box;
+    padding-inline: var(--aw-main-column-padding-x);
+    margin-bottom: 8px;
   }
 
-  .app-plan-card-stack {
-    margin-bottom: 8px;
+  /*
+   * 底部输入区：absolute 定位在 .app-content-inner 底部。
+   * left/right 0 让它贴紧内容列两边（800px max-width）。
+   * ::before 伪元素：底部渐变遮罩，absolute bottom:100% 让它浮在 composer 上方，
+   * 不占用正常流空间，避免消息滚到 composer 后面硬切。
+   */
+  .app-composer-stack {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    margin: 0;
+    padding-inline: var(--aw-main-column-padding-x);
+    box-sizing: border-box;
+
+    &::before {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      height: 120px;
+      z-index: 4;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        color-mix(in srgb, var(--aw-color-bg-layout) 75%, transparent) 100%
+      );
+    }
   }
 }
 
-.app-content.is-empty-conversation .app-messages-shell::after {
-  display: none;
+/* 空会话时取消 absolute + gradient + 滚 */
+.app-content.is-empty-conversation {
+  overflow-y: hidden;
+
+  .app-composer-stack {
+    position: static; /* 让它跟随内容流自然居中 */
+    margin-bottom: 14px;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  .app-content-inner {
+    padding-bottom: 0;
+    min-height: auto;
+  }
 }
 
 .app-session-messages-loading {
@@ -161,97 +244,22 @@
 }
 
 .app-composer-stack {
-  flex-shrink: 0;
-  margin: 0 0 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+/* 纯内容容器，全部消息自然展开，滚动交给宿主层 .app-content */
 .app-messages-shell {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
   width: 100%;
-  display: flex;
-  flex-direction: column;
-
-  /*
-   * 滚动区底部贴近输入框的约 200px：从上到下渐显至 60% 画布色，避免消息硬切到 composer。
-   */
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 200px;
-    z-index: 3;
-    pointer-events: none;
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      color-mix(in srgb, var(--aw-color-bg-layout) 60%, transparent) 100%
-    );
-  }
-}
-
-/*
- * 主栏消息区：用 SimpleBar 自绘滚动条。Windows / Electron 下 Chromium Fluent 叠加滚动条
- * 会忽略 ::-webkit-scrollbar，原生改样式往往「看起来完全没变化」。
- */
-.app-messages-scroll[data-simplebar] {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 0;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  background: var(--aw-color-bg-layout);
-}
-
-.app-messages-scroll .simplebar-wrapper,
-.app-messages-scroll .simplebar-mask,
-.app-messages-scroll .simplebar-offset {
-  height: 100%;
-}
-
-.app-messages-scroll .simplebar-content-wrapper {
-  overflow-x: hidden;
-}
-
-.app-messages-scroll .simplebar-track.simplebar-vertical {
-  width: var(--aw-chat-scrollbar-size);
-}
-
-/* 仅当指针在可滚动面 (.simplebar-content-wrapper) 上、或正在滚动/拖拽滑块时显示；移出消息壳（如输入区）即隐藏 */
-.app-messages-scroll .simplebar-scrollbar::before {
-  inset: 3px;
-  border-radius: 999px;
-  background: var(--aw-chat-scrollbar-thumb);
-  opacity: 0;
-  transition:
-    background-color 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.app-messages-scroll.is-messages-scrollbar-hot .simplebar-scrollbar::before,
-.app-messages-scroll.simplebar-scrolling .simplebar-scrollbar::before,
-.app-messages-scroll.simplebar-dragging .simplebar-scrollbar::before {
-  opacity: 1;
-}
-
-.app-messages-scroll.is-messages-scrollbar-hot .simplebar-scrollbar:hover::before,
-.app-messages-scroll.simplebar-scrolling .simplebar-scrollbar:hover::before,
-.app-messages-scroll.simplebar-dragging .simplebar-scrollbar:hover::before {
-  background: var(--aw-chat-scrollbar-thumb-hover);
+  box-sizing: border-box;
 }
 
 .app-messages-inner {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 var(--aw-main-column-padding-x) 48px;
+  padding-bottom: 48px;
   box-sizing: border-box;
 }
 
