@@ -290,7 +290,13 @@ export default function DocsPage() {
               href="/"
               className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight pl-1"
             >
-              <img src="/openworker-logo.svg" alt="" width={24} height={24} className="h-6 w-6" />
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/openworker-logo.svg`}
+                alt=""
+                width={24}
+                height={24}
+                className="h-6 w-6"
+              />
               OpenWorker
             </Link>
           </div>
