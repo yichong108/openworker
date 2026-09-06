@@ -208,7 +208,7 @@ function createWindow(): void {
     mainWindow?.maximize()
     mainWindow?.show()
     if (isDev) {
-      mainWindow?.webContents.openDevTools({ mode: 'bottom' })
+      mainWindow?.webContents.openDevTools({ mode: 'detach' })
     }
   })
   mainWindow.on('close', (e) => {
