@@ -2,7 +2,7 @@ import '@/renderer/src/AboutOpenworkerModal.scss'
 import { App as AntdApp, Button, Modal, Spin, Typography } from 'antd'
 import { useCallback } from 'react'
 
-import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
+import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.svg'
 import { type AboutAppInfo, formatAboutAppCopyText, formatBuildIsoLocalHuman } from '@/shared/ipc'
 
 export type AboutOpenworkerModalProps = {

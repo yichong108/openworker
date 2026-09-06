@@ -10,7 +10,7 @@ import {
 } from 'react'
 
 import { AboutOpenworkerModal } from '@/renderer/src/AboutOpenworkerModal'
-import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
+import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.svg'
 import { WorkspaceCenterPane } from '@/renderer/src/center-pane'
 import { WorkspaceLeftPane } from '@/renderer/src/left-pane'
 import { renderLog } from '@/renderer/src/logger'

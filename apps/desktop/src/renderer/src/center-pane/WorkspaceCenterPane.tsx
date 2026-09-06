@@ -1,4 +1,4 @@
-﻿import '@openworker/ui/chat-session/chat-session.scss'
+import '@openworker/ui/chat-session/chat-session.scss'
 import '@/renderer/src/center-pane/WorkspaceCenterPane.scss'
 import { DesktopChatSession } from './DesktopChatSession'
 import {
@@ -10,7 +10,7 @@ import { Alert, Button } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 
-import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.png'
+import openworkerLogoUrl from '@/renderer/src/assets/openworker-logo.svg'
 import { useUiStore } from '@/renderer/src/store/ui-store'
 
 export type WorkspaceCenterPaneProps = UseWorkspaceCenterPaneOptions

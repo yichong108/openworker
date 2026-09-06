@@ -17,7 +17,11 @@ const body = Source_Sans_3({
 export const metadata: Metadata = {
   title: 'OpenWorker — 日常智能助手',
   description:
-    '本地优先的 AI 伙伴：对话、工作区任务、Skills 与知识库，帮你处理日常信息、做出更好选择。'
+    '本地优先的 AI 伙伴：对话、工作区任务、Skills 与知识库，帮你处理日常信息、做出更好选择。',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png'
+  }
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

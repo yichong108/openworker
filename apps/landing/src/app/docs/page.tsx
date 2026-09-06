@@ -262,7 +262,7 @@ export default function DocsPage() {
     <div className="min-h-screen bg-white text-[var(--ink)]">
       {/* 顶部导航 - 纯白，无毛玻璃 */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* 移动端菜单按钮 */}
             <button
@@ -286,7 +286,11 @@ export default function DocsPage() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <Link href="/" className="font-display text-xl font-semibold tracking-tight">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight pl-1"
+            >
+              <img src="/openworker-logo.svg" alt="" width={24} height={24} className="h-6 w-6" />
               OpenWorker
             </Link>
           </div>

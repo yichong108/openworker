@@ -40,7 +40,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--panel)] via-[rgba(12,18,34,0.78)] to-[rgba(12,18,34,0.45)]" />
         <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-20 pt-32">
-          <p className="font-display anim-rise text-5xl font-semibold tracking-tight text-white sm:text-7xl">
+          <p className="anim-rise font-display text-5xl font-semibold tracking-tight text-white sm:text-7xl">
             OpenWorker
           </p>
           <h1 className="anim-rise anim-delay-1 mt-5 max-w-2xl text-2xl font-medium leading-snug text-white/95 sm:text-3xl">
