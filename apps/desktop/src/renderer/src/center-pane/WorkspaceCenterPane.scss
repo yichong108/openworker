@@ -1,4 +1,4 @@
-﻿.app-main-pane {
+.app-main-pane {
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -94,7 +94,8 @@
 
 /*
  * 内层 .app-content 来自 ChatSessionView。
- * 消息列表、输入区、计划卡同宽居中（--aw-main-content-max-width）。
+ * .app-content-inner 是消息列表 + plan card + 输入框的整体容器，
+ * 由它统一承担 max-width 与居中，内部子元素铺满其宽度。
  */
 .app-chat-session-root > .app-content {
   flex: 1;
@@ -102,41 +103,31 @@
   min-width: 0;
   width: 100%;
 
-  &:not(.is-empty-conversation) {
-    align-items: center;
+  /* 加载态：铺满整个 .app-content */
+  > .app-session-messages-loading {
+    flex: 1 1 auto;
   }
 
-  &:not(.is-empty-conversation) .app-messages-shell,
-  &:not(.is-empty-conversation) .app-composer-stack,
-  &:not(.is-empty-conversation) .app-plan-card-stack {
+  /* 内容整体容器：统一 max-width + 居中 */
+  > .app-content-inner {
     width: 100%;
     max-width: var(--aw-main-content-max-width);
-    box-sizing: border-box;
     margin-inline: auto;
-    min-width: 0;
-  }
-
-  &:not(.is-empty-conversation) .app-composer-stack,
-  &:not(.is-empty-conversation) .app-plan-card-stack {
-    padding-inline: var(--aw-main-column-padding-x);
   }
 
   &.is-empty-conversation {
-    align-items: center;
     justify-content: center;
     padding: 24px 0 clamp(96px, 20vh, 220px);
-  }
 
-  &.is-empty-conversation .app-composer-stack {
-    width: 100%;
-    max-width: var(--aw-main-content-max-width);
-    box-sizing: border-box;
-    margin-inline: auto;
-    padding-inline: 14px;
-  }
+    > .app-content-inner {
+      width: 100%;
+      max-width: var(--aw-main-content-max-width);
+      margin-inline: auto;
+    }
 
-  &.is-empty-conversation .app-messages-shell {
-    display: none;
+    .app-messages-shell {
+      display: none;
+    }
   }
 }
 

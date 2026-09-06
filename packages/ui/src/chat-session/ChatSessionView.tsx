@@ -44,7 +44,7 @@ export function ChatSessionView({
           <span className="app-session-messages-loading-circle" aria-hidden />
         </div>
       ) : (
-        <>
+        <div className="app-content-inner">
           <ChatMessageList
             sessionKey={resolvedSessionKey}
             messages={messages}
@@ -64,7 +64,7 @@ export function ChatSessionView({
             {isEmpty ? emptyToolbar : null}
             <ChatComposer {...composer} isRun={isRun} onStop={onStopRun} />
           </div>
-        </>
+        </div>
       )}
     </div>
   )

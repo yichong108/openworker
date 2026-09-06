@@ -15,7 +15,25 @@
     min-height: 0;
   }
 
-  /* 输入区与消息区铺满父容器，只留列内边距，不设阅读栏 max-width */
+  /* 加载态全屏铺满 */
+  .app-session-messages-loading {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+/* 内容整体容器：包裹消息列表 + plan card + 输入框，由宿主决定 max-width 与居中 */
+.app-content-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  /* 子元素铺满 inner 容器，不单独设 max-width */
   .app-messages-shell {
     align-self: stretch;
     width: 100%;
@@ -39,10 +57,10 @@
   .app-plan-card-stack {
     margin-bottom: 8px;
   }
+}
 
-  &.is-empty-conversation .app-messages-shell::after {
-    display: none;
-  }
+.app-content.is-empty-conversation .app-messages-shell::after {
+  display: none;
 }
 
 .app-session-messages-loading {
