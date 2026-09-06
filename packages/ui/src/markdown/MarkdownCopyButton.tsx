@@ -10,7 +10,7 @@ import type { MarkdownCopyButtonProps } from './types.js'
  */
 export function MarkdownCopyButton({
   text,
-  className = 'ow-markdown-copy',
+  className = 'ow-ui-markdown-copy',
   copiedLabel = '已复制',
   copyLabel = '复制',
   onCopyEmpty,

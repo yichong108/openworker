@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -216,7 +216,7 @@ body {
   overflow: hidden;
 }
 
-.ap-task-chat-session .app-content {
+.ap-task-chat-session .ow-ui-chat-session-content {
   display: flex;
   min-height: 0;
   flex: 1;
@@ -225,7 +225,7 @@ body {
   background: var(--aw-color-bg-layout);
 }
 
-.ap-task-chat-session .app-composer-plus-btn {
+.ap-task-chat-session .ow-ui-chat-session-composer-plus-btn {
   display: none;
 }
 

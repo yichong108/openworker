@@ -1,4 +1,4 @@
-import { RightOutlined } from '@ant-design/icons'
+﻿import { RightOutlined } from '@ant-design/icons'
 import type { ToolCallEvent, ToolTimelineEvent } from '@openworker/shared'
 import { AiOutlineArrowUp } from 'react-icons/ai'
 import { FaStop } from 'react-icons/fa'
@@ -151,17 +151,17 @@ function NestedAccordion({
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className={`app-worked-l2${className ? ` ${className}` : ''}`}>
+    <div className={`ow-ui-chat-session-worked-l2${className ? ` ${className}` : ''}`}>
       <button
         type="button"
-        className="app-worked-l2-head"
+        className="ow-ui-chat-session-worked-l2-head"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="app-worked-l2-title">{title}</span>
-        <RightOutlined className={`app-timeline-chevron${open ? ' is-open' : ''}`} />
+        <span className="ow-ui-chat-session-worked-l2-title">{title}</span>
+        <RightOutlined className={`ow-ui-chat-session-timeline-chevron${open ? ' is-open' : ''}`} />
       </button>
-      {open ? <div className="app-worked-l2-body">{children}</div> : null}
+      {open ? <div className="ow-ui-chat-session-worked-l2-body">{children}</div> : null}
     </div>
   )
 }
@@ -178,28 +178,28 @@ function AtomicToolRow({ event }: AtomicToolRowProps) {
 
   if (!hasDetail) {
     return (
-      <div className="app-worked-l3-item">
-        <span className="app-worked-l3-title">{title}</span>
+      <div className="ow-ui-chat-session-worked-l3-item">
+        <span className="ow-ui-chat-session-worked-l3-title">{title}</span>
       </div>
     )
   }
 
   return (
-    <div className="app-worked-l3-item">
+    <div className="ow-ui-chat-session-worked-l3-item">
       <button
         type="button"
-        className="app-worked-l3-head"
+        className="ow-ui-chat-session-worked-l3-head"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="app-worked-l3-title">{title}</span>
-        <RightOutlined className={`app-timeline-chevron${open ? ' is-open' : ''}`} />
+        <span className="ow-ui-chat-session-worked-l3-title">{title}</span>
+        <RightOutlined className={`ow-ui-chat-session-timeline-chevron${open ? ' is-open' : ''}`} />
       </button>
       {open ? (
-        <div className="app-worked-l3-body">
-          {event.args ? <div className="app-worked-args">{event.args}</div> : null}
+        <div className="ow-ui-chat-session-worked-l3-body">
+          {event.args ? <div className="ow-ui-chat-session-worked-args">{event.args}</div> : null}
           {event.status === 'end' && event.result ? (
-            <pre className="app-timeline-result">{event.result}</pre>
+            <pre className="ow-ui-chat-session-timeline-result">{event.result}</pre>
           ) : null}
         </div>
       ) : null}
@@ -219,24 +219,24 @@ function ToolLeafRow({ title, event, defaultOpen = false }: ToolLeafRowProps) {
   const hasDetail = Boolean(event.args || (event.status === 'end' && event.result))
 
   return (
-    <div className="app-worked-l2">
+    <div className="ow-ui-chat-session-worked-l2">
       <button
         type="button"
-        className="app-worked-l2-head"
+        className="ow-ui-chat-session-worked-l2-head"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         disabled={!hasDetail}
       >
-        <span className="app-worked-l2-title">{title}</span>
+        <span className="ow-ui-chat-session-worked-l2-title">{title}</span>
         <RightOutlined
-          className={`app-timeline-chevron${open ? ' is-open' : ''}${hasDetail ? '' : ' is-hidden'}`}
+          className={`ow-ui-chat-session-timeline-chevron${open ? ' is-open' : ''}${hasDetail ? '' : ' is-hidden'}`}
         />
       </button>
       {open && hasDetail ? (
-        <div className="app-worked-l2-body">
-          {event.args ? <div className="app-worked-args">{event.args}</div> : null}
+        <div className="ow-ui-chat-session-worked-l2-body">
+          {event.args ? <div className="ow-ui-chat-session-worked-args">{event.args}</div> : null}
           {event.status === 'end' && event.result ? (
-            <pre className="app-timeline-result">{event.result}</pre>
+            <pre className="ow-ui-chat-session-timeline-result">{event.result}</pre>
           ) : null}
         </div>
       ) : null}
@@ -268,21 +268,21 @@ function EditToolLeafRow({ title, event }: EditToolLeafRowProps) {
   }
 
   return (
-    <div className="app-worked-l2">
+    <div className="ow-ui-chat-session-worked-l2">
       <button
         type="button"
-        className="app-worked-l2-head"
+        className="ow-ui-chat-session-worked-l2-head"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         disabled={!hasDetail}
       >
-        <span className="app-worked-l2-title">{title}</span>
+        <span className="ow-ui-chat-session-worked-l2-title">{title}</span>
         <RightOutlined
-          className={`app-timeline-chevron${open ? ' is-open' : ''}${hasDetail ? '' : ' is-hidden'}`}
+          className={`ow-ui-chat-session-timeline-chevron${open ? ' is-open' : ''}${hasDetail ? '' : ' is-hidden'}`}
         />
       </button>
       {open && hasDetail ? (
-        <div className="app-worked-l2-body">
+        <div className="ow-ui-chat-session-worked-l2-body">
           <FileEditDiff view={diffView} />
         </div>
       ) : null}
@@ -302,9 +302,9 @@ function ThoughtRow({ child }: { child: Extract<WorkedChild, { kind: 'thought' }
   const text = child.text.trim()
 
   return (
-    <div className={`app-worked-thought${brief ? ' is-brief' : ''}`}>
-      <div className="app-worked-thought-label">{title}</div>
-      {text ? <div className="app-worked-thought-text">{text}</div> : null}
+    <div className={`ow-ui-chat-session-worked-thought${brief ? ' is-brief' : ''}`}>
+      <div className="ow-ui-chat-session-worked-thought-label">{title}</div>
+      {text ? <div className="ow-ui-chat-session-worked-thought-text">{text}</div> : null}
     </div>
   )
 }
@@ -343,7 +343,7 @@ function WorkedChildNode({ child }: { child: WorkedChild }) {
 
   if (child.kind === 'error') {
     return (
-      <div className="app-worked-l2 app-worked-error">
+      <div className="ow-ui-chat-session-worked-l2 ow-ui-chat-session-worked-error">
         <Text type="danger">{child.event.message}</Text>
       </div>
     )
@@ -378,18 +378,20 @@ function WorkedAccordion({
   const title = `${label} · ${formatWorkedDurationZh(wallMs)}`
 
   return (
-    <div className="app-timeline-accordion app-worked-accordion">
+    <div className="ow-ui-chat-session-timeline-accordion ow-ui-chat-session-worked-accordion">
       <button
         type="button"
-        className="app-timeline-accordion-head"
+        className="ow-ui-chat-session-timeline-accordion-head"
         aria-expanded={expanded}
         onClick={onToggle}
       >
-        <span className="app-timeline-accordion-title">{title}</span>
-        <RightOutlined className={`app-timeline-chevron${expanded ? ' is-open' : ''}`} />
+        <span className="ow-ui-chat-session-timeline-accordion-title">{title}</span>
+        <RightOutlined
+          className={`ow-ui-chat-session-timeline-chevron${expanded ? ' is-open' : ''}`}
+        />
       </button>
       {expanded ? (
-        <div className="app-timeline-wrap app-worked-children">
+        <div className="ow-ui-chat-session-timeline-wrap ow-ui-chat-session-worked-children">
           {worked.children.length === 0 ? (
             <Text type="secondary">进行中…</Text>
           ) : (
@@ -429,7 +431,7 @@ function AssistantMessageBody({ msg, view, ctx }: AssistantMessageBodyProps) {
           }
         />
       ) : null}
-      <div className="app-message-markdown-wrap">
+      <div className="ow-ui-chat-session-message-markdown-wrap">
         <Markdown
           content={markdownContent}
           onClick={ctx.onMarkdownClick}
@@ -437,7 +439,7 @@ function AssistantMessageBody({ msg, view, ctx }: AssistantMessageBodyProps) {
           onCopyError={() => msgApi.error('复制失败，请手动选择文本复制')}
         />
         {showContentCopy ? (
-          <div className="app-message-markdown-actions">
+          <div className="ow-ui-chat-session-message-markdown-actions">
             <MarkdownCopyButton
               text={msg.content}
               copyLabel="复制回复"
@@ -561,15 +563,19 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
 
   if (editing) {
     return (
-      <div className="app-message-sticky-prompt" ref={editContainerRef}>
-        <Card size="small" variant="outlined" className="app-message-card is-user is-editing">
+      <div className="ow-ui-chat-session-message-sticky-prompt" ref={editContainerRef}>
+        <Card
+          size="small"
+          variant="outlined"
+          className="ow-ui-chat-session-message-card is-user is-editing"
+        >
           <Input.TextArea
             ref={editInputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             autoSize={{ minRows: 1, maxRows: 16 }}
             variant="borderless"
-            className="app-message-user-edit-input"
+            className="ow-ui-chat-session-message-user-edit-input"
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.preventDefault()
@@ -582,7 +588,7 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
               }
             }}
           />
-          <div className="app-message-user-actions is-editing">
+          <div className="ow-ui-chat-session-message-user-actions is-editing">
             <Button
               size="small"
               type="primary"
@@ -590,7 +596,7 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
               onClick={() => void submitEdit()}
               disabled={!draft.trim() || submitting}
               loading={submitting}
-              className="app-send-btn app-msg-send-btn"
+              className="ow-ui-chat-session-send-btn ow-ui-chat-session-msg-send-btn"
               aria-label="发送"
             />
           </div>
@@ -600,12 +606,12 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
   }
 
   return (
-    <div className="app-message-sticky-prompt">
+    <div className="ow-ui-chat-session-message-sticky-prompt">
       <Dropdown menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
         <Card
           size="small"
           variant="outlined"
-          className={`app-message-card is-user${canEdit ? ' is-editable' : ''}`}
+          className={`ow-ui-chat-session-message-card is-user${canEdit ? ' is-editable' : ''}`}
           onClick={(e) => {
             // 仅左键进入编辑；右键由上下文菜单处理，不进入编辑模式
             if (e.button !== 0) return
@@ -629,12 +635,12 @@ function UserMessageCard({ msg, ctx }: UserMessageCardProps) {
               : undefined
           }
         >
-          <div className="app-message-content">{msg.content}</div>
+          <div className="ow-ui-chat-session-message-content">{msg.content}</div>
           {showStop ? (
-            <div className="app-message-user-actions">
+            <div className="ow-ui-chat-session-message-user-actions">
               <button
                 type="button"
-                className="app-message-user-action-btn is-stop"
+                className="ow-ui-chat-session-message-user-action-btn is-stop"
                 onClick={(e) => {
                   e.stopPropagation()
                   ctx.onStopRun()
@@ -667,8 +673,12 @@ function MessageCard({ msg, ctx }: MessageCardProps) {
   const view = buildMessageCardView(msg, ctx)
 
   return (
-    <Card size="small" variant="borderless" className="app-message-card is-assistant">
-      <div className="app-message-content">
+    <Card
+      size="small"
+      variant="borderless"
+      className="ow-ui-chat-session-message-card is-assistant"
+    >
+      <div className="ow-ui-chat-session-message-content">
         <AssistantMessageBody msg={msg} view={view} ctx={ctx} />
       </div>
     </Card>
@@ -686,7 +696,7 @@ export function MessageTurnItem(props: MessageTurnItemProps) {
   const { turn, ...ctx } = props
 
   return (
-    <div className="app-message-turn">
+    <div className="ow-ui-chat-session-message-turn">
       {turn.messages.map((msg) => (
         <MessageCard key={msg.id} msg={msg} ctx={ctx} />
       ))}

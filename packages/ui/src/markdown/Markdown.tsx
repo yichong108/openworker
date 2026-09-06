@@ -11,7 +11,7 @@ import type { MarkdownProps } from './types.js'
 /** Markdown 渲染组件，统一 remark/rehype 插件配置 */
 export function Markdown({
   content,
-  className = 'ow-markdown',
+  className = 'ow-ui-markdown',
   onClick,
   onCopyEmpty,
   onCopyError,

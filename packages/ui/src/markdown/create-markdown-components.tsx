@@ -22,7 +22,7 @@ export function createMarkdownComponents(options?: MarkdownCopyCallbacks): Compo
     },
     table({ children }) {
       return (
-        <div className="ow-markdown-table-wrap">
+        <div className="ow-ui-markdown-table-wrap">
           <table>{children}</table>
         </div>
       )

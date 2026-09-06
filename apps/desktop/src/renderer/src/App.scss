@@ -1,4 +1,4 @@
-/* 主栏聊天 / 弹窗正文：统一滚动条 token（Modal 传送门在 body 外，须挂 :root） */
+﻿/* 主栏聊天 / 弹窗正文：统一滚动条 token（Modal 传送门在 body 外，须挂 :root） */
 :root {
   --aw-chat-scrollbar-size: 15px;
   --aw-chat-scrollbar-thumb: rgb(24 24 27 / 0.1);
@@ -81,7 +81,7 @@
   --aw-color-text-primary: var(--aw-color-text);
   /* 主栏会话/输入可读宽度上限（与空状态 composer 一致） */
   --aw-main-content-max-width: 840px;
-  /* 会话正文列左右内边距：与 .app-messages-inner 一致，有会话时底部输入区须用同一值才能与气泡对齐 */
+  /* 会话正文列左右内边距：与 .ow-ui-chat-session-messages-inner 一致，有会话时底部输入区须用同一值才能与气泡对齐 */
   --aw-main-column-padding-x: 20px;
 
   /* 字号 / 行高 / 字重：全局阶梯，与 Ant Design fontSize 13 对齐 */
@@ -796,8 +796,8 @@ html[data-aw-wco-suppressed='1'] .app-win-titlebar {
   .app-workspace-add-session-btn,
   .app-session-item,
   .app-workspace-folder-icon,
-  .app-timeline-chevron,
-  .app-composer,
+  .ow-ui-chat-session-timeline-chevron,
+  .ow-ui-chat-session-composer,
   .app-sidebar-resizer::before,
   .app-right-resizer::before,
   .app-right-file-split-handle {

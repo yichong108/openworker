@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+﻿import { useEffect, useRef } from 'react'
 
 import type { ChatComposerSkill } from './types.js'
 
@@ -38,14 +38,19 @@ export function ComposerSkillMenu({
   }, [activeIndex])
 
   return (
-    <div className="app-composer-skill-menu" role="listbox" aria-label="技能列表" ref={listRef}>
-      <div className="app-composer-skill-menu-header">技能</div>
+    <div
+      className="ow-ui-chat-session-composer-skill-menu"
+      role="listbox"
+      aria-label="技能列表"
+      ref={listRef}
+    >
+      <div className="ow-ui-chat-session-composer-skill-menu-header">技能</div>
       {loading ? (
-        <div className="app-composer-skill-menu-empty">加载中…</div>
+        <div className="ow-ui-chat-session-composer-skill-menu-empty">加载中…</div>
       ) : skills.length === 0 ? (
-        <div className="app-composer-skill-menu-empty">无匹配技能</div>
+        <div className="ow-ui-chat-session-composer-skill-menu-empty">无匹配技能</div>
       ) : (
-        <div className="app-composer-skill-menu-list">
+        <div className="ow-ui-chat-session-composer-skill-menu-list">
           {skills.map((skill, index) => {
             const active = index === activeIndex
             return (
@@ -55,7 +60,9 @@ export function ComposerSkillMenu({
                 role="option"
                 aria-selected={active}
                 className={
-                  active ? 'app-composer-skill-menu-item is-active' : 'app-composer-skill-menu-item'
+                  active
+                    ? 'ow-ui-chat-session-composer-skill-menu-item is-active'
+                    : 'ow-ui-chat-session-composer-skill-menu-item'
                 }
                 ref={active ? activeItemRef : undefined}
                 onMouseEnter={() => onActiveIndexChange(index)}
@@ -65,8 +72,12 @@ export function ComposerSkillMenu({
                 }}
                 onClick={() => onSelect(skill)}
               >
-                <span className="app-composer-skill-menu-item-name">/{skill.name}</span>
-                <span className="app-composer-skill-menu-item-desc">{skill.description}</span>
+                <span className="ow-ui-chat-session-composer-skill-menu-item-name">
+                  /{skill.name}
+                </span>
+                <span className="ow-ui-chat-session-composer-skill-menu-item-desc">
+                  {skill.description}
+                </span>
               </button>
             )
           })}

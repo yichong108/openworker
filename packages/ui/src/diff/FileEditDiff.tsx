@@ -38,14 +38,14 @@ function FileDiffLineRow({ line, index, codeHtml }: FileDiffLineRowProps) {
   const prefix = line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ' '
   const lineno = displayLineNumber(line)
   return (
-    <div className={`ow-file-diff-line is-${line.kind}`} data-diff-index={index}>
-      <span className="ow-file-diff-lineno" aria-hidden>
+    <div className={`ow-ui-diff-line is-${line.kind}`} data-diff-index={index}>
+      <span className="ow-ui-diff-lineno" aria-hidden>
         {lineno ?? ''}
       </span>
-      <span className="ow-file-diff-sign" aria-hidden>
+      <span className="ow-ui-diff-sign" aria-hidden>
         {prefix}
       </span>
-      <span className="ow-file-diff-code" dangerouslySetInnerHTML={{ __html: codeHtml || ' ' }} />
+      <span className="ow-ui-diff-code" dangerouslySetInnerHTML={{ __html: codeHtml || ' ' }} />
     </div>
   )
 }
@@ -74,12 +74,12 @@ export function FileEditDiff({ view, className }: FileEditDiffProps) {
     return escapePlain(line.text)
   }
 
-  const rootClass = className ? `ow-file-diff ${className}` : 'ow-file-diff'
+  const rootClass = className ? `ow-ui-diff ${className}` : 'ow-ui-diff'
 
   return (
     <div className={rootClass} role="region" aria-label={`${view.path} 的变更`}>
       {view.lines.length === 0 ? (
-        <div className="ow-file-diff-empty">（无内容变更）</div>
+        <div className="ow-ui-diff-empty">（无内容变更）</div>
       ) : (
         view.lines.map((line, index) => (
           <FileDiffLineRow

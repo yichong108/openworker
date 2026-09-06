@@ -1,4 +1,4 @@
-.ow-markdown-copy {
+.ow-ui-markdown-copy {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -17,16 +17,16 @@
     background 0.12s ease;
 }
 
-.ow-markdown-copy:hover {
+.ow-ui-markdown-copy:hover {
   color: var(--aw-color-icon-hover);
   background: rgb(24 24 27 / 0.04);
 }
 
-.ow-markdown-copy:active {
+.ow-ui-markdown-copy:active {
   background: rgb(24 24 27 / 0.1);
 }
 
-.ow-markdown {
+.ow-ui-markdown {
   color: var(--aw-color-text);
   font-size: var(--aw-font-xl);
   line-height: 1.65;
@@ -34,24 +34,24 @@
   overflow-wrap: anywhere;
 }
 
-.ow-markdown > *:first-child {
+.ow-ui-markdown > *:first-child {
   margin-top: 0;
 }
 
-.ow-markdown > *:last-child {
+.ow-ui-markdown > *:last-child {
   margin-bottom: 0;
 }
 
-.ow-markdown p {
+.ow-ui-markdown p {
   margin: 0 0 0.7em;
 }
 
-.ow-markdown h1,
-.ow-markdown h2,
-.ow-markdown h3,
-.ow-markdown h4,
-.ow-markdown h5,
-.ow-markdown h6 {
+.ow-ui-markdown h1,
+.ow-ui-markdown h2,
+.ow-ui-markdown h3,
+.ow-ui-markdown h4,
+.ow-ui-markdown h5,
+.ow-ui-markdown h6 {
   margin: 1.15em 0 0.45em;
   color: var(--aw-color-text);
   font-weight: var(--aw-font-weight-semibold);
@@ -59,60 +59,60 @@
   letter-spacing: -0.01em;
 }
 
-.ow-markdown h1 {
+.ow-ui-markdown h1 {
   font-size: 1.35em;
   padding-bottom: 0.25em;
   border-bottom: 1px solid var(--aw-color-border-secondary);
 }
 
-.ow-markdown h2 {
+.ow-ui-markdown h2 {
   font-size: 1.2em;
   padding-bottom: 0.2em;
   border-bottom: 1px solid var(--aw-color-border-secondary);
 }
 
-.ow-markdown h3 {
+.ow-ui-markdown h3 {
   font-size: 1.08em;
 }
 
-.ow-markdown h4,
-.ow-markdown h5,
-.ow-markdown h6 {
+.ow-ui-markdown h4,
+.ow-ui-markdown h5,
+.ow-ui-markdown h6 {
   font-size: 1em;
   color: var(--aw-color-text-secondary);
 }
 
-.ow-markdown strong {
+.ow-ui-markdown strong {
   font-weight: var(--aw-font-weight-semibold);
   color: var(--aw-color-text);
 }
 
-.ow-markdown em {
+.ow-ui-markdown em {
   color: var(--aw-color-text-secondary);
 }
 
-.ow-markdown ul,
-.ow-markdown ol {
+.ow-ui-markdown ul,
+.ow-ui-markdown ol {
   margin: 0 0 0.7em;
   padding-left: 1.35em;
 }
 
-.ow-markdown li {
+.ow-ui-markdown li {
   margin: 0.28em 0;
   padding-left: 0.15em;
 }
 
-.ow-markdown ul:not(.contains-task-list) {
+.ow-ui-markdown ul:not(.contains-task-list) {
   list-style: none;
   padding-left: 0.2em;
 }
 
-.ow-markdown ul:not(.contains-task-list) > li {
+.ow-ui-markdown ul:not(.contains-task-list) > li {
   position: relative;
   padding-left: 1.2em;
 }
 
-.ow-markdown ul:not(.contains-task-list) > li::before {
+.ow-ui-markdown ul:not(.contains-task-list) > li::before {
   content: '';
   position: absolute;
   left: 0.2em;
@@ -124,33 +124,33 @@
   transform: translateY(-50%);
 }
 
-.ow-markdown li > p {
+.ow-ui-markdown li > p {
   margin: 0.25em 0;
 }
 
-.ow-markdown li + li {
+.ow-ui-markdown li + li {
   margin-top: 0.2em;
 }
 
-.ow-markdown ul.contains-task-list {
+.ow-ui-markdown ul.contains-task-list {
   list-style: none;
   padding-left: 0.15em;
 }
 
-.ow-markdown li.task-list-item {
+.ow-ui-markdown li.task-list-item {
   display: flex;
   align-items: flex-start;
   gap: 0.45em;
   padding-left: 0;
 }
 
-.ow-markdown li.task-list-item input[type='checkbox'] {
+.ow-ui-markdown li.task-list-item input[type='checkbox'] {
   margin: 0.35em 0 0;
   accent-color: var(--aw-color-accent);
   pointer-events: none;
 }
 
-.ow-markdown blockquote {
+.ow-ui-markdown blockquote {
   margin: 0.75em 0;
   padding: 0.45em 0.85em;
   border-left: 3px solid var(--aw-color-border-strong);
@@ -159,11 +159,11 @@
   background: rgb(24 24 27 / 0.035);
 }
 
-.ow-markdown blockquote > :last-child {
+.ow-ui-markdown blockquote > :last-child {
   margin-bottom: 0;
 }
 
-.ow-markdown code {
+.ow-ui-markdown code {
   padding: 0.12em 0.4em;
   border-radius: 5px;
   background: rgb(24 24 27 / 0.05);
@@ -174,13 +174,13 @@
   color: var(--aw-color-text);
 }
 
-.ow-markdown hr {
+.ow-ui-markdown hr {
   border: none;
   border-top: 1px solid var(--aw-color-border);
   margin: 1.25em 0;
 }
 
-.ow-markdown-codeblock {
+.ow-ui-markdown-codeblock {
   position: relative;
   margin: 0.8em 0;
   overflow: hidden;
@@ -190,7 +190,7 @@
   box-shadow: none;
 }
 
-.ow-markdown-codeblock-copy {
+.ow-ui-markdown-codeblock-copy {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -216,22 +216,22 @@
     opacity 0.12s ease;
 }
 
-.ow-markdown-codeblock:hover .ow-markdown-codeblock-copy,
-.ow-markdown-codeblock-copy:focus-visible {
+.ow-ui-markdown-codeblock:hover .ow-ui-markdown-codeblock-copy,
+.ow-ui-markdown-codeblock-copy:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
 
-.ow-markdown-codeblock-copy:hover {
+.ow-ui-markdown-codeblock-copy:hover {
   color: var(--aw-color-icon-hover);
   background: rgb(24 24 27 / 0.04);
 }
 
-.ow-markdown-codeblock-copy:active {
+.ow-ui-markdown-codeblock-copy:active {
   background: rgb(24 24 27 / 0.1);
 }
 
-.ow-markdown pre {
+.ow-ui-markdown pre {
   margin: 0;
   padding: 0.55em 0.7em;
   padding-right: 2.2em;
@@ -239,8 +239,8 @@
   background: transparent;
 }
 
-.ow-markdown pre code,
-.ow-markdown pre .hljs {
+.ow-ui-markdown pre code,
+.ow-ui-markdown pre .hljs {
   display: block;
   padding: 0;
   border: none;
@@ -255,7 +255,7 @@
   tab-size: 2;
 }
 
-.ow-markdown a {
+.ow-ui-markdown a {
   color: var(--aw-color-accent);
   text-decoration: underline;
   text-decoration-color: rgb(10 10 10 / 0.28);
@@ -266,12 +266,12 @@
   cursor: pointer;
 }
 
-.ow-markdown a:hover {
+.ow-ui-markdown a:hover {
   color: var(--aw-color-accent-hover);
   text-decoration-color: rgb(10 10 10 / 0.55);
 }
 
-.ow-markdown img {
+.ow-ui-markdown img {
   max-width: 100%;
   height: auto;
   margin: 0.6em 0;
@@ -280,7 +280,7 @@
   background: var(--aw-color-bg-container);
 }
 
-.ow-markdown-table-wrap {
+.ow-ui-markdown-table-wrap {
   margin: 0.75em 0;
   overflow: auto;
   border: 1px solid var(--aw-color-border);
@@ -288,7 +288,7 @@
   background: transparent;
 }
 
-.ow-markdown table {
+.ow-ui-markdown table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--aw-font-md);
@@ -296,8 +296,8 @@
   background: transparent;
 }
 
-.ow-markdown th,
-.ow-markdown td {
+.ow-ui-markdown th,
+.ow-ui-markdown td {
   padding: 0.5em 0.75em;
   border: none;
   border-right: 1px solid var(--aw-color-border);
@@ -307,17 +307,17 @@
   vertical-align: top;
 }
 
-.ow-markdown th:last-child,
-.ow-markdown td:last-child {
+.ow-ui-markdown th:last-child,
+.ow-ui-markdown td:last-child {
   border-right: none;
 }
 
-.ow-markdown tbody tr:last-child td,
-.ow-markdown table > tr:last-child td {
+.ow-ui-markdown tbody tr:last-child td,
+.ow-ui-markdown table > tr:last-child td {
   border-bottom: none;
 }
 
-.ow-markdown th {
+.ow-ui-markdown th {
   border-bottom: 1px solid var(--aw-color-border);
   color: var(--aw-color-text-secondary);
   font-weight: var(--aw-font-weight-semibold);

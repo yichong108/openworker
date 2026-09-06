@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --aw-chat-scrollbar-size: 15px;
   --aw-chat-scrollbar-thumb: rgb(24 24 27 / 0.1);
   --aw-chat-scrollbar-thumb-hover: rgb(24 24 27 / 0.19);
@@ -208,7 +208,7 @@ body {
   flex-direction: column;
 }
 
-.ow-playground-chat-session .app-content {
+.ow-playground-chat-session .ow-ui-chat-session-content {
   display: flex;
   min-height: 0;
   flex: 1;
@@ -217,13 +217,13 @@ body {
 }
 
 /* PlaygroundApp 用 .app-shell 包裹，HttpDialogPlaygroundApp 用 .ow-playground-chat-session */
-.app-shell .app-content > .app-content-inner,
-.ow-playground-chat-session .app-content > .app-content-inner {
+.app-shell .ow-ui-chat-session-content > .ow-ui-chat-session-content-inner,
+.ow-playground-chat-session .ow-ui-chat-session-content > .ow-ui-chat-session-content-inner {
   width: 100%;
   max-width: var(--aw-main-content-max-width);
   margin-inline: auto;
 }
 
-.ow-playground-chat-session .app-composer-plus-btn {
+.ow-playground-chat-session .ow-ui-chat-session-composer-plus-btn {
   display: none;
 }

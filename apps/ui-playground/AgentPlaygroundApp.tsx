@@ -1,4 +1,4 @@
-import type { BaseEvent } from '@ag-ui/client'
+﻿import type { BaseEvent } from '@ag-ui/client'
 import type { AgentComposerMode } from '@openworker/shared'
 import { App as AntdApp, Button, Input } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -225,10 +225,12 @@ export function AgentPlaygroundApp() {
             return { ok: true }
           }}
           emptyToolbar={
-            <div className="app-composer-toolbar">
-              <button type="button" className="app-composer-workspace-trigger">
-                <span className="app-composer-workspace-trigger-body">
-                  <span className="app-composer-workspace-name">{workspaceName}</span>
+            <div className="ow-ui-chat-session-composer-toolbar">
+              <button type="button" className="ow-ui-chat-session-composer-workspace-trigger">
+                <span className="ow-ui-chat-session-composer-workspace-trigger-body">
+                  <span className="ow-ui-chat-session-composer-workspace-name">
+                    {workspaceName}
+                  </span>
                 </span>
               </button>
             </div>

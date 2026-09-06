@@ -12,7 +12,7 @@ import type { MarkdownCodeBlockProps } from './types.js'
  */
 export function MarkdownCodeBlock({
   children,
-  className = 'ow-markdown-codeblock',
+  className = 'ow-ui-markdown-codeblock',
   onCopyEmpty,
   onCopyError
 }: MarkdownCodeBlockProps) {
@@ -51,7 +51,7 @@ export function MarkdownCodeBlock({
     <div className={className}>
       <button
         type="button"
-        className="ow-markdown-codeblock-copy"
+        className="ow-ui-markdown-codeblock-copy"
         onClick={(event) => void handleCopy(event)}
         aria-label={copied ? '已复制' : '复制代码'}
         title={copied ? '已复制' : '复制'}

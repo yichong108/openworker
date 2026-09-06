@@ -1,4 +1,4 @@
-.app-content {
+﻿.ow-ui-chat-session-content {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -15,7 +15,7 @@
     min-height: 0;
   }
 
-  .app-session-messages-loading {
+  .ow-ui-chat-session-session-messages-loading {
     flex: 1 1 auto;
     min-height: 0;
   }
@@ -59,17 +59,17 @@
 
 /*
  * 内容整体容器：纯 position:relative，所有内容（消息/plan/composer）在一个整体里自然流。
- * 滚动容器是宿主层 .app-content，composer 用 position:sticky;bottom:0 钉在视口底部。
+ * 滚动容器是宿主层 .ow-ui-chat-session-content，composer 用 position:sticky;bottom:0 钉在视口底部。
  * min-height:100% 保证内容少时 composer 也贴到视口底部。
  */
-.app-content-inner {
+.ow-ui-chat-session-content-inner {
   position: relative;
   min-width: 0;
   width: 100%;
   min-height: 100%;
   box-sizing: border-box;
 
-  .app-messages-shell {
+  .ow-ui-chat-session-messages-shell {
     width: 100%;
     box-sizing: border-box;
     padding-inline: var(--aw-main-column-padding-x);
@@ -78,7 +78,7 @@
     ); /* 滚动到底部时最后一条消息与 composer 之间留出半个组件高度的间距 */
   }
 
-  .app-plan-card-stack {
+  .ow-ui-chat-session-plan-card-stack {
     width: 100%;
     box-sizing: border-box;
     padding-inline: var(--aw-main-column-padding-x);
@@ -89,7 +89,7 @@
    * 底部输入区：position:sticky; bottom:0 钉在视口底部。
    * 滚动时 composer 始终可见，消息从它上方滚过。
    */
-  .app-composer-stack {
+  .ow-ui-chat-session-composer-stack {
     position: sticky;
     bottom: 0;
     width: 100%;
@@ -101,27 +101,27 @@
 }
 
 /* 空会话时：居中对齐，消息区隐藏 */
-.app-content.is-empty-conversation {
+.ow-ui-chat-session-content.is-empty-conversation {
   overflow: hidden;
 
-  .app-content-inner {
+  .ow-ui-chat-session-content-inner {
     min-height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
 
-  .app-messages-shell {
+  .ow-ui-chat-session-messages-shell {
     display: none;
   }
 
-  .app-composer-stack {
+  .ow-ui-chat-session-composer-stack {
     position: static; /* 取消 sticky，让它参与 flex 居中 */
     background: transparent;
   }
 }
 
-.app-session-messages-loading {
+.ow-ui-chat-session-session-messages-loading {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
@@ -131,29 +131,29 @@
   justify-content: center;
 }
 
-.app-session-messages-loading-circle {
+.ow-ui-chat-session-session-messages-loading-circle {
   width: 16px;
   height: 16px;
   box-sizing: border-box;
   border: 2px solid rgba(0, 0, 0, 0.12);
   border-top-color: rgba(0, 0, 0, 0.45);
   border-radius: 50%;
-  animation: app-session-messages-loading-spin 0.7s linear infinite;
+  animation: ow-ui-chat-session-session-messages-loading-spin 0.7s linear infinite;
 }
 
-@keyframes app-session-messages-loading-spin {
+@keyframes ow-ui-chat-session-session-messages-loading-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-.app-composer-toolbar {
+.ow-ui-chat-session-composer-toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.app-composer-workspace-trigger {
+.ow-ui-chat-session-composer-workspace-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -172,11 +172,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.app-composer-workspace-trigger:focus {
+.ow-ui-chat-session-composer-workspace-trigger:focus {
   outline: none;
 }
 
-.app-composer-workspace-trigger-body {
+.ow-ui-chat-session-composer-workspace-trigger-body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -190,47 +190,50 @@
     opacity 0.12s ease;
 }
 
-.app-composer-workspace-trigger:hover .app-composer-workspace-trigger-body {
+.ow-ui-chat-session-composer-workspace-trigger:hover
+  .ow-ui-chat-session-composer-workspace-trigger-body {
   color: var(--aw-color-text);
 }
 
-.app-composer-workspace-trigger:active .app-composer-workspace-trigger-body {
+.ow-ui-chat-session-composer-workspace-trigger:active
+  .ow-ui-chat-session-composer-workspace-trigger-body {
   color: var(--aw-color-text);
   opacity: 0.68;
 }
 
-.app-composer-workspace-trigger:focus-visible .app-composer-workspace-trigger-body {
+.ow-ui-chat-session-composer-workspace-trigger:focus-visible
+  .ow-ui-chat-session-composer-workspace-trigger-body {
   outline: 2px solid var(--aw-color-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-.app-composer-workspace-trigger-chevron.anticon {
+.ow-ui-chat-session-composer-workspace-trigger-chevron.anticon {
   flex-shrink: 0;
   font-size: 10px;
   color: inherit;
 }
 
-.app-composer-workspace-name {
+.ow-ui-chat-session-composer-workspace-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: min(280px, 100%);
 }
 
-.app-composer-stack {
+.ow-ui-chat-session-composer-stack {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-/* 纯内容容器，全部消息自然展开，滚动交给宿主层 .app-content */
-.app-messages-shell {
+/* 纯内容容器，全部消息自然展开，滚动交给宿主层 .ow-ui-chat-session-content */
+.ow-ui-chat-session-messages-shell {
   width: 100%;
   box-sizing: border-box;
 }
 
-.app-messages-inner {
+.ow-ui-chat-session-messages-inner {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -239,14 +242,14 @@
 }
 
 /* 一轮对话 = 用户提问 + 助手回复；用户气泡在滚动助手长文时 sticky 置顶（Cursor 风格） */
-.app-message-turn {
+.ow-ui-chat-session-message-turn {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
 /* sticky 外壳：置顶时用画布色铺底，与下一条消息无缝贴齐 */
-.app-message-sticky-prompt {
+.ow-ui-chat-session-message-sticky-prompt {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -255,13 +258,13 @@
   background: var(--aw-color-bg-layout);
 }
 
-.app-message-sticky-prompt .app-message-card.is-user {
+.ow-ui-chat-session-message-sticky-prompt .ow-ui-chat-session-message-card.is-user {
   margin-bottom: 0;
   /* 底阴影会造成与下一条之间的视觉空隙 */
   box-shadow: none;
 }
 
-.app-message-card {
+.ow-ui-chat-session-message-card {
   margin-bottom: 10px;
   width: 100%;
   max-width: 100%;
@@ -269,11 +272,11 @@
   box-shadow: var(--aw-shadow-card);
 }
 
-.app-message-card .ant-card-body {
+.ow-ui-chat-session-message-card .ant-card-body {
   padding: 10px 14px;
 }
 
-.app-message-card.is-user .ant-card-body {
+.ow-ui-chat-session-message-card.is-user .ant-card-body {
   /* 边框画在 body 上并内缩 1px：列表顶无 padding 时，外层被 overflow 裁 1px 仍能看到完整描边 */
   margin: 0;
   padding: 7px 13px;
@@ -281,18 +284,18 @@
   border-radius: 11px;
 }
 
-.app-message-card.is-assistant .ant-card-body {
+.ow-ui-chat-session-message-card.is-assistant .ant-card-body {
   padding: 4px 7px;
 }
 
-.app-message-card.is-user {
+.ow-ui-chat-session-message-card.is-user {
   border: none;
   background: var(--aw-color-bg-container);
   box-shadow: var(--aw-shadow-soft);
   margin-bottom: 0;
 }
 
-.app-message-card.is-assistant {
+.ow-ui-chat-session-message-card.is-assistant {
   border: none;
   box-shadow: none;
   background: transparent;
@@ -300,32 +303,32 @@
   margin-top: 10px;
   /*
    * 回合间距挂在助手卡底部（随助手内容滚走）。
-   * 不要写在 .app-message-turn padding-bottom / 下一回合用户卡 margin-top：
+   * 不要写在 .ow-ui-chat-session-message-turn padding-bottom / 下一回合用户卡 margin-top：
    * sticky 置顶时那些间距会卡在两条用户框之间。
    */
   margin-bottom: 14px;
 }
 
-.app-message-content {
+.ow-ui-chat-session-message-content {
   margin: 0;
   color: var(--aw-color-text);
 }
 
-.app-message-card.is-user .app-message-content {
+.ow-ui-chat-session-message-card.is-user .ow-ui-chat-session-message-content {
   white-space: pre-wrap;
   font-size: var(--aw-font-xl);
   line-height: 1.65;
 }
 
-.app-message-card.is-user.is-editable {
+.ow-ui-chat-session-message-card.is-user.is-editable {
   cursor: text;
 }
 
-.app-message-card.is-user.is-editable:hover .ant-card-body {
+.ow-ui-chat-session-message-card.is-user.is-editable:hover .ant-card-body {
   border-color: var(--aw-color-border-secondary, var(--aw-color-border));
 }
 
-.app-message-user-actions {
+.ow-ui-chat-session-message-user-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -333,12 +336,12 @@
   margin-top: 6px;
 }
 
-.app-message-user-actions.is-editing {
+.ow-ui-chat-session-message-user-actions.is-editing {
   margin-top: 8px;
   gap: 8px;
 }
 
-.app-message-user-action-btn {
+.ow-ui-chat-session-message-user-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -357,12 +360,12 @@
     background 0.12s ease;
 }
 
-.app-message-user-action-btn:hover {
+.ow-ui-chat-session-message-user-action-btn:hover {
   color: var(--aw-color-text);
   background: rgb(24 24 27 / 0.04);
 }
 
-.app-message-user-action-btn.is-stop {
+.ow-ui-chat-session-message-user-action-btn.is-stop {
   width: 24px;
   height: 24px;
   padding: 0;
@@ -372,26 +375,26 @@
   background: #000;
 }
 
-.app-message-user-action-btn.is-stop:hover {
+.ow-ui-chat-session-message-user-action-btn.is-stop:hover {
   color: #fff;
   background: rgb(31 31 31);
 }
 
-.app-message-card.is-user.is-editing,
-.app-message-card.is-user.is-editing .ant-card-body,
-.app-message-card.is-user.is-editing .ant-input,
-.app-message-card.is-user.is-editing .ant-input-affix-wrapper,
-.app-message-card.is-user.is-editing textarea {
+.ow-ui-chat-session-message-card.is-user.is-editing,
+.ow-ui-chat-session-message-card.is-user.is-editing .ant-card-body,
+.ow-ui-chat-session-message-card.is-user.is-editing .ant-input,
+.ow-ui-chat-session-message-card.is-user.is-editing .ant-input-affix-wrapper,
+.ow-ui-chat-session-message-card.is-user.is-editing textarea {
   transition: none !important;
   animation: none !important;
 }
 
-.app-message-card.is-user.is-editing .ant-card-body {
+.ow-ui-chat-session-message-card.is-user.is-editing .ant-card-body {
   padding: 10px 12px;
 }
 
-.app-message-user-edit-input.ant-input,
-textarea.app-message-user-edit-input.ant-input {
+.ow-ui-chat-session-message-user-edit-input.ant-input,
+textarea.ow-ui-chat-session-message-user-edit-input.ant-input {
   padding: 0;
   border: none !important;
   border-radius: 0 !important;
@@ -405,10 +408,10 @@ textarea.app-message-user-edit-input.ant-input {
   animation: none !important;
 }
 
-.app-message-user-edit-input.ant-input:hover,
-.app-message-user-edit-input.ant-input:focus,
-textarea.app-message-user-edit-input.ant-input:hover,
-textarea.app-message-user-edit-input.ant-input:focus {
+.ow-ui-chat-session-message-user-edit-input.ant-input:hover,
+.ow-ui-chat-session-message-user-edit-input.ant-input:focus,
+textarea.ow-ui-chat-session-message-user-edit-input.ant-input:hover,
+textarea.ow-ui-chat-session-message-user-edit-input.ant-input:focus {
   border: none !important;
   border-radius: 0 !important;
   outline: none !important;
@@ -418,21 +421,21 @@ textarea.app-message-user-edit-input.ant-input:focus {
   animation: none !important;
 }
 
-.app-message-markdown-wrap {
+.ow-ui-chat-session-message-markdown-wrap {
   min-width: 0;
 }
 
-.app-message-markdown-actions {
+.ow-ui-chat-session-message-markdown-actions {
   display: flex;
   justify-content: flex-end;
   margin-top: 2px;
 }
 
-.app-timeline-accordion {
+.ow-ui-chat-session-timeline-accordion {
   margin-bottom: 10px;
 }
 
-.app-timeline-accordion-head {
+.ow-ui-chat-session-timeline-accordion-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -447,11 +450,11 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: var(--aw-color-text-secondary);
 }
 
-.app-timeline-accordion-head:hover {
+.ow-ui-chat-session-timeline-accordion-head:hover {
   color: var(--aw-color-text);
 }
 
-.app-timeline-chevron {
+.ow-ui-chat-session-timeline-chevron {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -463,20 +466,20 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: var(--aw-color-icon-muted);
 }
 
-.app-timeline-chevron.is-open {
+.ow-ui-chat-session-timeline-chevron.is-open {
   transform: rotate(90deg);
 }
 
-.app-timeline-chevron.is-hidden {
+.ow-ui-chat-session-timeline-chevron.is-hidden {
   visibility: hidden;
 }
 
-.app-timeline-accordion-title {
+.ow-ui-chat-session-timeline-accordion-title {
   font-size: var(--aw-font-sm);
   font-weight: var(--aw-font-weight-medium);
 }
 
-.app-timeline-accordion .app-timeline-wrap {
+.ow-ui-chat-session-timeline-accordion .ow-ui-chat-session-timeline-wrap {
   margin-top: 4px;
   margin-bottom: 0;
   padding-top: 6px;
@@ -487,23 +490,24 @@ textarea.app-message-user-edit-input.ant-input:focus {
 }
 
 /* Worked：与助手正文左对齐，不做树形缩进 */
-.app-timeline-accordion.app-worked-accordion .app-timeline-wrap {
+.ow-ui-chat-session-timeline-accordion.ow-ui-chat-session-worked-accordion
+  .ow-ui-chat-session-timeline-wrap {
   padding-left: 0;
   margin-left: 0;
   border-left: none;
 }
 
-.app-timeline-wrap {
+.ow-ui-chat-session-timeline-wrap {
   margin-top: 10px;
   border-top: 1px solid var(--aw-color-border-secondary);
   padding-top: 8px;
 }
 
-.app-timeline-item {
+.ow-ui-chat-session-timeline-item {
   margin-bottom: 8px;
 }
 
-.app-timeline-result {
+.ow-ui-chat-session-timeline-result {
   margin-top: 6px;
   margin-bottom: 0;
   padding: 10px 12px;
@@ -526,12 +530,12 @@ textarea.app-message-user-edit-input.ant-input:focus {
   scrollbar-color: var(--aw-chat-scrollbar-thumb) transparent;
 }
 
-.app-timeline-result::-webkit-scrollbar {
+.ow-ui-chat-session-timeline-result::-webkit-scrollbar {
   width: var(--aw-chat-scrollbar-size);
   height: var(--aw-chat-scrollbar-size);
 }
 
-.app-timeline-result::-webkit-scrollbar-thumb {
+.ow-ui-chat-session-timeline-result::-webkit-scrollbar-thumb {
   background: var(--aw-chat-scrollbar-thumb);
   border-radius: 999px;
   border: 2px solid transparent;
@@ -539,62 +543,62 @@ textarea.app-message-user-edit-input.ant-input:focus {
   transition: background-color 0.15s ease;
 }
 
-.app-timeline-result::-webkit-scrollbar-thumb:hover {
+.ow-ui-chat-session-timeline-result::-webkit-scrollbar-thumb:hover {
   background: var(--aw-chat-scrollbar-thumb-hover);
 }
 
-.app-timeline-result::-webkit-scrollbar-track {
+.ow-ui-chat-session-timeline-result::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.app-timeline-result::-webkit-scrollbar-corner {
+.ow-ui-chat-session-timeline-result::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* Worked：对齐 Cursor——浅灰、常规字重、弱于正文 */
-.app-worked-accordion {
+.ow-ui-chat-session-worked-accordion {
   --aw-worked-fg: rgb(24 24 27 / 0.48);
   --aw-worked-fg-hover: rgb(24 24 27 / 0.64);
   --aw-worked-fg-muted: rgb(24 24 27 / 0.36);
 
-  .app-timeline-accordion-head {
+  .ow-ui-chat-session-timeline-accordion-head {
     gap: 6px;
     padding: 2px 0;
     color: var(--aw-worked-fg);
   }
 
-  .app-timeline-accordion-head:hover {
+  .ow-ui-chat-session-timeline-accordion-head:hover {
     color: var(--aw-worked-fg-hover);
   }
 
-  .app-timeline-accordion-title {
+  .ow-ui-chat-session-timeline-accordion-title {
     font-size: var(--aw-font-lg);
     font-weight: 400;
     line-height: 1.4;
   }
 
-  .app-timeline-chevron {
+  .ow-ui-chat-session-timeline-chevron {
     font-size: var(--aw-font-xs);
     color: var(--aw-worked-fg-muted);
   }
 
-  .app-timeline-wrap {
+  .ow-ui-chat-session-timeline-wrap {
     padding-top: 2px;
   }
 }
 
 /* Worked 树：L2（Thought / Explored / Shell…）与 L3（原子工具） */
-.app-worked-children {
+.ow-ui-chat-session-worked-children {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
-.app-worked-l2 {
+.ow-ui-chat-session-worked-l2 {
   min-width: 0;
 }
 
-.app-worked-l2-head {
+.ow-ui-chat-session-worked-l2-head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -609,15 +613,15 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: var(--aw-worked-fg, rgb(24 24 27 / 0.48));
 }
 
-.app-worked-l2-head:hover:not(:disabled) {
+.ow-ui-chat-session-worked-l2-head:hover:not(:disabled) {
   color: var(--aw-worked-fg-hover, rgb(24 24 27 / 0.64));
 }
 
-.app-worked-l2-head:disabled {
+.ow-ui-chat-session-worked-l2-head:disabled {
   cursor: default;
 }
 
-.app-worked-l2-title {
+.ow-ui-chat-session-worked-l2-title {
   font-size: var(--aw-font-lg);
   font-weight: 400;
   line-height: 1.4;
@@ -625,13 +629,13 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: inherit;
 }
 
-.app-worked-l2-body {
+.ow-ui-chat-session-worked-l2-body {
   margin-left: 0;
   padding-left: 0;
   border-left: none;
 }
 
-.app-worked-l3-item {
+.ow-ui-chat-session-worked-l3-item {
   min-width: 0;
   padding: 1px 0;
   color: var(--aw-worked-fg, rgb(24 24 27 / 0.48));
@@ -639,7 +643,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
   font-weight: 400;
 }
 
-.app-worked-l3-title {
+.ow-ui-chat-session-worked-l3-title {
   font-size: inherit;
   font-weight: inherit;
   line-height: 1.4;
@@ -647,7 +651,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: inherit;
 }
 
-.app-worked-l3-head {
+.ow-ui-chat-session-worked-l3-head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -662,16 +666,16 @@ textarea.app-message-user-edit-input.ant-input:focus {
   color: inherit;
 }
 
-.app-worked-l3-head:hover {
+.ow-ui-chat-session-worked-l3-head:hover {
   color: var(--aw-worked-fg-hover, rgb(24 24 27 / 0.64));
 }
 
-.app-worked-l3-body {
+.ow-ui-chat-session-worked-l3-body {
   margin-left: 0;
   padding: 2px 0 6px;
 }
 
-.app-worked-args {
+.ow-ui-chat-session-worked-args {
   display: block;
   margin: 0 0 2px;
   font-size: var(--aw-font-lg);
@@ -682,29 +686,29 @@ textarea.app-message-user-edit-input.ant-input:focus {
   white-space: pre-wrap;
 }
 
-.app-worked-accordion .app-timeline-result {
+.ow-ui-chat-session-worked-accordion .ow-ui-chat-session-timeline-result {
   color: var(--aw-worked-fg-hover, rgb(24 24 27 / 0.64));
   background: var(--aw-color-bg-container);
 }
 
 /* Thought：标签行 + 正文（非手风琴，随 Worked 展开） */
-.app-worked-thought {
+.ow-ui-chat-session-worked-thought {
   min-width: 0;
   padding: 2px 0 4px;
 }
 
-.app-worked-thought-label {
+.ow-ui-chat-session-worked-thought-label {
   font-size: var(--aw-font-lg);
   font-weight: 400;
   line-height: 1.4;
   color: var(--aw-worked-fg, rgb(24 24 27 / 0.48));
 }
 
-.app-worked-thought.is-brief .app-worked-thought-label {
+.ow-ui-chat-session-worked-thought.is-brief .ow-ui-chat-session-worked-thought-label {
   color: var(--aw-worked-fg-muted, rgb(24 24 27 / 0.36));
 }
 
-.app-worked-thought-text {
+.ow-ui-chat-session-worked-thought-text {
   margin-top: 2px;
   font-size: var(--aw-font-lg);
   font-weight: 400;
@@ -716,11 +720,11 @@ textarea.app-message-user-edit-input.ant-input:focus {
   overflow: auto;
 }
 
-.app-worked-error {
+.ow-ui-chat-session-worked-error {
   padding: 4px 0 4px 2px;
 }
 
-.app-composer {
+.ow-ui-chat-session-composer {
   position: relative;
   margin: 0;
   padding: 10px 12px 8px;
@@ -736,7 +740,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
 }
 
 /* 斜杠技能菜单：锚定在输入框上方（对齐 Cursor `/` 技能选择） */
-.app-composer-skill-menu {
+.ow-ui-chat-session-composer-skill-menu {
   position: absolute;
   left: 0;
   right: 0;
@@ -752,7 +756,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
 }
 
-.app-composer-skill-menu-header {
+.ow-ui-chat-session-composer-skill-menu-header {
   flex-shrink: 0;
   padding: 8px 12px 4px;
   font-size: var(--aw-font-caption);
@@ -761,14 +765,14 @@ textarea.app-message-user-edit-input.ant-input:focus {
   letter-spacing: 0.02em;
 }
 
-.app-composer-skill-menu-list {
+.ow-ui-chat-session-composer-skill-menu-list {
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 4px;
 }
 
-.app-composer-skill-menu-item {
+.ow-ui-chat-session-composer-skill-menu-item {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -784,12 +788,12 @@ textarea.app-message-user-edit-input.ant-input:focus {
   cursor: pointer;
 }
 
-.app-composer-skill-menu-item:hover,
-.app-composer-skill-menu-item.is-active {
+.ow-ui-chat-session-composer-skill-menu-item:hover,
+.ow-ui-chat-session-composer-skill-menu-item.is-active {
   background: rgb(24 24 27 / 0.06);
 }
 
-.app-composer-skill-menu-item-name {
+.ow-ui-chat-session-composer-skill-menu-item-name {
   font-size: var(--aw-font-sm);
   font-weight: var(--aw-font-weight-medium);
   color: var(--aw-color-text);
@@ -804,7 +808,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
   );
 }
 
-.app-composer-skill-menu-item-desc {
+.ow-ui-chat-session-composer-skill-menu-item-desc {
   font-size: var(--aw-font-caption);
   line-height: 1.35;
   color: var(--aw-color-text-secondary);
@@ -814,20 +818,20 @@ textarea.app-message-user-edit-input.ant-input:focus {
   overflow: hidden;
 }
 
-.app-composer-skill-menu-empty {
+.ow-ui-chat-session-composer-skill-menu-empty {
   padding: 12px;
   font-size: var(--aw-font-caption);
   color: var(--aw-color-text-tertiary);
 }
 
-.app-composer-inner {
+.ow-ui-chat-session-composer-inner {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.app-composer-footer {
+.ow-ui-chat-session-composer-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -837,7 +841,7 @@ textarea.app-message-user-edit-input.ant-input:focus {
   border-top: 1px solid var(--aw-composer-footer-rule);
 }
 
-.app-composer-plus-btn.ant-btn {
+.ow-ui-chat-session-composer-plus-btn.ant-btn {
   width: 28px;
   height: 28px;
   min-width: 28px;
@@ -852,13 +856,13 @@ textarea.app-message-user-edit-input.ant-input:focus {
   box-shadow: none;
 }
 
-.app-composer-plus-btn.ant-btn:hover {
+.ow-ui-chat-session-composer-plus-btn.ant-btn:hover {
   color: var(--aw-color-icon-hover);
   background: rgb(24 24 27 / 0.06);
   border-color: var(--aw-color-border);
 }
 
-.app-composer-plus-menu-title {
+.ow-ui-chat-session-composer-plus-menu-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -867,13 +871,13 @@ textarea.app-message-user-edit-input.ant-input:focus {
   font-weight: var(--aw-font-weight-medium);
 }
 
-.app-composer-plus-menu-check {
+.ow-ui-chat-session-composer-plus-menu-check {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--aw-color-text-secondary);
 }
 
-.app-composer-mode-hint {
+.ow-ui-chat-session-composer-mode-hint {
   font-size: var(--aw-font-caption);
   font-weight: var(--aw-font-weight-medium);
   letter-spacing: 0.02em;
@@ -881,14 +885,14 @@ textarea.app-message-user-edit-input.ant-input:focus {
   white-space: nowrap;
 }
 
-.app-plan-card-stack {
+.ow-ui-chat-session-plan-card-stack {
   flex-shrink: 0;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
-.app-plan-card {
+.ow-ui-chat-session-plan-card {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -902,14 +906,14 @@ textarea.app-message-user-edit-input.ant-input:focus {
   gap: 10px;
 }
 
-.app-plan-card-header {
+.ow-ui-chat-session-plan-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.app-plan-card-title {
+.ow-ui-chat-session-plan-card-title {
   font-size: var(--aw-font-md, 14px);
   font-weight: var(--aw-font-weight-medium);
   color: var(--aw-color-text);
@@ -919,33 +923,33 @@ textarea.app-message-user-edit-input.ant-input:focus {
   white-space: nowrap;
 }
 
-.app-plan-card-actions {
+.ow-ui-chat-session-plan-card-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.app-plan-card-build-btn.ant-btn-primary {
+.ow-ui-chat-session-plan-card-build-btn.ant-btn-primary {
   color: #422006;
   background: #fef08a;
   border-color: #fef08a;
 }
 
-.app-plan-card-build-btn.ant-btn-primary:not(:disabled):hover {
+.ow-ui-chat-session-plan-card-build-btn.ant-btn-primary:not(:disabled):hover {
   color: #422006;
   background: #fde047;
   border-color: #fde047;
 }
 
-.app-plan-card-build-btn.ant-btn-primary:not(:disabled):active {
+.ow-ui-chat-session-plan-card-build-btn.ant-btn-primary:not(:disabled):active {
   color: #422006;
   background: #fde047;
   border-color: #fde047;
 }
 
-.app-plan-card-editor.ant-input,
-textarea.app-plan-card-editor.ant-input {
+.ow-ui-chat-session-plan-card-editor.ant-input,
+textarea.ow-ui-chat-session-plan-card-editor.ant-input {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -959,13 +963,13 @@ textarea.app-plan-card-editor.ant-input {
   border-radius: 8px;
 }
 
-.app-plan-card-hint {
+.ow-ui-chat-session-plan-card-hint {
   font-size: var(--aw-font-caption);
   color: var(--aw-color-text-tertiary);
 }
 
-.app-composer-input.ant-input,
-textarea.app-composer-input.ant-input {
+.ow-ui-chat-session-composer-input.ant-input,
+textarea.ow-ui-chat-session-composer-input.ant-input {
   /* 勿使用 flex:1，否则会占满纵向空间，Ant Design autoSize 无法随内容增高 */
   flex: 0 1 auto;
   width: 100%;
@@ -979,26 +983,26 @@ textarea.app-composer-input.ant-input {
   resize: none;
 }
 
-.app-composer-input.ant-input::placeholder,
-textarea.app-composer-input.ant-input::placeholder {
+.ow-ui-chat-session-composer-input.ant-input::placeholder,
+textarea.ow-ui-chat-session-composer-input.ant-input::placeholder {
   color: var(--aw-color-text-tertiary);
 }
 
-.app-composer-input.ant-input:hover,
-.app-composer-input.ant-input:focus,
-textarea.app-composer-input.ant-input:hover,
-textarea.app-composer-input.ant-input:focus {
+.ow-ui-chat-session-composer-input.ant-input:hover,
+.ow-ui-chat-session-composer-input.ant-input:focus,
+textarea.ow-ui-chat-session-composer-input.ant-input:hover,
+textarea.ow-ui-chat-session-composer-input.ant-input:focus {
   box-shadow: none !important;
 }
 
-.app-composer-actions {
+.ow-ui-chat-session-composer-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.app-send-btn.ant-btn {
+.ow-ui-chat-session-send-btn.ant-btn {
   width: 30px;
   height: 30px;
   min-width: 30px;
@@ -1014,7 +1018,7 @@ textarea.app-composer-input.ant-input:focus {
   color: #fff;
 }
 
-.app-send-btn.ant-btn .ant-btn-icon {
+.ow-ui-chat-session-send-btn.ant-btn .ant-btn-icon {
   margin: 0;
   line-height: 0;
   display: inline-flex;
@@ -1022,29 +1026,29 @@ textarea.app-composer-input.ant-input:focus {
   justify-content: center;
 }
 
-.app-send-btn.ant-btn-primary:not(:disabled) {
+.ow-ui-chat-session-send-btn.ant-btn-primary:not(:disabled) {
   background: #000;
   border-color: #000;
 }
 
-.app-send-btn.ant-btn-primary:not(:disabled):hover {
+.ow-ui-chat-session-send-btn.ant-btn-primary:not(:disabled):hover {
   background: rgb(31 31 31) !important;
   border-color: rgb(31 31 31) !important;
 }
 
-.app-send-btn.ant-btn-primary:disabled {
+.ow-ui-chat-session-send-btn.ant-btn-primary:disabled {
   color: rgb(24 24 27 / 0.28) !important;
   background: rgb(24 24 27 / 0.05) !important;
   border-color: transparent !important;
 }
 
-.app-msg-send-btn.ant-btn {
+.ow-ui-chat-session-msg-send-btn.ant-btn {
   width: 24px;
   height: 24px;
   min-width: 24px;
 }
 
-.app-stop-btn.ant-btn {
+.ow-ui-chat-session-stop-btn.ant-btn {
   width: 30px;
   height: 30px;
   min-width: 30px;
@@ -1059,7 +1063,7 @@ textarea.app-composer-input.ant-input:focus {
   border-color: #000;
 }
 
-.app-stop-btn.ant-btn:hover {
+.ow-ui-chat-session-stop-btn.ant-btn:hover {
   color: #fff !important;
   background: rgb(31 31 31) !important;
   border-color: rgb(31 31 31) !important;

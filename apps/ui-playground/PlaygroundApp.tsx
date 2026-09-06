@@ -1,4 +1,4 @@
-import type { AgentComposerMode } from '@openworker/shared'
+﻿import type { AgentComposerMode } from '@openworker/shared'
 import { App as AntdApp, Segmented } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -248,10 +248,10 @@ export function PlaygroundApp() {
             return { ok: true }
           }}
           emptyToolbar={
-            <div className="app-composer-toolbar">
-              <button type="button" className="app-composer-workspace-trigger">
-                <span className="app-composer-workspace-trigger-body">
-                  <span className="app-composer-workspace-name">预览工作区</span>
+            <div className="ow-ui-chat-session-composer-toolbar">
+              <button type="button" className="ow-ui-chat-session-composer-workspace-trigger">
+                <span className="ow-ui-chat-session-composer-workspace-trigger-body">
+                  <span className="ow-ui-chat-session-composer-workspace-name">预览工作区</span>
                 </span>
               </button>
             </div>

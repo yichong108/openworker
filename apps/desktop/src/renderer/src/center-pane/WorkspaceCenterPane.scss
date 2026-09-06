@@ -1,4 +1,4 @@
-.app-main-pane {
+﻿.app-main-pane {
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -70,7 +70,7 @@
 }
 
 /* 中栏容器：多个会话叠放，可见实例铺满宽度 */
-.app-main-pane > .app-content {
+.app-main-pane > .ow-ui-chat-session-content {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -93,23 +93,23 @@
 }
 
 /*
- * 内层 .app-content 来自 ChatSessionView。
- * .app-content-inner 是消息列表 + plan card + 输入框的整体容器，
+ * 内层 .ow-ui-chat-session-content 来自 ChatSessionView。
+ * .ow-ui-chat-session-content-inner 是消息列表 + plan card + 输入框的整体容器，
  * 由它统一承担 max-width 与居中，内部子元素铺满其宽度。
  */
-.app-chat-session-root > .app-content {
+.app-chat-session-root > .ow-ui-chat-session-content {
   flex: 1;
   min-height: 0;
   min-width: 0;
   width: 100%;
 
-  /* 加载态：铺满整个 .app-content */
-  > .app-session-messages-loading {
+  /* 加载态：铺满整个 .ow-ui-chat-session-content */
+  > .ow-ui-chat-session-session-messages-loading {
     flex: 1 1 auto;
   }
 
   /* 内容整体容器：统一 max-width + 居中 */
-  > .app-content-inner {
+  > .ow-ui-chat-session-content-inner {
     width: 100%;
     max-width: var(--aw-main-content-max-width);
     margin-inline: auto;
@@ -119,13 +119,13 @@
     justify-content: center;
     padding: 24px 0 clamp(96px, 20vh, 220px);
 
-    > .app-content-inner {
+    > .ow-ui-chat-session-content-inner {
       width: 100%;
       max-width: var(--aw-main-content-max-width);
       margin-inline: auto;
     }
 
-    .app-messages-shell {
+    .ow-ui-chat-session-messages-shell {
       display: none;
     }
   }

@@ -1,4 +1,4 @@
-import '@openworker/ui/chat-session/chat-session.scss'
+﻿import '@openworker/ui/chat-session/chat-session.scss'
 import '@/renderer/src/center-pane/WorkspaceCenterPane.scss'
 import { DesktopChatSession } from './DesktopChatSession'
 import {
@@ -112,7 +112,7 @@ export function WorkspaceCenterPane(props: WorkspaceCenterPaneProps) {
         ) : null}
       </div>
 
-      <div className="app-content">
+      <div className="ow-ui-chat-session-content">
         {!p.preloadOk && (
           <div className="app-preload-alert-wrap">
             <Alert

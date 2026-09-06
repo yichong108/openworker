@@ -1,4 +1,4 @@
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons'
+﻿import { CheckOutlined, PlusOutlined } from '@ant-design/icons'
 import type { AgentComposerMode } from '@openworker/shared'
 import { Button, Dropdown, Input, type MenuProps } from 'antd'
 import type { InputRef } from 'antd/es/input'
@@ -54,10 +54,10 @@ export function ChatComposer({
       (['build', 'ask', 'plan'] as const).map((mode) => ({
         key: mode,
         label: (
-          <span className="app-composer-plus-menu-title">
+          <span className="ow-ui-chat-session-composer-plus-menu-title">
             <span>{composerModeLabel(mode)}</span>
             {composerMode === mode ? (
-              <CheckOutlined className="app-composer-plus-menu-check" aria-hidden />
+              <CheckOutlined className="ow-ui-chat-session-composer-plus-menu-check" aria-hidden />
             ) : null}
           </span>
         )
@@ -72,7 +72,7 @@ export function ChatComposer({
   }
 
   return (
-    <div className="app-composer">
+    <div className="ow-ui-chat-session-composer">
       {skillMenuOpen && skillMenu ? (
         <ComposerSkillMenu
           skills={filteredSkills}
@@ -82,7 +82,7 @@ export function ChatComposer({
           onActiveIndexChange={skillMenu.onActiveIndexChange}
         />
       ) : null}
-      <div className="app-composer-inner">
+      <div className="ow-ui-chat-session-composer-inner">
         <TextArea
           ref={composerInputRef}
           value={value}
@@ -111,7 +111,7 @@ export function ChatComposer({
           autoSize={{ minRows: 1, maxRows: 12 }}
           variant="borderless"
           placeholder={placeholder}
-          className="app-composer-input"
+          className="ow-ui-chat-session-composer-input"
           onKeyDown={(e) => {
             if (!skillMenuOpen || !skillMenu) return
             if (e.key === 'Escape') {
@@ -150,7 +150,7 @@ export function ChatComposer({
             }
           }}
         />
-        <div className="app-composer-footer">
+        <div className="ow-ui-chat-session-composer-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Dropdown
               menu={{
@@ -162,23 +162,25 @@ export function ChatComposer({
             >
               <Button
                 type="default"
-                className="app-composer-plus-btn"
+                className="ow-ui-chat-session-composer-plus-btn"
                 icon={<PlusOutlined />}
                 aria-label="对话模式"
               />
             </Dropdown>
             {composerMode !== 'build' ? (
-              <span className="app-composer-mode-hint">{composerModeLabel(composerMode)}</span>
+              <span className="ow-ui-chat-session-composer-mode-hint">
+                {composerModeLabel(composerMode)}
+              </span>
             ) : null}
           </div>
-          <div className="app-composer-actions">
+          <div className="ow-ui-chat-session-composer-actions">
             {showSendButton ? (
               <Button
                 type="primary"
                 icon={<AiOutlineArrowUp size={16} />}
                 onClick={() => onSend()}
                 disabled={sendDisabled || !canSend}
-                className="app-send-btn"
+                className="ow-ui-chat-session-send-btn"
                 aria-label="发送"
               />
             ) : null}
@@ -186,7 +188,7 @@ export function ChatComposer({
               <Button
                 icon={<FaStop />}
                 onClick={onStop}
-                className="app-stop-btn"
+                className="ow-ui-chat-session-stop-btn"
                 aria-label="停止"
               />
             ) : null}

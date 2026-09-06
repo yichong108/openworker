@@ -1,4 +1,4 @@
-import { filterSessionsForSidebar, PRELOAD_MISSING_ERROR } from './center-pane-utils'
+﻿import { filterSessionsForSidebar, PRELOAD_MISSING_ERROR } from './center-pane-utils'
 import { DownOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { App as AntdApp, Dropdown, type MenuProps } from 'antd'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -238,7 +238,7 @@ export function useWorkspaceCenterPane({
   }, [composerSelectedWorkspaceId, workspacesWithComposerHomeStub])
 
   const composerWorkspaceToolbar = (
-    <div className="app-composer-toolbar">
+    <div className="ow-ui-chat-session-composer-toolbar">
       <Dropdown
         menu={{
           items: composerWorkspaceMenuItems,
@@ -246,12 +246,19 @@ export function useWorkspaceCenterPane({
         }}
         trigger={['click']}
       >
-        <button type="button" className="app-composer-workspace-trigger" aria-haspopup="menu">
-          <span className="app-composer-workspace-trigger-body">
-            <span className="app-composer-workspace-name">
+        <button
+          type="button"
+          className="ow-ui-chat-session-composer-workspace-trigger"
+          aria-haspopup="menu"
+        >
+          <span className="ow-ui-chat-session-composer-workspace-trigger-body">
+            <span className="ow-ui-chat-session-composer-workspace-name">
               {activeWorkspace?.name ?? '未选择工作区'}
             </span>
-            <DownOutlined className="app-composer-workspace-trigger-chevron" aria-hidden />
+            <DownOutlined
+              className="ow-ui-chat-session-composer-workspace-trigger-chevron"
+              aria-hidden
+            />
           </span>
         </button>
       </Dropdown>

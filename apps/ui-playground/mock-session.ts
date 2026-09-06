@@ -1,4 +1,4 @@
-import { EventType, type BaseEvent } from '@ag-ui/client'
+﻿import { EventType, type BaseEvent } from '@ag-ui/client'
 
 import type { ChatComposerSkill, ChatSessionMessage } from '@openworker/ui'
 
@@ -154,7 +154,7 @@ const secondAssistantEvents: BaseEvent[] = [
     'tc-read-2',
     'read_file',
     { path: 'packages/ui/src/chat-session/chat-session.scss' },
-    '.app-content {\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n}',
+    '.ow-ui-chat-session-content {\n  width: 100%;\n  height: 100%;\n  overflow: hidden;\n}',
     T0 + 8400
   ),
   ...toolTriple(
@@ -213,14 +213,14 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
       '',
       '| 区域 | 行为 |',
       '| --- | --- |',
-      '| `.app-content` | `width/height: 100%`，超出裁切 |',
+      '| `.ow-ui-chat-session-content` | `width/height: 100%`，超出裁切 |',
       '| 消息列表 | `flex: 1 1 0`，内部 SimpleBar 滚动 |',
       '| 输入框 | `flex-shrink: 0`，贴在容器底部 |',
       '',
       '若列表高度跟着正文一起长，多半是滚动容器没有拿到确定高度。正确姿势是父级写死高度（比如预览舞台 400×500），子级用 flex 吃剩余空间：',
       '',
       '```scss',
-      '.app-messages-scroll[data-simplebar] {',
+      '.ow-ui-chat-session-messages-scroll[data-simplebar] {',
       '  flex: 1 1 0;',
       '  min-height: 0;',
       '  height: 0;',
@@ -266,7 +266,7 @@ export const MOCK_HISTORY_MESSAGES: ChatSessionMessage[] = [
       '# 默认尝试 5179，占用则顺延（当前常见是 :5180）',
       '```',
       '',
-      '如果列表仍无法滚动，检查舞台是否真的是 400×500，以及 `.app-content` 是否 `overflow: hidden`。'
+      '如果列表仍无法滚动，检查舞台是否真的是 400×500，以及 `.ow-ui-chat-session-content` 是否 `overflow: hidden`。'
     ].join('\n'),
     aguiEvents: [
       ev({

@@ -1,4 +1,4 @@
-import './chat-session.scss'
+﻿import './chat-session.scss'
 
 import { useEffect, useRef } from 'react'
 
@@ -10,8 +10,8 @@ import type { ChatSessionViewProps } from './types.js'
 /**
  * 中间栏聊天会话视图：加载态、消息列表、计划卡与底部输入框。
  *
- * flex column 布局：.app-messages-shell 是滚动容器（flex:1 + overflow-y:auto），
- * .app-composer-stack flex-shrink:0 固定底部。
+ * flex column 布局：.ow-ui-chat-session-messages-shell 是滚动容器（flex:1 + overflow-y:auto），
+ * .ow-ui-chat-session-composer-stack flex-shrink:0 固定底部。
  *
  * @param props - 会话展示数据与回调
  */
@@ -35,7 +35,7 @@ export function ChatSessionView({
 
   const contentRef = useRef<HTMLDivElement | null>(null)
 
-  // 监听 .app-content 高度变化，设 CSS 变量供 padding-bottom 取半使用
+  // 监听 .ow-ui-chat-session-content 高度变化，设 CSS 变量供 padding-bottom 取半使用
   // （组件外部容器不确定，不能依赖 vh 或百分比）
   useEffect(() => {
     const el = contentRef.current
@@ -54,19 +54,19 @@ export function ChatSessionView({
   return (
     <div
       ref={contentRef}
-      className={`app-content${isEmpty ? ' is-empty-conversation' : ''}${isLoading ? ' is-session-loading' : ''}${className ? ` ${className}` : ''}`}
+      className={`ow-ui-chat-session-content${isEmpty ? ' is-empty-conversation' : ''}${isLoading ? ' is-session-loading' : ''}${className ? ` ${className}` : ''}`}
     >
       {isLoading ? (
         <div
-          className="app-session-messages-loading"
+          className="ow-ui-chat-session-session-messages-loading"
           role="status"
           aria-live="polite"
           aria-label="加载会话中"
         >
-          <span className="app-session-messages-loading-circle" aria-hidden />
+          <span className="ow-ui-chat-session-session-messages-loading-circle" aria-hidden />
         </div>
       ) : (
-        <div className="app-content-inner">
+        <div className="ow-ui-chat-session-content-inner">
           <ChatMessageList
             sessionKey={resolvedSessionKey}
             messages={messages}
@@ -78,11 +78,11 @@ export function ChatSessionView({
             onOpenExternal={onOpenExternal}
           />
           {plan ? (
-            <div className="app-plan-card-stack">
+            <div className="ow-ui-chat-session-plan-card-stack">
               <ChatPlanCard {...plan} />
             </div>
           ) : null}
-          <div className="app-composer-stack">
+          <div className="ow-ui-chat-session-composer-stack">
             {isEmpty ? emptyToolbar : null}
             <ChatComposer {...composer} isRun={isRun} onStop={onStopRun} />
           </div>

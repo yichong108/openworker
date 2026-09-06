@@ -1,4 +1,4 @@
-import type { BaseEvent } from '@ag-ui/client'
+﻿import type { BaseEvent } from '@ag-ui/client'
 import { App as AntdApp } from 'antd'
 import {
   useCallback,
@@ -28,7 +28,7 @@ export type ChatMessageListProps = {
   onOpenExternal: (href: string) => Promise<{ ok: boolean }>
 }
 
-/** 找到最近的可滚动祖先（用于从 .app-content-inner 向上找到 .app-content） */
+/** 找到最近的可滚动祖先（用于从 .ow-ui-chat-session-content-inner 向上找到 .ow-ui-chat-session-content） */
 function findScrollableAncestor(start: HTMLElement | null): HTMLElement | null {
   let el: HTMLElement | null = start
   while (el) {
@@ -43,7 +43,7 @@ function findScrollableAncestor(start: HTMLElement | null): HTMLElement | null {
 /**
  * 管理消息列表区的展示状态：时间线手风琴、自动滚动、Markdown 外链确认等。
  *
- * 滚动容器已上移到宿主层（`.app-content`），本组件通过向上查找祖先来监听滚动。
+ * 滚动容器已上移到宿主层（`.ow-ui-chat-session-content`），本组件通过向上查找祖先来监听滚动。
  *
  * @param options - 会话消息与直播 AG-UI 事件
  */
@@ -204,7 +204,7 @@ function useChatMessageList({
 }
 
 /**
- * 会话消息列表：纯内容容器，滚动交给宿主层（`.app-content`）。
+ * 会话消息列表：纯内容容器，滚动交给宿主层（`.ow-ui-chat-session-content`）。
  *
  * @param props - 当前会话消息与直播 AG-UI 事件
  */
@@ -212,8 +212,8 @@ export function ChatMessageList(props: ChatMessageListProps) {
   const m = useChatMessageList(props)
 
   return (
-    <div className="app-messages-shell" ref={m.shellRef}>
-      <div className="app-messages-inner">
+    <div className="ow-ui-chat-session-messages-shell" ref={m.shellRef}>
+      <div className="ow-ui-chat-session-messages-inner">
         {m.messageTurns.map((turn) => (
           <MessageTurnItem
             key={turn.key}

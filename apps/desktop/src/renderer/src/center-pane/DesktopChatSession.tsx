@@ -1,4 +1,4 @@
-import { EventType, type BaseEvent, type CustomEvent } from '@ag-ui/client'
+﻿import { EventType, type BaseEvent, type CustomEvent } from '@ag-ui/client'
 import {
   ChatSessionWithHttp,
   OPENWORKER_PLAN_CUSTOM_NAME,
@@ -359,14 +359,14 @@ export function DesktopChatSession({
 
   if (hydrating || !hydrated) {
     return (
-      <div className="app-content is-session-loading" hidden={!visible}>
+      <div className="ow-ui-chat-session-content is-session-loading" hidden={!visible}>
         <div
-          className="app-session-messages-loading"
+          className="ow-ui-chat-session-session-messages-loading"
           role="status"
           aria-live="polite"
           aria-label="加载会话中"
         >
-          <span className="app-session-messages-loading-circle" aria-hidden />
+          <span className="ow-ui-chat-session-session-messages-loading-circle" aria-hidden />
         </div>
       </div>
     )
